@@ -48,13 +48,22 @@ http://localhost:3000/api/auth/callback/google
 http://localhost:3000/api/mesa/callback
 ```
 
-Cuando Vercel asigne el dominio de producción, agregar sus equivalentes:
+Dominio de producción asignado por Vercel: `https://frontend-mesa-control.vercel.app`. Agregar sus equivalentes:
+
+Orígenes autorizados:
 
 ```
-https://<dominio>
-https://<dominio>/api/auth/callback/google
-https://<dominio>/api/mesa/callback
+https://frontend-mesa-control.vercel.app
 ```
+
+URI de redirección:
+
+```
+https://frontend-mesa-control.vercel.app/api/auth/callback/google
+https://frontend-mesa-control.vercel.app/api/mesa/callback
+```
+
+No usar el dominio largo `frontend-mesa-control-omarlara-1860s-projects.vercel.app`: está detrás de la protección de despliegue de Vercel (SSO) y el flujo de OAuth no puede atravesarla.
 
 El ID de cliente y el secreto se cargan en `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `GOOGLE_OAUTH_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_SECRET`. Nunca al repositorio.
 
