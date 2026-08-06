@@ -454,6 +454,8 @@ export function rangoDeLectura(mapa: MapaEsquema): string {
 Run: `pnpm test src/lib/google/sheet-schema.test.ts`
 Expected: PASS. Si alguna prueba de agrupación falla, la corrección va en la tabla `ALIAS`, nunca en la prueba: los índices esperados provienen de la hoja real.
 
+> **Corrección aplicada durante la implementación.** El código de arriba fija la frontera en la columna 285 y excluye columnas por índice. Eso resultó frágil: si el formulario agrega una pregunta, `JY` se corre a 286 y todo el mapeo del seguimiento se rompe, justo lo que RNF-11 prohíbe. La versión final —la que está en `src/lib/google/sheet-schema.ts`— localiza la frontera **por encabezado** (`'folio de atencion'`) e ignora las columnas calculadas **por su encabezado** (`SLA`, `Total Dias`, `Estatus Real`, `Dias Espera AI/AF`, `Dia`, `Año/Mes Recibe`, `Tiempo entre solictud…`), además de descartar como residual toda repetición de un encabezado dentro de la zona de seguimiento (los `KL`–`KN`). Dos pruebas adicionales cubren el caso: insertar una pregunta nueva desplaza el folio a 286 y las observaciones a 297 sin perder ningún campo.
+
 - [ ] **Step 5: Commit**
 
 ```bash
