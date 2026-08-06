@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation'
-import { usuarioActual } from '@/lib/auth/usuarios'
+import { requerirAdmin } from '@/lib/auth/guard'
 import { accessTokenDeLaMesa } from '@/lib/google/auth-mesa'
 import { leerCredencial } from '@/lib/google/credencial'
 import { leerTituloHoja } from '@/lib/google/sheet-ping'
@@ -24,8 +23,7 @@ async function estadoDelAcceso() {
 }
 
 export default async function Ajustes() {
-  const usuario = await usuarioActual()
-  if (usuario.rol !== 'admin') redirect('/cola')
+  await requerirAdmin()
 
   const acceso = await estadoDelAcceso()
 

@@ -1,32 +1,30 @@
 import NextAuth from 'next-auth'
-import Google from 'next-auth/providers/google'
-import { DOMINIO_PERMITIDO, resolverAcceso } from '@/lib/auth/allowlist'
+import { authConfig } from '@/auth.config'
+import { resolverAcceso } from '@/lib/auth/allowlist'
 import { listarAutorizados } from '@/lib/auth/usuarios'
 
+/**
+ * Configuración completa, solo para runtime Node (route handlers, páginas y
+ * Server Actions). Añade a authConfig los callbacks que consultan la allowlist
+ * en la base de datos. El middleware usa authConfig a secas; ver auth.config.ts.
+ */
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [
-    Google({
-      clientId: process.env.AUTH_GOOGLE_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET,
-      authorization: {
-        params: { hd: DOMINIO_PERMITIDO, prompt: 'select_account' },
-      },
-    }),
-  ],
-  session: { strategy: 'jwt' },
-  pages: { signIn: '/login', error: '/sin-acceso' },
+  ...authConfig,
   callbacks: {
     async signIn({ profile }) {
       const resultado = resolverAcceso(profile?.email, await listarAutorizados())
       // Devolver una ruta en lugar de false permite explicar el motivo del rechazo.
       return resultado.autorizado ? true : `/sin-acceso?motivo=${resultado.motivo}`
     },
-    async jwt({ token }) {
-      if (!token.email) return token
-      const resultado = resolverAcceso(token.email, await listarAutorizados())
-      if (resultado.autorizado) {
-        token.rol = resultado.usuario.rol
-        token.nombreEnHoja = resultado.usuario.nombreEnHoja
+    async jwt({ token, user }) {
+      // Solo en el primer inicio de sesión: ahí sí estamos en Node con base
+      // disponible. En las revalidaciones el token ya trae rol y nombre.
+      if (user && token.email) {
+        const resultado = resolverAcceso(token.email, await listarAutorizados())
+        if (resultado.autorizado) {
+          token.rol = resultado.usuario.rol
+          token.nombreEnHoja = resultado.usuario.nombreEnHoja
+        }
       }
       return token
     },
