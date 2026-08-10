@@ -193,7 +193,7 @@ export default async function Cola({
               const nivel = semaforoDe(caso, hoy)
               const dias = diasDeEspera(caso, hoy)
               return (
-                <TableRow key={caso.fila}>
+                <TableRow key={caso.fila} className="hover:bg-muted/50">
                   <TableCell>
                     {nivel && (
                       <span
@@ -203,11 +203,17 @@ export default async function Cola({
                     )}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {caso.folio ?? (
-                      <Badge variant="outline" title="Esta petición llegó sin folio">
-                        sin folio
-                      </Badge>
-                    )}
+                    <a
+                      href={`/caso/${caso.fila}`}
+                      className="underline underline-offset-2"
+                      title="Abrir el caso"
+                    >
+                      {caso.folio ?? (
+                        <Badge variant="outline" title="Esta petición llegó sin folio">
+                          sin folio
+                        </Badge>
+                      )}
+                    </a>
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
                     {caso.marcaTemporalTexto}
