@@ -45,7 +45,7 @@ describe('construirCasos', () => {
     expect(caso.estatusFinal).toBe('Tramite')
     expect(caso.quienAtendio).toBe('Keynor')
     expect(caso.aseguradoraSeguimiento).toBe('LA LATINO')
-    expect(caso.marcaTemporal?.getFullYear()).toBe(2026)
+    expect(caso.marcaTemporalIso).toContain('2026-08-05')
   })
 
   it('prefiere la agencia externa cuando el solicitante la declaró', () => {

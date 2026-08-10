@@ -5,7 +5,7 @@ function caso(parcial: Partial<Caso> = {}): Caso {
   return {
     fila: 7176,
     folio: '7000',
-    marcaTemporal: new Date(2026, 7, 5, 15, 14, 58),
+    marcaTemporalIso: new Date(2026, 7, 5, 15, 14, 58).toISOString(),
     marcaTemporalTexto: '5/8/2026 15:14:58',
     tipoTramite: 'Emisión',
     tipoNegocio: 'EXTERNA',

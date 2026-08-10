@@ -1,4 +1,4 @@
-import { estaVivo, type Caso } from './caso'
+import { estaVivo, fechaDe, type Caso } from './caso'
 import { diasDeEspera } from './semaforo'
 
 /**
@@ -36,10 +36,10 @@ function normalizar(texto: string): string {
 /** El más antiguo primero: la cola es de trabajo, no un historial. */
 export function ordenarFifo(casos: Caso[]): Caso[] {
   return [...casos].sort((a, b) => {
-    const ta = a.marcaTemporal?.getTime()
-    const tb = b.marcaTemporal?.getTime()
-    if (ta === undefined || ta === null) return 1
-    if (tb === undefined || tb === null) return -1
+    const ta = fechaDe(a)?.getTime()
+    const tb = fechaDe(b)?.getTime()
+    if (ta === undefined) return 1
+    if (tb === undefined) return -1
     return ta - tb
   })
 }

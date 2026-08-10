@@ -94,7 +94,7 @@ export function construirCasos(
     casos.push({
       fila: i + 2, // los datos empiezan en la fila 2
       folio: campo(fila, 'folio'),
-      marcaTemporal,
+      marcaTemporalIso: marcaTemporal.toISOString(),
       marcaTemporalTexto,
       tipoTramite: campo(fila, 'tipoTramite'),
       tipoNegocio: campo(fila, 'tipoNegocio'),

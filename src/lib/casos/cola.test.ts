@@ -5,7 +5,7 @@ import { VENTANA_COLA_DIAS, filtrar, opcionesDeFiltro, ordenarFifo } from './col
 function c(parcial: Partial<Caso> & { fila: number }): Caso {
   return {
     folio: String(7000 + parcial.fila),
-    marcaTemporal: new Date(2026, 7, 1),
+    marcaTemporalIso: new Date(2026, 7, 1).toISOString(),
     marcaTemporalTexto: '',
     tipoTramite: 'Emisión',
     tipoNegocio: null,
@@ -34,25 +34,25 @@ function c(parcial: Partial<Caso> & { fila: number }): Caso {
 describe('ordenarFifo', () => {
   it('pone el caso más antiguo primero, para que ninguno se añeje', () => {
     const casos = [
-      c({ fila: 3, marcaTemporal: new Date(2026, 7, 5) }),
-      c({ fila: 1, marcaTemporal: new Date(2026, 6, 20) }),
-      c({ fila: 2, marcaTemporal: new Date(2026, 7, 1) }),
+      c({ fila: 3, marcaTemporalIso: new Date(2026, 7, 5).toISOString() }),
+      c({ fila: 1, marcaTemporalIso: new Date(2026, 6, 20).toISOString() }),
+      c({ fila: 2, marcaTemporalIso: new Date(2026, 7, 1).toISOString() }),
     ]
     expect(ordenarFifo(casos).map((x) => x.fila)).toEqual([1, 2, 3])
   })
 
   it('deja al final los casos sin fecha legible', () => {
     const casos = [
-      c({ fila: 1, marcaTemporal: null }),
-      c({ fila: 2, marcaTemporal: new Date(2026, 7, 1) }),
+      c({ fila: 1, marcaTemporalIso: null }),
+      c({ fila: 2, marcaTemporalIso: new Date(2026, 7, 1).toISOString() }),
     ]
     expect(ordenarFifo(casos).map((x) => x.fila)).toEqual([2, 1])
   })
 
   it('no muta el arreglo recibido', () => {
     const casos = [
-      c({ fila: 2, marcaTemporal: new Date(2026, 7, 5) }),
-      c({ fila: 1, marcaTemporal: new Date(2026, 6, 1) }),
+      c({ fila: 2, marcaTemporalIso: new Date(2026, 7, 5).toISOString() }),
+      c({ fila: 1, marcaTemporalIso: new Date(2026, 6, 1).toISOString() }),
     ]
     const copia = [...casos]
     ordenarFifo(casos)
@@ -138,13 +138,13 @@ describe('corte por antigüedad', () => {
   const HOY = new Date(2026, 7, 10) // 10 de agosto de 2026
   const casos = [
     // Vivo de enero: nunca se le puso estatus final. Es rezago, no carga real.
-    c({ fila: 1, folio: '5787', marcaTemporal: new Date(2026, 0, 6), estatusFinal: null }),
-    c({ fila: 2, folio: '6900', marcaTemporal: new Date(2026, 6, 1), estatusFinal: null }),
+    c({ fila: 1, folio: '5787', marcaTemporalIso: new Date(2026, 0, 6).toISOString(), estatusFinal: null }),
+    c({ fila: 2, folio: '6900', marcaTemporalIso: new Date(2026, 6, 1).toISOString(), estatusFinal: null }),
     // Dentro de la ventana de 30 días.
-    c({ fila: 3, folio: '7000', marcaTemporal: new Date(2026, 7, 5), estatusFinal: null }),
-    c({ fila: 4, folio: '7001', marcaTemporal: new Date(2026, 7, 9), estatusFinal: 'Tramite' }),
+    c({ fila: 3, folio: '7000', marcaTemporalIso: new Date(2026, 7, 5).toISOString(), estatusFinal: null }),
+    c({ fila: 4, folio: '7001', marcaTemporalIso: new Date(2026, 7, 9).toISOString(), estatusFinal: 'Tramite' }),
     // Cerrado reciente: no es carga viva.
-    c({ fila: 5, folio: '7002', marcaTemporal: new Date(2026, 7, 8), estatusFinal: 'Concluida' }),
+    c({ fila: 5, folio: '7002', marcaTemporalIso: new Date(2026, 7, 8).toISOString(), estatusFinal: 'Concluida' }),
   ]
 
   it('la vista cola solo muestra los casos vivos de los últimos 30 días', () => {
@@ -171,7 +171,7 @@ describe('corte por antigüedad', () => {
 
   it('un filtro explícito de responsable o trámite también ignora el corte', () => {
     const viejo = [
-      c({ fila: 1, folio: '5787', marcaTemporal: new Date(2026, 0, 6), quienAtendio: 'Norma' }),
+      c({ fila: 1, folio: '5787', marcaTemporalIso: new Date(2026, 0, 6).toISOString(), quienAtendio: 'Norma' }),
     ]
     expect(filtrar(viejo, { vista: 'cola', responsable: 'Norma' }, HOY)).toHaveLength(1)
   })

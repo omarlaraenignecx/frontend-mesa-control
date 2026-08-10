@@ -1,9 +1,17 @@
 import type { Adjunto } from '@/lib/google/drive-links'
 
+/**
+ * El caso es un objeto plano y serializable a JSON, sin excepciones.
+ *
+ * La cola se cachea y la caché guarda JSON: un Date volvería convertido en
+ * string y cualquier llamada a getFullYear() reventaría en la segunda carga.
+ * Por eso la fecha de recepción viaja como texto ISO y se convierte a Date solo
+ * donde se necesita, con fechaDe().
+ */
 export type Caso = {
   fila: number
   folio: string | null
-  marcaTemporal: Date | null
+  marcaTemporalIso: string | null
   marcaTemporalTexto: string
   tipoTramite: string | null
   tipoNegocio: string | null
@@ -40,6 +48,13 @@ export function parsearFechaHoja(texto: string): Date | null {
   const [, d, mes, a, h = '0', min = '0', s = '0'] = m
   const fecha = new Date(Number(a), Number(mes) - 1, Number(d), Number(h), Number(min), Number(s))
   return Number.isNaN(fecha.getTime()) ? null : fecha
+}
+
+/** Fecha de recepción como Date. Devuelve null si no hay fecha o no es legible. */
+export function fechaDe(caso: Pick<Caso, 'marcaTemporalIso'>): Date | null {
+  if (!caso.marcaTemporalIso) return null
+  const d = new Date(caso.marcaTemporalIso)
+  return Number.isNaN(d.getTime()) ? null : d
 }
 
 export function estaVivo(caso: Pick<Caso, 'estatusFinal'>): boolean {

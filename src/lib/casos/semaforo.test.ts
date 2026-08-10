@@ -4,8 +4,8 @@ import { UMBRALES_SEMAFORO, diasDeEspera, semaforoDe } from './semaforo'
 
 const HOY = new Date(2026, 7, 10, 12, 0, 0) // 10 de agosto de 2026
 
-function conFecha(fecha: Date | null): Pick<Caso, 'marcaTemporal'> {
-  return { marcaTemporal: fecha }
+function conFecha(fecha: Date | null): Pick<Caso, 'marcaTemporalIso'> {
+  return { marcaTemporalIso: fecha ? fecha.toISOString() : null }
 }
 
 describe('diasDeEspera', () => {
@@ -42,5 +42,16 @@ describe('semaforoDe', () => {
 
   it('sin fecha no hay semáforo', () => {
     expect(semaforoDe(conFecha(null), HOY)).toBeNull()
+  })
+
+  it('funciona con un caso que viajó por el caché, donde todo se serializa a JSON', () => {
+    // La caché de la cola guarda los casos como JSON: cualquier Date vuelve
+    // convertido en string y los métodos de fecha dejan de existir. El modelo
+    // tiene que sobrevivir ese viaje sin ayuda de nadie.
+    const caso = conFecha(new Date(2026, 7, 8))
+    const trasElCache = JSON.parse(JSON.stringify(caso))
+
+    expect(diasDeEspera(trasElCache, HOY)).toBe(2)
+    expect(semaforoDe(trasElCache, HOY)).toBe('verde')
   })
 })
