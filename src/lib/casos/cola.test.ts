@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Caso } from './caso'
-import { filtrar, opcionesDeFiltro, ordenarFifo } from './cola'
+import { VENTANA_COLA_DIAS, filtrar, opcionesDeFiltro, ordenarFifo } from './cola'
 
 function c(parcial: Partial<Caso> & { fila: number }): Caso {
   return {
@@ -131,6 +131,57 @@ describe('filtrar', () => {
   it('un caso sin folio se encuentra buscando por su solicitante', () => {
     const sinFolio = [c({ fila: 9, folio: null, nombreSolicitante: 'Jacqueline Hurtado' })]
     expect(filtrar(sinFolio, { texto: 'jacqueline' })).toHaveLength(1)
+  })
+})
+
+describe('corte por antigüedad', () => {
+  const HOY = new Date(2026, 7, 10) // 10 de agosto de 2026
+  const casos = [
+    // Vivo de enero: nunca se le puso estatus final. Es rezago, no carga real.
+    c({ fila: 1, folio: '5787', marcaTemporal: new Date(2026, 0, 6), estatusFinal: null }),
+    c({ fila: 2, folio: '6900', marcaTemporal: new Date(2026, 6, 1), estatusFinal: null }),
+    // Dentro de la ventana de 30 días.
+    c({ fila: 3, folio: '7000', marcaTemporal: new Date(2026, 7, 5), estatusFinal: null }),
+    c({ fila: 4, folio: '7001', marcaTemporal: new Date(2026, 7, 9), estatusFinal: 'Tramite' }),
+    // Cerrado reciente: no es carga viva.
+    c({ fila: 5, folio: '7002', marcaTemporal: new Date(2026, 7, 8), estatusFinal: 'Concluida' }),
+  ]
+
+  it('la vista cola solo muestra los casos vivos de los últimos 30 días', () => {
+    expect(filtrar(casos, { vista: 'cola' }, HOY).map((x) => x.folio)).toEqual(['7000', '7001'])
+  })
+
+  it('la vista rezago muestra exactamente los vivos que la cola dejó fuera', () => {
+    expect(filtrar(casos, { vista: 'rezago' }, HOY).map((x) => x.folio)).toEqual(['5787', '6900'])
+  })
+
+  it('cola y rezago juntos suman todos los casos vivos, sin traslapes ni huecos', () => {
+    const enCola = filtrar(casos, { vista: 'cola' }, HOY).map((x) => x.folio)
+    const enRezago = filtrar(casos, { vista: 'rezago' }, HOY).map((x) => x.folio)
+    const vivos = filtrar(casos, { vista: 'todos' }, HOY).map((x) => x.folio)
+    expect([...enCola, ...enRezago].sort()).toEqual([...vivos].sort())
+    expect(enCola.filter((f) => enRezago.includes(f))).toEqual([])
+  })
+
+  it('la búsqueda por texto ignora el corte, para poder encontrar un caso viejo', () => {
+    expect(filtrar(casos, { vista: 'cola', texto: '5787' }, HOY).map((x) => x.folio)).toEqual([
+      '5787',
+    ])
+  })
+
+  it('un filtro explícito de responsable o trámite también ignora el corte', () => {
+    const viejo = [
+      c({ fila: 1, folio: '5787', marcaTemporal: new Date(2026, 0, 6), quienAtendio: 'Norma' }),
+    ]
+    expect(filtrar(viejo, { vista: 'cola', responsable: 'Norma' }, HOY)).toHaveLength(1)
+  })
+
+  it('sin vista declarada no hay corte: la función pura no decide por la interfaz', () => {
+    expect(filtrar(casos, {}, HOY)).toHaveLength(4) // los 4 vivos
+  })
+
+  it('la ventana de la cola es de 30 días y vive en un solo lugar', () => {
+    expect(VENTANA_COLA_DIAS).toBe(30)
   })
 })
 

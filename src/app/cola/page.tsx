@@ -9,7 +9,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { requerirUsuario } from '@/lib/auth/guard'
-import { filtrar, opcionesDeFiltro, ordenarFifo } from '@/lib/casos/cola'
+import {
+  VENTANA_COLA_DIAS,
+  filtrar,
+  opcionesDeFiltro,
+  ordenarFifo,
+  type Vista,
+} from '@/lib/casos/cola'
 import { cargarCola } from '@/lib/casos/consulta'
 import { diasDeEspera, semaforoDe } from '@/lib/casos/semaforo'
 import { CredencialMesaRevocadaError, SinCredencialMesaError } from '@/lib/google/auth-mesa'
@@ -22,10 +28,30 @@ const COLOR_SEMAFORO = {
   rojo: 'bg-red-500',
 } as const
 
+const VISTAS: { clave: Vista; etiqueta: string; ayuda: string }[] = [
+  {
+    clave: 'cola',
+    etiqueta: 'Cola de trabajo',
+    ayuda: `Casos abiertos de los últimos ${VENTANA_COLA_DIAS} días, del más antiguo al más reciente`,
+  },
+  {
+    clave: 'rezago',
+    etiqueta: 'Rezago',
+    ayuda: `Casos abiertos con más de ${VENTANA_COLA_DIAS} días sin cerrarse`,
+  },
+  { clave: 'todos', etiqueta: 'Todos los abiertos', ayuda: 'Todos los casos sin estatus terminal' },
+]
+
 export default async function Cola({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tramite?: string; responsable?: string; cerrados?: string }>
+  searchParams: Promise<{
+    q?: string
+    tramite?: string
+    responsable?: string
+    cerrados?: string
+    vista?: string
+  }>
 }) {
   const usuario = await requerirUsuario()
   const params = await searchParams
@@ -69,23 +95,40 @@ export default async function Cola({
   }
 
   const hoy = new Date()
-  const filtrados = ordenarFifo(
-    filtrar(resultado.casos, {
-      texto: params.q,
-      tipoTramite: params.tramite,
-      responsable: params.responsable,
-      incluirCerrados: params.cerrados === '1',
-    }),
-  )
+  const vista: Vista = VISTAS.some((v) => v.clave === params.vista)
+    ? (params.vista as Vista)
+    : 'cola'
+
+  const filtrosBase = {
+    texto: params.q,
+    tipoTramite: params.tramite,
+    responsable: params.responsable,
+    incluirCerrados: params.cerrados === '1',
+  }
+
+  const filtrados = ordenarFifo(filtrar(resultado.casos, { ...filtrosBase, vista }, hoy))
+  const conteos = Object.fromEntries(
+    VISTAS.map((v) => [
+      v.clave,
+      filtrar(resultado.casos, { incluirCerrados: false, vista: v.clave }, hoy).length,
+    ]),
+  ) as Record<Vista, number>
+
   const opciones = opcionesDeFiltro(resultado.casos)
+  const hayBusqueda = Boolean(
+    params.q || params.tramite || params.responsable || params.cerrados === '1',
+  )
+  const descripcion = VISTAS.find((v) => v.clave === vista)!.ayuda
 
   return (
     <main className="mx-auto max-w-7xl space-y-4 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Cola de casos</h1>
+          <h1 className="text-xl font-semibold">Mesa de Control</h1>
           <p className="text-sm text-muted-foreground">
-            {filtrados.length} de {resultado.casos.length} casos · del más antiguo al más reciente
+            {hayBusqueda
+              ? `${filtrados.length} casos encontrados en todo el histórico de 2026`
+              : descripcion}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -101,7 +144,34 @@ export default async function Cola({
         </div>
       </div>
 
+      <nav className="flex flex-wrap gap-1 border-b">
+        {VISTAS.map((v) => {
+          const activa = v.clave === vista && !hayBusqueda
+          return (
+            <a
+              key={v.clave}
+              href={`/cola?vista=${v.clave}`}
+              title={v.ayuda}
+              className={`-mb-px border-b-2 px-3 py-2 text-sm ${
+                activa
+                  ? 'border-foreground font-medium'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {v.etiqueta}{' '}
+              <span className="text-muted-foreground tabular-nums">{conteos[v.clave]}</span>
+            </a>
+          )
+        })}
+      </nav>
+
       <Filtros opciones={opciones} />
+
+      {hayBusqueda && (
+        <p className="text-xs text-muted-foreground">
+          Al buscar o filtrar se recorre todo 2026, sin el corte de {VENTANA_COLA_DIAS} días.
+        </p>
+      )}
 
       <div className="overflow-x-auto rounded-lg border">
         <Table>
@@ -139,7 +209,7 @@ export default async function Cola({
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-muted-foreground whitespace-nowrap">
+                  <TableCell className="whitespace-nowrap text-muted-foreground">
                     {caso.marcaTemporalTexto}
                   </TableCell>
                   <TableCell>{caso.tipoTramite ?? '—'}</TableCell>
@@ -151,7 +221,7 @@ export default async function Cola({
                     )}
                   </TableCell>
                   <TableCell>{caso.quienAtendio ?? '—'}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">
+                  <TableCell className="text-right tabular-nums text-muted-foreground">
                     {dias === null ? '—' : `${dias} d`}
                   </TableCell>
                 </TableRow>
@@ -160,7 +230,9 @@ export default async function Cola({
             {filtrados.length === 0 && (
               <TableRow>
                 <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
-                  Ningún caso coincide con lo que buscas.
+                  {hayBusqueda
+                    ? 'Ningún caso coincide con lo que buscas.'
+                    : 'No hay casos en esta vista.'}
                 </TableCell>
               </TableRow>
             )}
@@ -168,12 +240,11 @@ export default async function Cola({
         </Table>
       </div>
 
-      {resultado.sinResolver > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {resultado.sinResolver} columnas del formulario no están clasificadas; sus datos se
-          mostrarán en la vista del caso como campos adicionales.
-        </p>
-      )}
+      <p className="text-xs text-muted-foreground">
+        {resultado.casos.length} peticiones de 2026 leídas de la hoja
+        {resultado.sinResolver > 0 &&
+          ` · ${resultado.sinResolver} columnas del formulario sin clasificar, sus datos aparecerán como campos adicionales en la vista del caso`}
+      </p>
     </main>
   )
 }

@@ -80,12 +80,13 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
         Incluir cerrados
       </label>
 
-      {[...params.keys()].length > 0 && (
+      {['q', 'tramite', 'responsable', 'cerrados'].some((k) => params.get(k)) && (
         <button
           type="button"
           onClick={() => {
             setTexto('')
-            router.push('/cola')
+            const vista = params.get('vista')
+            router.push(vista ? `/cola?vista=${vista}` : '/cola')
           }}
           className="text-sm underline text-muted-foreground"
         >
