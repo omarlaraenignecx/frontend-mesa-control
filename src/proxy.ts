@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { authConfig } from '@/auth.config'
 
 /**
- * El middleware solo responde una pregunta: ¿hay sesión? La autorización fina
+ * Proxy de Next.js 16 (antes middleware.ts). Solo responde una pregunta: ¿hay sesión? La autorización fina
  * (allowlist y rol) se revalida contra la base en cada carga de página mediante
  * usuarioActual(), que corre en Node.
  *

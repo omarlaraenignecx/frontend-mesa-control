@@ -3,7 +3,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * El middleware de Next.js corre en el runtime edge, donde el driver `postgres`
+ * El proxy de Next.js (antes middleware.ts) corre en el runtime edge, donde el driver `postgres`
  * (sockets TCP de Node) no funciona. Si el grafo de imports del middleware
  * alcanza la base de datos, los callbacks jwt/session de Auth.js fallan en edge
  * con JWTSessionError y el usuario nunca obtiene sesión.
@@ -76,11 +76,11 @@ function rutaHastaLaBase(entrada: string): string[] | null {
 }
 
 describe('seguridad del runtime edge', () => {
-  it('el middleware no alcanza la base de datos por ningún camino de imports', () => {
-    const ruta = rutaHastaLaBase(path.join(RAIZ, 'src/middleware.ts'))
+  it('el proxy no alcanza la base de datos por ningún camino de imports', () => {
+    const ruta = rutaHastaLaBase(path.join(RAIZ, 'src/proxy.ts'))
     expect(
       ruta,
-      ruta ? `El middleware llega a la base así: ${ruta.join(' -> ')}` : '',
+      ruta ? `El proxy llega a la base así: ${ruta.join(' -> ')}` : '',
     ).toBeNull()
   })
 
