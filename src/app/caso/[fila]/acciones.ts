@@ -4,12 +4,11 @@ import { revalidatePath, updateTag } from 'next/cache'
 import { requerirUsuario } from '@/lib/auth/guard'
 import { registrarAccion, registrarCambios } from '@/lib/casos/bitacora'
 import { forzarBloqueo, latir, liberarBloqueo } from '@/lib/casos/bloqueo'
-import { estaVivo } from '@/lib/casos/caso'
+import { fechaDeCierreASellar, seCierraAhora } from '@/lib/casos/cierre'
 import { cargarCaso, depsDeGoogle } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
 import { componerObservaciones } from '@/lib/casos/observaciones'
 import { calcularDiff, type Seguimiento } from '@/lib/casos/seguimiento'
-import { formatearFechaHoja } from '@/lib/fecha'
 import { FilaCambiadaError, escribirFolio, escribirSeguimiento } from '@/lib/google/sheet-writer'
 
 export type ResultadoGuardado =
@@ -44,12 +43,9 @@ export async function guardarSeguimiento(
   }
 
   // Sellado de la fecha de atención final al cerrar el caso.
-  const cerrandoAhora = Boolean(
-    valores.estatusFinal && !estaVivo({ estatusFinal: valores.estatusFinal }) && estaVivo(caso),
-  )
-  if (cerrandoAhora && !caso.fechaAtencionFinal) {
-    valores.fechaAtencionFinal = formatearFechaHoja(ahora)
-  }
+  const cerrandoAhora = seCierraAhora(caso, valores.estatusFinal)
+  const fechaCierre = fechaDeCierreASellar(caso, valores.estatusFinal, ahora)
+  if (fechaCierre) valores.fechaAtencionFinal = fechaCierre
 
   const cambios = calcularDiff(caso, valores)
   if (cambios.length === 0) return { ok: true, cambios: 0 }
