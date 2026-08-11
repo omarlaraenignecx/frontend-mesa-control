@@ -1,6 +1,8 @@
 import {
   ArrowLeft,
   ClipboardList,
+  Download,
+  ExternalLink,
   History,
   Mail,
   MessageSquareText,
@@ -106,6 +108,21 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
     tramite: caso.tipoTramite ?? '',
     atiende: usuario.nombreEnHoja ?? usuario.correo,
   })
+
+  // Los archivos del caso llegan por dos vías: el formulario (Drive) y la
+  // conversación (Gmail). Para quien trabaja el caso son lo mismo, así que se
+  // listan juntos indicando de dónde viene cada uno.
+  const adjuntosDelCorreo =
+    estadoHilo.estado === 'con-conversacion'
+      ? estadoHilo.hilo.mensajes.flatMap((m) =>
+          m.adjuntos.map((a, indice) => ({
+            nombre: a.nombre,
+            bytes: a.bytes,
+            url: `/api/adjunto/${fila}/${m.id}/${indice}`,
+            de: m.deLaMesa ? 'lo enviamos nosotros' : m.autor,
+          })),
+        )
+      : []
 
   const hoy = new Date()
   const nivel = semaforoDe(caso, hoy)
@@ -221,36 +238,69 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
               <CardHeader>
                 <CardTitle className="flex items-center gap-2.5 text-xl">
                   <Paperclip className="size-5 text-primary" />
-                  Adjuntos
+                  Archivos del caso
                   <Badge variant="outline" className="ml-auto text-sm font-normal">
-                    {caso.adjuntos.length}
+                    {caso.adjuntos.length + adjuntosDelCorreo.length}
                   </Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                {caso.adjuntos.length === 0 ? (
-                  <p className="text-base text-muted-foreground">
-                    Esta petición no trae archivos adjuntos.
+              <CardContent className="space-y-5">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
+                    Del formulario
                   </p>
-                ) : (
-                  <ul className="space-y-2">
-                    {caso.adjuntos.map((a, i) => (
-                      <li key={`${a.url}-${i}`}>
-                        <a
-                          href={a.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-start gap-3 rounded-lg border bg-secondary/40 px-3 py-2.5 text-base transition-colors hover:border-primary/40 hover:bg-secondary"
-                        >
-                          <Paperclip className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                          <span className="underline-offset-2 group-hover:underline">
-                            {a.etiqueta}
-                          </span>
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                  {caso.adjuntos.length === 0 ? (
+                    <p className="text-base text-muted-foreground">
+                      El solicitante no subió archivos al formulario.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {caso.adjuntos.map((a, i) => (
+                        <li key={`${a.url}-${i}`}>
+                          <a
+                            href={a.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-start gap-3 rounded-lg border bg-secondary/40 px-3 py-2.5 text-base transition-colors hover:border-primary/40 hover:bg-secondary"
+                          >
+                            <ExternalLink className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                            <span>{a.etiqueta}</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
+                    De la conversación
+                  </p>
+                  {adjuntosDelCorreo.length === 0 ? (
+                    <p className="text-base text-muted-foreground">
+                      Todavía no se han intercambiado archivos por correo.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {adjuntosDelCorreo.map((a) => (
+                        <li key={a.url}>
+                          <a
+                            href={a.url}
+                            className="flex items-start gap-3 rounded-lg border bg-secondary/40 px-3 py-2.5 text-base transition-colors hover:border-primary/40 hover:bg-secondary"
+                          >
+                            <Download className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                            <span className="min-w-0">
+                              <span className="block break-words">{a.nombre}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {(a.bytes / (1024 * 1024)).toFixed(1)} MB · {a.de}
+                              </span>
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
