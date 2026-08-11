@@ -8,7 +8,7 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Diseño técnico | `docs/superpowers/specs/2026-08-05-frontend-mesa-control-design.md` |
 | Repositorio | https://github.com/omarlaraenignecx/frontend-mesa-control |
 | Producción | https://frontend-mesa-control.vercel.app |
-| Última actualización | 11 de agosto de 2026 |
+| Última actualización | 11 de agosto de 2026 (Etapa 3 cerrada) |
 
 ## Estado por etapas
 
@@ -17,10 +17,10 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | 0 · Cimientos y accesos | **Completa y en producción** | `docs/superpowers/plans/2026-08-06-etapa-0-cimientos-y-accesos.md` |
 | 1 · Lectura del Sheet y cola | **Completa y en producción** | `docs/superpowers/plans/2026-08-06-etapa-1-lectura-y-cola.md` |
 | 2 · Vista de caso y escritura | **Completa y en producción** | `docs/superpowers/plans/2026-08-10-etapa-2-caso-y-escritura.md` |
-| 3 · Conversación por correo | Pendiente | — |
+| 3 · Conversación por correo | **Completa y en producción** | `docs/superpowers/plans/2026-08-11-etapa-3-conversacion-por-correo.md` |
 | 4 · Producción y cierre | Pendiente | — |
 
-Suite: **165 pruebas** en 18 archivos. Comandos: `pnpm test`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
+Suite: **278 pruebas** en 25 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
 
 ## Infraestructura
 
@@ -90,6 +90,10 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 | Observaciones | Se antepone `D/M/YYYY Nombre: texto` conservando íntegro lo anterior |
 | Autocompletado | Solo `KE` precargado y editable, más el sellado de `KB` y `KD`. La app no opina sobre el trámite |
 | Tipografía | Geist con nombres literales en `@theme inline`, base de 17px y controles de 44px |
+| Destinatarios del correo | `Para` = solicitante, fijo. `CC` = ejecutivo comercial solo si difiere. El usuario puede agregar copias, nunca cambiar el principal; las copias quedan en bitácora |
+| Firma del correo | `Mesa de Control — Gplus Seguros`, `Atiende: <nombre>` y el buzón de la mesa |
+| Caso cerrado con respuesta nueva | Se muestra con aviso y se puede contestar; la app no reabre el caso ni toca su estatus |
+| Archivos del caso | Se listan juntos los del formulario (Drive) y los de la conversación (Gmail), agrupados por origen |
 | Identidad del caso | El **número de fila**. El folio puede faltar y hay folios arrastrados sin petición |
 | Orden de la cola | **FIFO**, el abierto más antiguo primero (sustituye a RF-01) |
 | Corte de la cola | **30 días**; lo anterior vive en la vista Rezago. Buscar o filtrar desactiva el corte |
@@ -115,6 +119,9 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 5. **`unstable_cache` sigue funcionando** pero es legacy; migrar a `use cache` requiere habilitar `cacheComponents`, lo que obliga a revisar las fronteras de Suspense. Pendiente evaluado, no urgente.
 6. **`shadcn init` rompe la fuente en Tailwind v4**: deja `--font-sans: var(--font-sans)`, una autorreferencia que `@theme inline` resuelve en tiempo de parseo y por tanto no carga nada, con lo que el navegador cae a su serif. Hay que poner los nombres literales de la familia.
 7. **Para comparar dos celdas distantes se usa `values:batchGet` con rangos exactos**, no un rango continuo: `A:JY` traería 285 celdas para leer dos.
+8. **El `attachmentId` de Gmail no es estable**: se regenera en cada lectura del mensaje. El id del mensaje sí es estable. Por eso los adjuntos se referencian por su **posición** dentro del mensaje y el id se toma de la lectura del momento. Poner el `attachmentId` en una URL y compararlo después nunca coincide.
+9. **La hoja tiene sus propias protecciones**, que refuerzan el diseño: columna `A` y columnas `B`–`JX` protegidas sin editores; `JY` protegida con excepción para `omar.lara@enginecx.com`, la cuenta de servicio y `mesadecontrol@`; `JZ`–`KJ` libres. Es un segundo candado sobre la lista blanca del escritor, y por eso no se puede crear una fila de prueba desde la aplicación.
+10. **El build de Next no typechequea los archivos de prueba.** Usar `pnpm typecheck` (`tsc --noEmit`) antes de dar por bueno un cambio de tipos.
 
 ## Hallazgos de operación (para conversar con Norma y Keynor)
 
@@ -128,6 +135,10 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 
 **Las fórmulas de `KL`–`KU` solo están arrastradas hasta la fila 3126**, que corresponde a septiembre de 2024. Estatus Real, Días de Espera, Total Días, SLA, Año y Mes Recibe están vacíos para todos los casos de 2025 y 2026, y en la hoja productiva aparecen como `#REF!`. Explica por qué el semáforo tuvo que calcularse en la aplicación. Si el reporte semanal de Keynor usa esas columnas, hoy no tiene datos de los últimos dos años. Arreglarlo está fuera del alcance de la herramienta —son fórmulas de la hoja— pero conviene plantearlo al área.
 
+## Caso de prueba
+
+Fila **7181** de la copia, folio **9001**, con `omar.lara@enginecx.com` como solicitante. Es un caso simulado creado a mano para probar el correo; se puede seguir usando o limpiar sus columnas de seguimiento cuando estorbe.
+
 ## Pendientes de verificación
 
 - Que Keynor, Paty, Norma y José Juan **entren en producción**. Si algún correo no coincide con lo sembrado, se corrige con `pnpm db:seed`.
@@ -135,3 +146,5 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 - **Sellado de `KD` en vivo**: cerrar un caso desde la interfaz y comprobar que la fecha de atención final se llena sola y el caso sale de la cola. La lógica tiene 9 pruebas unitarias, pero no se ha ejercido desde la aplicación.
 - **Bloqueo entre dos personas**: abrir el mismo caso con dos cuentas distintas y comprobar el aviso y el forzado. Requiere dos sesiones simultáneas.
 - **Umbrales del semáforo y el rezago** (3 días, 6 días, ventana de 30) los definió el desarrollo; falta validarlos con quien conoce el SLA.
+- **Los textos de las 14 plantillas** siguen siendo borradores con un `[Escribe aquí…]`. Keynor los corrige desde Ajustes; el texto real lo conoce la mesa.
+- **Respuestas fuera del hilo**: si una agencia contesta con un asunto distinto, ese mensaje no llega al caso. Riesgo ya reconocido en el PRD; se decidirá con Keynor si vale la pena atacarlo cuando se vea su frecuencia real.
