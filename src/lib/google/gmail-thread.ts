@@ -155,6 +155,33 @@ export async function buscarHilo(deps: DepsGmail, folio: string): Promise<string
   return cuerpo.threads?.[0]?.id ?? null
 }
 
+/**
+ * Ubica un adjunto por la posición que ocupa en su mensaje.
+ *
+ * La posición es la referencia estable: el `attachmentId` que devuelve Gmail
+ * cambia en cada lectura del mensaje, así que ponerlo en una URL y compararlo
+ * después nunca coincide. El id se toma siempre de la lectura actual del hilo.
+ *
+ * Además valida que el mensaje pertenezca al hilo del caso, de modo que nadie
+ * alcance otra conversación del buzón manipulando la URL.
+ */
+export function ubicarAdjunto(
+  hilo: Hilo,
+  mensajeId: string,
+  indice: number,
+): { mensajeId: string; adjuntoId: string; nombre: string; tipo: string } | null {
+  if (!Number.isInteger(indice) || indice < 0) return null
+  const mensaje = hilo.mensajes.find((m) => m.id === mensajeId)
+  const adjunto = mensaje?.adjuntos[indice]
+  if (!mensaje || !adjunto) return null
+  return {
+    mensajeId: mensaje.id,
+    adjuntoId: adjunto.id,
+    nombre: adjunto.nombre,
+    tipo: adjunto.tipo,
+  }
+}
+
 /** Descarga el contenido de un adjunto. Se usa desde la ruta de descarga. */
 export async function leerAdjunto(
   deps: DepsGmail,

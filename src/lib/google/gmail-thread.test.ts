@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { buscarHilo, leerHilo, normalizarMensaje } from './gmail-thread'
+import { buscarHilo, leerHilo, normalizarMensaje, ubicarAdjunto } from './gmail-thread'
 
 const CORREO_MESA = 'mesadecontrol@gplusseguros.mx'
 const DEPS = (fetchMock: typeof globalThis.fetch) => ({
@@ -153,6 +153,42 @@ describe('normalizarMensaje', () => {
       },
     }
     expect(normalizarMensaje(mayusculas, CORREO_MESA).deLaMesa).toBe(true)
+  })
+})
+
+describe('ubicarAdjunto', () => {
+  const hilo = {
+    threadId: 't1',
+    mensajes: [
+      normalizarMensaje(MENSAJE_DE_LA_MESA, CORREO_MESA),
+      normalizarMensaje(RESPUESTA_CON_ADJUNTO, CORREO_MESA),
+    ],
+  }
+
+  it('ubica el adjunto por su posición dentro del mensaje', () => {
+    // El attachmentId de Gmail cambia en cada lectura del mensaje, así que la
+    // referencia estable es la posición: el id se toma de la lectura actual.
+    const r = ubicarAdjunto(hilo, 'm2', 0)
+    expect(r).toEqual({
+      mensajeId: 'm2',
+      adjuntoId: 'att1',
+      nombre: 'factura.pdf',
+      tipo: 'application/pdf',
+    })
+  })
+
+  it('devuelve null si el mensaje no está en el hilo de ese caso', () => {
+    expect(ubicarAdjunto(hilo, 'ajeno', 0)).toBeNull()
+  })
+
+  it('devuelve null si la posición no existe en ese mensaje', () => {
+    expect(ubicarAdjunto(hilo, 'm2', 5)).toBeNull()
+    expect(ubicarAdjunto(hilo, 'm1', 0)).toBeNull()
+  })
+
+  it('devuelve null ante una posición que no es un número válido', () => {
+    expect(ubicarAdjunto(hilo, 'm2', -1)).toBeNull()
+    expect(ubicarAdjunto(hilo, 'm2', Number.NaN)).toBeNull()
   })
 })
 

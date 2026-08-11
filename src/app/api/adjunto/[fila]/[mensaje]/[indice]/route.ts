@@ -1,24 +1,26 @@
 import { requerirUsuario } from '@/lib/auth/guard'
 import { depsGmail, leerVinculo } from '@/lib/casos/hilo'
-import { leerAdjunto, leerHilo } from '@/lib/google/gmail-thread'
+import { leerAdjunto, leerHilo, ubicarAdjunto } from '@/lib/google/gmail-thread'
 
 /**
  * Sirve un adjunto del hilo del caso. No se almacena nada: se pide a Gmail con
  * la credencial de la mesa y se entrega al navegador.
  *
- * Valida que el adjunto pertenezca de verdad al hilo de ese caso, para que
- * nadie pueda pedir un adjunto de otra conversación del buzón manipulando la URL.
+ * El adjunto se identifica por la posición que ocupa en su mensaje, no por el
+ * attachmentId: Gmail lo regenera en cada lectura, así que un id puesto en la
+ * URL deja de ser válido en la petición siguiente.
  */
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ fila: string; mensaje: string; adjunto: string }> },
+  { params }: { params: Promise<{ fila: string; mensaje: string; indice: string }> },
 ) {
   await requerirUsuario()
-  const { fila: filaTexto, mensaje: mensajeId, adjunto: adjuntoId } = await params
+  const { fila: filaTexto, mensaje: mensajeId, indice: indiceTexto } = await params
   const fila = Number(filaTexto)
+  const indice = Number(indiceTexto)
 
-  if (!Number.isInteger(fila)) {
-    return new Response('Caso no válido.', { status: 400 })
+  if (!Number.isInteger(fila) || !Number.isInteger(indice)) {
+    return new Response('Referencia de archivo no válida.', { status: 400 })
   }
 
   const vinculo = await leerVinculo(fila)
@@ -30,21 +32,20 @@ export async function GET(
     const deps = await depsGmail()
     const hilo = await leerHilo(deps, vinculo.threadId)
 
-    const mensaje = hilo.mensajes.find((m) => m.id === mensajeId)
-    const adjunto = mensaje?.adjuntos.find((a) => a.id === adjuntoId)
-    if (!mensaje || !adjunto) {
+    const ubicado = ubicarAdjunto(hilo, mensajeId, indice)
+    if (!ubicado) {
       return new Response('Ese archivo no pertenece a la conversación de este caso.', {
         status: 404,
       })
     }
 
-    const contenido = await leerAdjunto(deps, mensajeId, adjuntoId)
+    const contenido = await leerAdjunto(deps, ubicado.mensajeId, ubicado.adjuntoId)
 
     return new Response(new Uint8Array(contenido), {
       headers: {
-        'content-type': adjunto.tipo,
+        'content-type': ubicado.tipo,
         'content-length': String(contenido.byteLength),
-        'content-disposition': `attachment; filename="${adjunto.nombre.replace(/["\\\r\n]/g, '_')}"`,
+        'content-disposition': `attachment; filename="${ubicado.nombre.replace(/["\\\r\n]/g, '_')}"`,
         'cache-control': 'private, no-store',
       },
     })

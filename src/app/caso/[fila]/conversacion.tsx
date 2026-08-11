@@ -148,10 +148,10 @@ export function Conversacion({
                 </p>
                 {m.adjuntos.length > 0 && (
                   <ul className="space-y-1 pt-1">
-                    {m.adjuntos.map((a) => (
-                      <li key={a.id}>
+                    {m.adjuntos.map((a, indice) => (
+                      <li key={`${m.id}-${indice}`}>
                         <a
-                          href={`/api/adjunto/${fila}/${m.id}/${a.id}`}
+                          href={`/api/adjunto/${fila}/${m.id}/${indice}`}
                           className="inline-flex items-center gap-2 rounded-lg border bg-card px-2.5 py-1.5 text-sm transition-colors hover:border-primary/40"
                         >
                           <Download className="size-3.5" />
