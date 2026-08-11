@@ -7,7 +7,7 @@ export function BotonActualizar({ accion }: { accion: () => Promise<void> }) {
   const [pendiente, iniciar] = useTransition()
 
   return (
-    <Button variant="outline" size="sm" disabled={pendiente} onClick={() => iniciar(() => accion())}>
+    <Button variant="outline" className="h-11 text-base" disabled={pendiente} onClick={() => iniciar(() => accion())}>
       {pendiente ? 'Actualizando…' : 'Actualizar'}
     </Button>
   )

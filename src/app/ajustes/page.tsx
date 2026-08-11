@@ -29,44 +29,44 @@ export default async function Ajustes() {
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-8">
-      <h1 className="text-xl font-semibold">Ajustes</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Ajustes</h1>
 
-      <section className="space-y-3 rounded-lg border border-neutral-200 p-6 dark:border-neutral-800">
-        <h2 className="font-medium">Acceso a Google de la Mesa de Control</h2>
+      <section className="space-y-4 rounded-xl border bg-card p-7 shadow-sm">
+        <h2 className="text-xl font-medium">Acceso a Google de la Mesa de Control</h2>
 
         {acceso.estado === 'sin-autorizar' && (
-          <p className="text-sm text-neutral-500">
+          <p className="text-base text-muted-foreground">
             Todavía no se ha autorizado el acceso. La herramienta no puede leer la hoja ni el correo
             hasta que se apruebe el consentimiento con mesadecontrol@gplusseguros.mx.
           </p>
         )}
 
         {acceso.estado === 'activo' && (
-          <div className="space-y-1 text-sm">
+          <div className="space-y-1.5 text-base">
             <p className="font-medium text-emerald-600">Consentimiento activo</p>
-            <p className="text-neutral-500">
+            <p className="text-muted-foreground">
               Autorizado por {acceso.credencial.autorizadoPor} el{' '}
               {acceso.credencial.autorizadoEn.toLocaleString('es-MX')}
             </p>
-            <p className="text-neutral-500">
+            <p className="text-muted-foreground">
               Hoja alcanzada correctamente: <strong>{acceso.titulo}</strong>
             </p>
-            <p className="text-neutral-500">
+            <p className="text-muted-foreground">
               Permisos otorgados: {acceso.credencial.scopes.length}
             </p>
           </div>
         )}
 
         {acceso.estado === 'con-error' && (
-          <div className="space-y-1 text-sm">
+          <div className="space-y-1.5 text-base">
             <p className="font-medium text-red-600">El acceso a Google necesita reautorizarse</p>
-            <p className="text-neutral-500">{acceso.error}</p>
+            <p className="text-muted-foreground">{acceso.error}</p>
           </div>
         )}
 
         <a
           href="/api/mesa/autorizar"
-          className="inline-block rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
+          className="inline-block rounded-lg bg-primary px-5 py-3 text-base font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
         >
           {acceso.estado === 'activo' ? 'Volver a autorizar' : 'Autorizar acceso a Google'}
         </a>

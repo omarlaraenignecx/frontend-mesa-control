@@ -16,13 +16,13 @@ export default async function SinAcceso({
 
   return (
     <main className="flex min-h-dvh items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-4 rounded-lg border border-neutral-200 p-8 dark:border-neutral-800">
-        <h1 className="text-lg font-semibold">Sin acceso</h1>
-        <p className="text-sm text-neutral-500">{mensaje}</p>
-        <p className="text-sm text-neutral-500">
+      <div className="w-full max-w-md space-y-4 rounded-2xl border bg-card p-9 shadow-lg">
+        <h1 className="text-2xl font-semibold">Sin acceso</h1>
+        <p className="text-base text-muted-foreground">{mensaje}</p>
+        <p className="text-base text-muted-foreground">
           Si crees que deberías tener acceso, solicítalo al administrador de la Mesa de Control.
         </p>
-        <a href="/login" className="inline-block text-sm underline">
+        <a href="/login" className="inline-block text-base text-primary underline underline-offset-4">
           Intentar con otra cuenta
         </a>
       </div>

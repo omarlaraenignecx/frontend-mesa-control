@@ -1,5 +1,7 @@
+import { Inbox, Search, Settings, Timer } from 'lucide-react'
 import { updateTag } from 'next/cache'
 import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -22,11 +24,13 @@ import { CredencialMesaRevocadaError, SinCredencialMesaError } from '@/lib/googl
 import { BotonActualizar } from './actualizar'
 import { Filtros } from './filtros'
 
-const COLOR_SEMAFORO = {
-  verde: 'bg-emerald-500',
-  ambar: 'bg-amber-500',
-  rojo: 'bg-red-500',
+const SEMAFORO = {
+  verde: { punto: 'bg-emerald-500', fila: '' },
+  ambar: { punto: 'bg-amber-500', fila: '' },
+  rojo: { punto: 'bg-red-500', fila: 'bg-red-50/40 dark:bg-red-950/20' },
 } as const
+
+const ICONO_VISTA = { cola: Inbox, rezago: Timer, todos: Search } as const
 
 const VISTAS: { clave: Vista; etiqueta: string; ayuda: string }[] = [
   {
@@ -121,71 +125,95 @@ export default async function Cola({
   const descripcion = VISTAS.find((v) => v.clave === vista)!.ayuda
 
   return (
-    <main className="mx-auto max-w-7xl space-y-4 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Mesa de Control</h1>
-          <p className="text-sm text-muted-foreground">
+    <div className="min-h-full">
+      <header className="border-b bg-card">
+        <div className="mx-auto max-w-7xl px-6 py-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium tracking-wide text-primary uppercase">
+                Gplus Seguros
+              </p>
+              <h1 className="text-3xl font-semibold tracking-tight">Mesa de Control</h1>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-base text-muted-foreground">
+                {usuario.nombreEnHoja ?? usuario.correo}
+              </span>
+              {usuario.rol === 'admin' && (
+                <a
+                  href="/ajustes"
+                  className="inline-flex items-center gap-1.5 text-base text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <Settings className="size-4" />
+                  Ajustes
+                </a>
+              )}
+              <BotonActualizar accion={actualizar} />
+            </div>
+          </div>
+
+          <nav className="mt-5 flex flex-wrap gap-2">
+            {VISTAS.map((v) => {
+              const activa = v.clave === vista && !hayBusqueda
+              const Icono = ICONO_VISTA[v.clave]
+              return (
+                <a
+                  key={v.clave}
+                  href={`/cola?vista=${v.clave}`}
+                  title={v.ayuda}
+                  className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-base transition-colors ${
+                    activa
+                      ? 'border-primary/30 bg-primary/10 font-medium text-primary'
+                      : 'border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  }`}
+                >
+                  <Icono className="size-4" />
+                  {v.etiqueta}
+                  <span
+                    className={`rounded-md px-1.5 py-0.5 text-sm tabular-nums ${
+                      activa ? 'bg-primary/15' : 'bg-secondary'
+                    }`}
+                  >
+                    {conteos[v.clave]}
+                  </span>
+                </a>
+              )
+            })}
+          </nav>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-7xl space-y-4 px-6 py-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-base text-muted-foreground">
             {hayBusqueda
               ? `${filtrados.length} casos encontrados en todo el histórico de 2026`
               : descripcion}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">
-            {usuario.nombreEnHoja ?? usuario.correo}
-          </span>
-          {usuario.rol === 'admin' && (
-            <a href="/ajustes" className="text-sm underline">
-              Ajustes
-            </a>
-          )}
-          <BotonActualizar accion={actualizar} />
-        </div>
-      </div>
 
-      <nav className="flex flex-wrap gap-1 border-b">
-        {VISTAS.map((v) => {
-          const activa = v.clave === vista && !hayBusqueda
-          return (
-            <a
-              key={v.clave}
-              href={`/cola?vista=${v.clave}`}
-              title={v.ayuda}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm ${
-                activa
-                  ? 'border-foreground font-medium'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {v.etiqueta}{' '}
-              <span className="text-muted-foreground tabular-nums">{conteos[v.clave]}</span>
-            </a>
-          )
-        })}
-      </nav>
+        <Filtros opciones={opciones} />
 
-      <Filtros opciones={opciones} />
+        {hayBusqueda && (
+          <p className="text-sm text-muted-foreground">
+            Al buscar o filtrar se recorre todo 2026, sin el corte de {VENTANA_COLA_DIAS} días.
+          </p>
+        )}
 
-      {hayBusqueda && (
-        <p className="text-xs text-muted-foreground">
-          Al buscar o filtrar se recorre todo 2026, sin el corte de {VENTANA_COLA_DIAS} días.
-        </p>
-      )}
-
-      <div className="overflow-x-auto rounded-lg border">
+      <Card className="overflow-hidden p-0 shadow-sm">
+        <div className="overflow-x-auto">
         <Table>
-          <TableHeader>
-            <TableRow>
+          <TableHeader className="bg-secondary/60">
+            <TableRow className="hover:bg-transparent">
               <TableHead className="w-10" />
-              <TableHead>Folio</TableHead>
-              <TableHead>Recibido</TableHead>
-              <TableHead>Trámite</TableHead>
-              <TableHead>Solicitante</TableHead>
-              <TableHead>Agencia</TableHead>
-              <TableHead>Estatus</TableHead>
-              <TableHead>Atiende</TableHead>
-              <TableHead className="text-right">Espera</TableHead>
+              <TableHead className="text-base">Folio</TableHead>
+              <TableHead className="text-base">Recibido</TableHead>
+              <TableHead className="text-base">Trámite</TableHead>
+              <TableHead className="text-base">Solicitante</TableHead>
+              <TableHead className="text-base">Agencia</TableHead>
+              <TableHead className="text-base">Estatus</TableHead>
+              <TableHead className="text-base">Atiende</TableHead>
+              <TableHead className="text-right text-base">Espera</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -193,11 +221,14 @@ export default async function Cola({
               const nivel = semaforoDe(caso, hoy)
               const dias = diasDeEspera(caso, hoy)
               return (
-                <TableRow key={caso.fila} className="hover:bg-muted/50">
+                <TableRow
+                  key={caso.fila}
+                  className={`text-base transition-colors hover:bg-secondary/60 ${nivel ? SEMAFORO[nivel].fila : ''}`}
+                >
                   <TableCell>
                     {nivel && (
                       <span
-                        className={`inline-block size-2.5 rounded-full ${COLOR_SEMAFORO[nivel]}`}
+                        className={`inline-block size-3 rounded-full ${SEMAFORO[nivel].punto}`}
                         title={`${dias} días de espera`}
                       />
                     )}
@@ -205,7 +236,7 @@ export default async function Cola({
                   <TableCell className="font-medium">
                     <a
                       href={`/caso/${caso.fila}`}
-                      className="underline underline-offset-2"
+                      className="text-primary underline decoration-primary/30 underline-offset-4 transition-colors hover:decoration-primary"
                       title="Abrir el caso"
                     >
                       {caso.folio ?? (
@@ -235,7 +266,7 @@ export default async function Cola({
             })}
             {filtrados.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="py-12 text-center text-base text-muted-foreground">
                   {hayBusqueda
                     ? 'Ningún caso coincide con lo que buscas.'
                     : 'No hay casos en esta vista.'}
@@ -244,13 +275,15 @@ export default async function Cola({
             )}
           </TableBody>
         </Table>
-      </div>
+        </div>
+      </Card>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         {resultado.casos.length} peticiones de 2026 leídas de la hoja
         {resultado.sinResolver > 0 &&
-          ` · ${resultado.sinResolver} columnas del formulario sin clasificar, sus datos aparecerán como campos adicionales en la vista del caso`}
-      </p>
-    </main>
+          ` · ${resultado.sinResolver} columnas del formulario sin clasificar, sus datos aparecen como campos adicionales en la vista del caso`}
+        </p>
+      </main>
+    </div>
   )
 }

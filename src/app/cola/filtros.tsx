@@ -25,7 +25,7 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
   }
 
   const selectClase =
-    'h-9 rounded-md border border-input bg-transparent px-2 text-sm shadow-xs outline-none'
+    'h-11 rounded-lg border border-input bg-card px-3 text-base shadow-xs outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30'
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -39,7 +39,7 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           placeholder="Folio, solicitante, agencia…"
-          className="w-64"
+          className="h-11 w-72 bg-card text-base"
         />
       </form>
 
@@ -71,9 +71,10 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
         ))}
       </select>
 
-      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+      <label className="flex cursor-pointer items-center gap-2 text-base text-muted-foreground">
         <input
           type="checkbox"
+          className="size-4 accent-primary"
           checked={params.get('cerrados') === '1'}
           onChange={(e) => aplicar({ cerrados: e.target.checked ? '1' : '' })}
         />
@@ -88,7 +89,7 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
             const vista = params.get('vista')
             router.push(vista ? `/cola?vista=${vista}` : '/cola')
           }}
-          className="text-sm underline text-muted-foreground"
+          className="text-base text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
         >
           Limpiar
         </button>

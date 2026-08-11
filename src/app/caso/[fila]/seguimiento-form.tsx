@@ -79,7 +79,7 @@ export function SeguimientoForm({ caso, catalogos, nombreUsuario, bloqueado }: P
 
   if (bloqueado) {
     return (
-      <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+      <p className="rounded-xl border border-dashed bg-secondary/30 p-4 text-base text-muted-foreground">
         Otra persona tiene este caso abierto. Puedes consultarlo, pero no guardar cambios hasta que
         lo libere o lo fuerces.
       </p>
@@ -87,16 +87,18 @@ export function SeguimientoForm({ caso, catalogos, nombreUsuario, bloqueado }: P
   }
 
   const selectClase =
-    'h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm shadow-xs outline-none'
+    'h-11 w-full rounded-lg border border-input bg-background px-3 text-base shadow-xs outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30'
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-2">
         {CAMPOS_SELECT.map((campo) => {
           const opciones = catalogos[campo]
           return (
-            <label key={campo} className="space-y-1 text-sm">
-              <span className="text-muted-foreground">{ETIQUETAS_SEGUIMIENTO[campo]}</span>
+            <label key={campo} className="space-y-1.5">
+              <span className="block text-base font-medium text-muted-foreground">
+                {ETIQUETAS_SEGUIMIENTO[campo]}
+              </span>
               {opciones ? (
                 <select
                   className={selectClase}
@@ -112,6 +114,7 @@ export function SeguimientoForm({ caso, catalogos, nombreUsuario, bloqueado }: P
                 </select>
               ) : (
                 <Input
+                  className="h-11 text-base"
                   value={valores[campo] ?? ''}
                   onChange={(e) => cambiar(campo, e.target.value)}
                 />
@@ -120,9 +123,12 @@ export function SeguimientoForm({ caso, catalogos, nombreUsuario, bloqueado }: P
           )
         })}
 
-        <label className="space-y-1 text-sm">
-          <span className="text-muted-foreground">{ETIQUETAS_SEGUIMIENTO.folioInterno}</span>
+        <label className="space-y-1.5">
+          <span className="block text-base font-medium text-muted-foreground">
+            {ETIQUETAS_SEGUIMIENTO.folioInterno}
+          </span>
           <Input
+            className="h-11 text-base"
             value={valores.folioInterno ?? ''}
             onChange={(e) => cambiar('folioInterno', e.target.value)}
             placeholder="Folio que generó la aseguradora"
@@ -131,7 +137,7 @@ export function SeguimientoForm({ caso, catalogos, nombreUsuario, bloqueado }: P
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm text-muted-foreground" htmlFor="nota">
+        <label className="block text-base font-medium text-muted-foreground" htmlFor="nota">
           Agregar una observación
         </label>
         <textarea
@@ -142,16 +148,16 @@ export function SeguimientoForm({ caso, catalogos, nombreUsuario, bloqueado }: P
             setResultado(null)
           }}
           rows={3}
-          className="w-full rounded-md border border-input bg-transparent p-2 text-sm outline-none"
+          className="w-full rounded-lg border border-input bg-background p-3 text-base leading-relaxed outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30"
           placeholder="Qué hiciste, qué falta, con quién quedó…"
         />
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Tu nota se agrega arriba con tu nombre y la fecha. Nada de lo anterior se borra.
         </p>
       </div>
 
       {porConfirmar && (
-        <div className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950">
+        <div className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-base shadow-sm dark:border-amber-900 dark:bg-amber-950">
           <p className="font-medium">
             Vas a guardar {porConfirmar.length} {porConfirmar.length === 1 ? 'cambio' : 'cambios'} en
             la hoja:
@@ -166,10 +172,10 @@ export function SeguimientoForm({ caso, catalogos, nombreUsuario, bloqueado }: P
             ))}
           </ul>
           <div className="flex gap-2">
-            <Button size="sm" onClick={confirmar} disabled={pendiente}>
+            <Button onClick={confirmar} disabled={pendiente}>
               {pendiente ? 'Guardando…' : 'Confirmar y guardar'}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setPorConfirmar(null)}>
+            <Button variant="outline" onClick={() => setPorConfirmar(null)}>
               Cancelar
             </Button>
           </div>
@@ -177,22 +183,22 @@ export function SeguimientoForm({ caso, catalogos, nombreUsuario, bloqueado }: P
       )}
 
       {!porConfirmar && (
-        <Button onClick={revisar} disabled={pendiente}>
+        <Button size="lg" className="text-base" onClick={revisar} disabled={pendiente}>
           Guardar cambios
         </Button>
       )}
 
       {resultado?.ok && resultado.cambios === 0 && (
-        <p className="text-sm text-muted-foreground">No hay cambios que guardar.</p>
+        <p className="text-base text-muted-foreground">No hay cambios que guardar.</p>
       )}
       {resultado?.ok && resultado.cambios > 0 && (
-        <p className="text-sm text-emerald-600">
+        <p className="text-base font-medium text-emerald-600">
           Guardado en la hoja: {resultado.cambios}{' '}
           {resultado.cambios === 1 ? 'campo' : 'campos'}.
         </p>
       )}
       {resultado && !resultado.ok && (
-        <div className="space-y-2 rounded-md border border-red-300 bg-red-50 p-4 text-sm dark:border-red-900 dark:bg-red-950">
+        <div className="space-y-2 rounded-xl border border-red-300 bg-red-50 p-4 text-base shadow-sm dark:border-red-900 dark:bg-red-950">
           <p className="font-medium text-red-700 dark:text-red-300">
             {resultado.conflicto ? 'No se guardó: la fila cambió' : 'No se pudo guardar'}
           </p>
