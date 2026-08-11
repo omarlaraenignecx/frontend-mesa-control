@@ -1,4 +1,6 @@
 import { requerirAdmin } from '@/lib/auth/guard'
+import { listarPlantillas, sembrarPlantillas } from '@/lib/correo/plantillas'
+import { AdminPlantillas } from './plantillas'
 import { accessTokenDeLaMesa } from '@/lib/google/auth-mesa'
 import { leerCredencial } from '@/lib/google/credencial'
 import { leerTituloHoja } from '@/lib/google/sheet-ping'
@@ -26,6 +28,9 @@ export default async function Ajustes() {
   await requerirAdmin()
 
   const acceso = await estadoDelAcceso()
+  // La siembra es idempotente: si alguien ya editó una plantilla, no se toca.
+  await sembrarPlantillas()
+  const plantillas = await listarPlantillas()
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-8">
@@ -71,6 +76,15 @@ export default async function Ajustes() {
           {acceso.estado === 'activo' ? 'Volver a autorizar' : 'Autorizar acceso a Google'}
         </a>
       </section>
+
+      <section className="space-y-4 rounded-xl border bg-card p-7 shadow-sm">
+        <h2 className="text-xl font-medium">Plantillas de correo</h2>
+        <AdminPlantillas plantillas={plantillas} />
+      </section>
+
+      <a href="/cola" className="inline-block text-base text-primary underline underline-offset-4">
+        Volver a la cola
+      </a>
     </main>
   )
 }
