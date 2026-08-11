@@ -4,6 +4,7 @@ export type CampoLogico =
   | 'tipoNegocio'
   | 'nombreSolicitante'
   | 'correoSolicitante'
+  | 'correoEjecutivo'
   | 'agencia'
   | 'agenciaExterna'
   | 'motivo'
@@ -47,11 +48,9 @@ const ALIAS: Record<CampoLogico, string[]> = {
     'nombre del solicitante',
     'favor de indicar nombre completo del colaborador que solicita el tramite',
   ],
-  correoSolicitante: [
-    'direccion de correo electronico',
-    'correo del solicitante',
-    'correo del ejecutivo comercial de la zona',
-  ],
+  correoSolicitante: ['direccion de correo electronico', 'correo del solicitante'],
+  // El ejecutivo comercial es otra persona: va en copia, no en el destinatario.
+  correoEjecutivo: ['correo del ejecutivo comercial de la zona'],
   agencia: ['agencia'],
   agenciaExterna: ['indicar la agencia externa'],
   motivo: [

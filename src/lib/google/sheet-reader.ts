@@ -99,7 +99,9 @@ export function construirCasos(
       tipoTramite: campo(fila, 'tipoTramite'),
       tipoNegocio: campo(fila, 'tipoNegocio'),
       nombreSolicitante: campo(fila, 'nombreSolicitante'),
-      correoSolicitante: campo(fila, 'correoSolicitante'),
+      // Si el formulario solo trae el correo del ejecutivo, ese es el contacto.
+      correoSolicitante: campo(fila, 'correoSolicitante') ?? campo(fila, 'correoEjecutivo'),
+      correoEjecutivo: campo(fila, 'correoEjecutivo'),
       agencia: campo(fila, 'agenciaExterna') ?? campo(fila, 'agencia'),
       motivo: campo(fila, 'motivo'),
       aseguradoraDeclarada: campo(fila, 'aseguradoraDeclarada'),

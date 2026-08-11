@@ -11,6 +11,7 @@ function caso(parcial: Partial<Caso> = {}): Caso {
     tipoNegocio: 'EXTERNA',
     nombreSolicitante: 'Ricardo Hernandez',
     correoSolicitante: 'comercial28@garantiplus.mx',
+    correoEjecutivo: null,
     agencia: 'CHEVROLET CAMPESTRE',
     motivo: 'aplicar el pago a la póliza',
     aseguradoraDeclarada: null,

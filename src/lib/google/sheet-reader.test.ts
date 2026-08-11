@@ -48,6 +48,20 @@ describe('construirCasos', () => {
     expect(caso.marcaTemporalIso).toContain('2026-08-05')
   })
 
+  it('expone el correo del ejecutivo comercial por separado, para la copia', () => {
+    const [caso] = construirCasos([FILA_7176], MAPA, ENCABEZADOS, 2026)
+    expect(caso.correoSolicitante).toBe('comercial28@garantiplus.mx')
+    expect(caso.correoEjecutivo).toBe('comercial28@garantiplus.mx')
+  })
+
+  it('usa el correo del ejecutivo como solicitante solo si no hay otro', () => {
+    // Hay casos donde el formulario solo trae JM.
+    const f = fila({ 1: '5/8/2026 15:00:00', 273: 'solo.ejecutivo@x.mx', 285: '7005' })
+    const [caso] = construirCasos([f], MAPA, ENCABEZADOS, 2026)
+    expect(caso.correoSolicitante).toBe('solo.ejecutivo@x.mx')
+    expect(caso.correoEjecutivo).toBe('solo.ejecutivo@x.mx')
+  })
+
   it('prefiere la agencia externa cuando el solicitante la declaró', () => {
     const [caso] = construirCasos([FILA_7176], MAPA, ENCABEZADOS, 2026)
     expect(caso.agencia).toBe('CHEVROLET CAMPESTRE')

@@ -12,6 +12,7 @@ function caso(parcial: Partial<Caso> = {}): Caso {
     tipoNegocio: null,
     nombreSolicitante: 'Ricardo Hernandez',
     correoSolicitante: 'a@b.mx',
+    correoEjecutivo: null,
     agencia: 'CHEVROLET CAMPESTRE',
     motivo: null,
     aseguradoraDeclarada: null,

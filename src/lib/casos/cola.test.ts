@@ -11,6 +11,7 @@ function c(parcial: Partial<Caso> & { fila: number }): Caso {
     tipoNegocio: null,
     nombreSolicitante: 'Solicitante',
     correoSolicitante: 'a@b.mx',
+    correoEjecutivo: null,
     agencia: 'AGENCIA UNO',
     motivo: null,
     aseguradoraDeclarada: null,

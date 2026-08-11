@@ -47,9 +47,12 @@ describe('construirMapa con los 307 encabezados reales', () => {
     expect(mapa.columnasPorCampo.motivo.length).toBeGreaterThanOrEqual(41)
   })
 
-  it('resuelve el correo del solicitante incluyendo el del ejecutivo comercial', () => {
-    // AD "Dirección de correo electrónico", JM "Correo del ejecutivo comercial de la zona"
-    expect(mapa.columnasPorCampo.correoSolicitante).toEqual(expect.arrayContaining([30, 273]))
+  it('separa el correo del solicitante del correo del ejecutivo comercial', () => {
+    // AD "Dirección de correo electrónico" es el solicitante; JM "Correo del
+    // ejecutivo comercial de la zona" es otra persona y va en copia, no en Para.
+    expect(mapa.columnasPorCampo.correoSolicitante).toEqual(expect.arrayContaining([30]))
+    expect(mapa.columnasPorCampo.correoSolicitante).not.toContain(273)
+    expect(mapa.columnasPorCampo.correoEjecutivo).toEqual([273])
   })
 
   it('resuelve la agencia y la agencia externa como campos distintos', () => {

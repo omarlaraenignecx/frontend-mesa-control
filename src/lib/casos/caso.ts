@@ -17,6 +17,7 @@ export type Caso = {
   tipoNegocio: string | null
   nombreSolicitante: string | null
   correoSolicitante: string | null
+  correoEjecutivo: string | null
   agencia: string | null
   motivo: string | null
   aseguradoraDeclarada: string | null

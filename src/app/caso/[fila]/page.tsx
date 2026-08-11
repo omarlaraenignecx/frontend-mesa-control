@@ -10,10 +10,15 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requerirUsuario } from '@/lib/auth/guard'
+import { cargarHilo } from '@/lib/casos/hilo'
+import { leerPlantilla } from '@/lib/correo/plantillas'
+import { sustituirVariables } from '@/lib/correo/render-correo'
+import { estaVivo } from '@/lib/casos/caso'
 import { leerBitacora } from '@/lib/casos/bitacora'
 import { adquirirBloqueo } from '@/lib/casos/bloqueo'
 import { agruparCamposExtra } from '@/lib/casos/campos-extra'
 import { sinFolio } from '@/lib/casos/caso'
+import { Conversacion } from './conversacion'
 import { cargarCaso } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
 import { diasDeEspera, semaforoDe } from '@/lib/casos/semaforo'
@@ -87,6 +92,20 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
       correoUsuario: usuario.correo,
     })
   }
+
+  // El hilo y la plantilla se piden en paralelo: son dos servicios distintos y
+  // ninguno depende del otro.
+  const [estadoHilo, plantillaCruda] = await Promise.all([
+    cargarHilo(fila, caso.folio),
+    leerPlantilla(caso.tipoTramite),
+  ])
+  const plantilla = sustituirVariables(plantillaCruda, {
+    solicitante: caso.nombreSolicitante ?? '',
+    folio: caso.folio ?? '',
+    agencia: caso.agencia ?? '',
+    tramite: caso.tipoTramite ?? '',
+    atiende: usuario.nombreEnHoja ?? usuario.correo,
+  })
 
   const hoy = new Date()
   const nivel = semaforoDe(caso, hoy)
@@ -278,9 +297,22 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="rounded-lg border border-dashed bg-secondary/30 p-4 text-base text-muted-foreground">
-                  El panel de correo con el solicitante llega en la siguiente etapa.
-                </p>
+                <Conversacion
+                  fila={fila}
+                  folio={caso.folio}
+                  estado={estadoHilo}
+                  plantilla={plantilla}
+                  destinatario={caso.correoSolicitante}
+                  copiaSugerida={
+                    caso.correoEjecutivo &&
+                    caso.correoEjecutivo.trim().toLowerCase() !==
+                      caso.correoSolicitante?.trim().toLowerCase()
+                      ? caso.correoEjecutivo
+                      : null
+                  }
+                  casoCerrado={!estaVivo(caso)}
+                  bloqueado={bloqueadoPorOtro}
+                />
               </CardContent>
             </Card>
 
