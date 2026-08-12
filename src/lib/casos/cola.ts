@@ -33,14 +33,21 @@ function normalizar(texto: string): string {
     .trim()
 }
 
-/** El más antiguo primero: la cola es de trabajo, no un historial. */
-export function ordenarFifo(casos: Caso[]): Caso[] {
+/**
+ * El más reciente arriba, como pidió el área: lo que acaba de llegar es lo que
+ * la mesa quiere ver al abrir la pantalla. Los casos viejos que siguen abiertos
+ * se atienden desde la vista de rezago, que es donde se vuelven visibles.
+ *
+ * Un caso sin fecha legible se va al final: no se puede ordenar, pero tampoco
+ * debe desaparecer.
+ */
+export function ordenarRecientes(casos: Caso[]): Caso[] {
   return [...casos].sort((a, b) => {
     const ta = fechaDe(a)?.getTime()
     const tb = fechaDe(b)?.getTime()
     if (ta === undefined) return 1
     if (tb === undefined) return -1
-    return ta - tb
+    return tb - ta
   })
 }
 

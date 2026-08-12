@@ -16,10 +16,11 @@ import {
   VENTANA_COLA_DIAS,
   filtrar,
   opcionesDeFiltro,
-  ordenarFifo,
+  ordenarRecientes,
   type Vista,
 } from '@/lib/casos/cola'
 import { cargarCola } from '@/lib/casos/consulta'
+import { fechaCorta } from '@/lib/fecha'
 import { diasDeEspera } from '@/lib/casos/semaforo'
 import { CredencialMesaRevocadaError, SinCredencialMesaError } from '@/lib/google/auth-mesa'
 import { BotonActualizar } from './actualizar'
@@ -27,11 +28,16 @@ import { Filtros } from './filtros'
 
 const ICONO_VISTA = { cola: Inbox, rezago: Timer, todos: Search } as const
 
+/** Lo que va en las celdas de estatus y de responsable cuando la hoja está vacía. */
+function Pendiente() {
+  return <span className="text-muted-foreground">Pendiente</span>
+}
+
 const VISTAS: { clave: Vista; etiqueta: string; ayuda: string }[] = [
   {
     clave: 'cola',
     etiqueta: 'Cola de trabajo',
-    ayuda: `Casos abiertos de los últimos ${VENTANA_COLA_DIAS} días, del más antiguo al más reciente`,
+    ayuda: `Casos abiertos de los últimos ${VENTANA_COLA_DIAS} días, del más reciente al más antiguo`,
   },
   {
     clave: 'rezago',
@@ -105,7 +111,7 @@ export default async function Cola({
     incluirCerrados: params.cerrados === '1',
   }
 
-  const filtrados = ordenarFifo(filtrar(resultado.casos, { ...filtrosBase, vista }, hoy))
+  const filtrados = ordenarRecientes(filtrar(resultado.casos, { ...filtrosBase, vista }, hoy))
   const conteos = Object.fromEntries(
     VISTAS.map((v) => [
       v.clave,
@@ -201,13 +207,13 @@ export default async function Cola({
           <TableHeader className="bg-secondary/60">
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-10" />
+              <TableHead className="text-base">Estatus final</TableHead>
+              <TableHead className="text-base">Atiende</TableHead>
               <TableHead className="text-base">Folio</TableHead>
               <TableHead className="text-base">Recibido</TableHead>
               <TableHead className="text-base">Trámite</TableHead>
               <TableHead className="text-base">Solicitante</TableHead>
               <TableHead className="text-base">Agencia</TableHead>
-              <TableHead className="text-base">Estatus</TableHead>
-              <TableHead className="text-base">Atiende</TableHead>
               <TableHead className="text-right text-base">Espera</TableHead>
             </TableRow>
           </TableHeader>
@@ -218,6 +224,12 @@ export default async function Cola({
                 <TableRow key={caso.fila} className="text-base transition-colors hover:bg-secondary/60">
                   <TableCell>
                     <PuntoSemaforo estatusFinal={caso.estatusFinal} />
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {caso.estatusFinal?.trim() || <Pendiente />}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {caso.quienAtendio?.trim() || <Pendiente />}
                   </TableCell>
                   <TableCell className="font-medium">
                     <a
@@ -233,17 +245,11 @@ export default async function Cola({
                     </a>
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {caso.marcaTemporalTexto}
+                    {fechaCorta(caso.marcaTemporalIso, caso.marcaTemporalTexto)}
                   </TableCell>
                   <TableCell>{caso.tipoTramite ?? '—'}</TableCell>
                   <TableCell>{caso.nombreSolicitante ?? '—'}</TableCell>
                   <TableCell>{caso.agencia ?? '—'}</TableCell>
-                  <TableCell>
-                    {caso.estatusInicial ?? (
-                      <span className="text-muted-foreground">— sin tomar —</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{caso.quienAtendio ?? '—'}</TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
                     {dias === null ? '—' : `${dias} d`}
                   </TableCell>

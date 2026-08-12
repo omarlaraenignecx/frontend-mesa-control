@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Caso } from './caso'
-import { VENTANA_COLA_DIAS, filtrar, opcionesDeFiltro, ordenarFifo } from './cola'
+import { VENTANA_COLA_DIAS, filtrar, opcionesDeFiltro, ordenarRecientes } from './cola'
 
 function c(parcial: Partial<Caso> & { fila: number }): Caso {
   return {
@@ -32,14 +32,14 @@ function c(parcial: Partial<Caso> & { fila: number }): Caso {
   }
 }
 
-describe('ordenarFifo', () => {
-  it('pone el caso más antiguo primero, para que ninguno se añeje', () => {
+describe('ordenarRecientes', () => {
+  it('pone el caso más reciente arriba y el más antiguo abajo', () => {
     const casos = [
       c({ fila: 3, marcaTemporalIso: new Date(2026, 7, 5).toISOString() }),
       c({ fila: 1, marcaTemporalIso: new Date(2026, 6, 20).toISOString() }),
       c({ fila: 2, marcaTemporalIso: new Date(2026, 7, 1).toISOString() }),
     ]
-    expect(ordenarFifo(casos).map((x) => x.fila)).toEqual([1, 2, 3])
+    expect(ordenarRecientes(casos).map((x) => x.fila)).toEqual([3, 2, 1])
   })
 
   it('deja al final los casos sin fecha legible', () => {
@@ -47,7 +47,7 @@ describe('ordenarFifo', () => {
       c({ fila: 1, marcaTemporalIso: null }),
       c({ fila: 2, marcaTemporalIso: new Date(2026, 7, 1).toISOString() }),
     ]
-    expect(ordenarFifo(casos).map((x) => x.fila)).toEqual([2, 1])
+    expect(ordenarRecientes(casos).map((x) => x.fila)).toEqual([2, 1])
   })
 
   it('no muta el arreglo recibido', () => {
@@ -56,7 +56,7 @@ describe('ordenarFifo', () => {
       c({ fila: 1, marcaTemporalIso: new Date(2026, 6, 1).toISOString() }),
     ]
     const copia = [...casos]
-    ordenarFifo(casos)
+    ordenarRecientes(casos)
     expect(casos).toEqual(copia)
   })
 })
