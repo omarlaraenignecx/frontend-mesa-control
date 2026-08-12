@@ -7,7 +7,6 @@ import {
   Mail,
   MessageSquareText,
   Paperclip,
-  UserRound,
 } from 'lucide-react'
 import { EtiquetaSemaforo } from '@/components/semaforo'
 import { Badge } from '@/components/ui/badge'
@@ -18,14 +17,13 @@ import { leerPlantilla } from '@/lib/correo/plantillas'
 import { sustituirVariables } from '@/lib/correo/render-correo'
 import { estaVivo } from '@/lib/casos/caso'
 import { leerBitacora } from '@/lib/casos/bitacora'
-import { adquirirBloqueo } from '@/lib/casos/bloqueo'
 import { agruparCamposExtra } from '@/lib/casos/campos-extra'
 import { sinFolio } from '@/lib/casos/caso'
 import { Conversacion } from './conversacion'
 import { cargarCaso } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
 import { diasDeEspera } from '@/lib/casos/semaforo'
-import { BotonForzar, BotonLiberar } from './bloqueo-acciones'
+import { Atender } from './atender'
 import { FolioForm } from './folio-form'
 import { SeguimientoForm } from './seguimiento-form'
 
@@ -70,8 +68,6 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
   }
 
   const { caso, catalogos } = cargado
-  const bloqueo = await adquirirBloqueo(fila, usuario.correo)
-  const bloqueadoPorOtro = !bloqueo.ok
 
   await emitirEvento({
     tipo: 'caso_visualizado',
@@ -80,15 +76,6 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
     tipoTramite: caso.tipoTramite,
     correoUsuario: usuario.correo,
   })
-  if (bloqueo.ok) {
-    await emitirEvento({
-      tipo: 'caso_tomado',
-      fila,
-      folio: caso.folio,
-      tipoTramite: caso.tipoTramite,
-      correoUsuario: usuario.correo,
-    })
-  }
 
   // El hilo y la plantilla se piden en paralelo: son dos servicios distintos y
   // ninguno depende del otro.
@@ -172,31 +159,17 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              {bloqueadoPorOtro ? (
-                <>
-                  <span className="inline-flex items-center gap-2 rounded-lg bg-amber-100 px-3 py-1.5 text-base text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-                    <UserRound className="size-4" />
-                    Lo tiene {bloqueo.bloqueo.correoDueno.split('@')[0]}
-                  </span>
-                  <BotonForzar fila={fila} dueno={bloqueo.bloqueo.correoDueno} />
-                </>
-              ) : (
-                <>
-                  <span className="inline-flex items-center gap-2 rounded-lg bg-emerald-100 px-3 py-1.5 text-base text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
-                    <UserRound className="size-4" />
-                    Lo tienes tú
-                  </span>
-                  <BotonLiberar fila={fila} />
-                </>
-              )}
-            </div>
+            <Atender
+              fila={fila}
+              quienAtiende={caso.quienAtendio}
+              nombreUsuario={usuario.nombreEnHoja}
+            />
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl space-y-5 px-6 py-6">
-        {sinFolio(caso) && !bloqueadoPorOtro && <FolioForm fila={fila} />}
+        {sinFolio(caso) && <FolioForm fila={fila} />}
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="space-y-5">
@@ -322,7 +295,6 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
                   caso={caso}
                   catalogos={catalogos}
                   nombreUsuario={usuario.nombreEnHoja}
-                  bloqueado={bloqueadoPorOtro}
                 />
               </CardContent>
             </Card>
@@ -349,7 +321,6 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
                       : null
                   }
                   casoCerrado={!estaVivo(caso)}
-                  bloqueado={bloqueadoPorOtro}
                 />
               </CardContent>
             </Card>

@@ -31,6 +31,12 @@ export const credencialMesa = pgTable('credencial_mesa', {
   ultimoError: text('ultimo_error'),
 })
 
+/**
+ * Sin uso desde el 11 de agosto de 2026: el área pidió que los casos queden
+ * abiertos para todos, marcados con quién los atiende en la columna de la hoja.
+ * La tabla se queda porque borrarla es una migración destructiva y no estorba;
+ * quitarla es decisión del área. Nada de la aplicación la lee ni la escribe.
+ */
 export const bloqueos = pgTable('bloqueos', {
   fila: integer('fila').primaryKey(),
   correoDueno: text('correo_dueno').notNull(),
@@ -54,6 +60,8 @@ export const bitacora = pgTable('bitacora', {
   campo: text('campo').notNull(),
   valorAnterior: text('valor_anterior'),
   valorNuevo: text('valor_nuevo'),
+  // 'bloqueo_forzado' ya no se escribe, pero hay filas históricas con ese valor
+  // y quitarlo del enum haría ilegibles esas entradas de la bitácora.
   tipo: text('tipo', {
     enum: ['guardado', 'bloqueo_forzado', 'folio_capturado'],
   }).notNull(),

@@ -14,7 +14,6 @@ type Props = {
   caso: Caso
   catalogos: Catalogos
   nombreUsuario: string | null
-  bloqueado: boolean
 }
 
 const CAMPOS_SELECT = [
@@ -26,7 +25,7 @@ const CAMPOS_SELECT = [
   'causaSeguimiento',
 ] as const
 
-export function SeguimientoForm({ caso, catalogos, nombreUsuario, bloqueado }: Props) {
+export function SeguimientoForm({ caso, catalogos, nombreUsuario }: Props) {
   // El responsable llega precargado con quien está trabajando, y es editable.
   const [valores, setValores] = useState<Seguimiento>({
     estatusInicial: caso.estatusInicial ?? '',
@@ -75,15 +74,6 @@ export function SeguimientoForm({ caso, catalogos, nombreUsuario, bloqueado }: P
         router.refresh()
       }
     })
-  }
-
-  if (bloqueado) {
-    return (
-      <p className="rounded-xl border border-dashed bg-secondary/30 p-4 text-base text-muted-foreground">
-        Otra persona tiene este caso abierto. Puedes consultarlo, pero no guardar cambios hasta que
-        lo libere o lo fuerces.
-      </p>
-    )
   }
 
   const selectClase =

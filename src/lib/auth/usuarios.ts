@@ -21,7 +21,7 @@ export class SinAutorizacionError extends Error {
 
 /**
  * Quién opera en este momento. Es la función que usan todas las etapas para
- * atribuir bloqueos, guardados, bitácora y el valor de la columna KE.
+ * atribuir guardados, bitácora y el valor de la columna KE.
  *
  * Revalida contra la allowlist en cada llamada, no confía solo en el token: así
  * desactivar a alguien en la base surte efecto en su siguiente carga de página

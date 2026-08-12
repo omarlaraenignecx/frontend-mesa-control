@@ -3,7 +3,6 @@
 import { revalidatePath, updateTag } from 'next/cache'
 import { requerirUsuario } from '@/lib/auth/guard'
 import { registrarAccion, registrarCambios } from '@/lib/casos/bitacora'
-import { forzarBloqueo, latir, liberarBloqueo } from '@/lib/casos/bloqueo'
 import { fechaDeCierreASellar, seCierraAhora } from '@/lib/casos/cierre'
 import { cargarCaso, depsDeGoogle } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
@@ -117,29 +116,69 @@ export async function capturarFolio(fila: number, folio: string): Promise<Result
   return { ok: true, cambios: 1 }
 }
 
-export async function liberar(fila: number): Promise<void> {
+/**
+ * Marca el caso como atendido por quien pulsa el botón, escribiendo su nombre en
+ * la columna "Quien Atendio" de la hoja.
+ *
+ * Los casos ya no se bloquean: cualquiera puede entrar y modificar cualquier
+ * caso, y esta marca es lo que evita que dos personas trabajen lo mismo sin
+ * saberlo. Que sea un dato de la hoja y no un candado interno tiene una ventaja:
+ * el área lo ve desde la propia hoja, como siempre lo ha visto.
+ */
+export async function atenderYo(fila: number): Promise<ResultadoGuardado> {
   const usuario = await requerirUsuario()
-  await liberarBloqueo(fila, usuario.correo)
-  revalidatePath(`/caso/${fila}`)
-}
 
-export async function forzar(fila: number): Promise<void> {
-  const usuario = await requerirUsuario()
-  const previo = await forzarBloqueo(fila)
-  if (previo && previo !== usuario.correo) {
-    await registrarAccion(
-      fila,
-      null,
-      usuario.correo,
-      'Bloqueo',
-      `Liberación forzada; lo tenía ${previo}`,
-      'bloqueo_forzado',
-    )
+  const nombre = usuario.nombreEnHoja?.trim()
+  if (!nombre) {
+    return {
+      ok: false,
+      error:
+        'Tu cuenta no tiene nombre registrado en la columna de la hoja, así que no se puede marcar. Pídeselo al administrador o captúralo en el seguimiento.',
+      conflicto: false,
+    }
   }
-  revalidatePath(`/caso/${fila}`)
-}
 
-export async function mantenerBloqueo(fila: number): Promise<void> {
-  const usuario = await requerirUsuario()
-  await latir(fila, usuario.correo)
+  const cargado = await cargarCaso(fila)
+  if (!cargado) {
+    return { ok: false, error: 'El caso ya no existe en la hoja.', conflicto: false }
+  }
+  const { caso, mapa } = cargado
+
+  if (caso.quienAtendio?.trim() === nombre) return { ok: true, cambios: 0 }
+
+  try {
+    await escribirSeguimiento(
+      await depsDeGoogle(),
+      mapa,
+      fila,
+      { quienAtendio: nombre },
+      { marcaTemporalTexto: caso.marcaTemporalTexto, folio: caso.folio },
+    )
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : 'No se pudo marcar el caso.',
+      conflicto: e instanceof FilaCambiadaError,
+    }
+  }
+
+  await registrarCambios(fila, caso.folio, usuario.correo, [
+    {
+      campo: 'quienAtendio',
+      etiqueta: 'Quién atendió',
+      anterior: caso.quienAtendio,
+      nuevo: nombre,
+    },
+  ])
+  await emitirEvento({
+    tipo: 'caso_tomado',
+    fila,
+    folio: caso.folio,
+    tipoTramite: caso.tipoTramite,
+    correoUsuario: usuario.correo,
+  })
+
+  updateTag('casos')
+  revalidatePath(`/caso/${fila}`)
+  return { ok: true, cambios: 1 }
 }
