@@ -82,6 +82,7 @@ export const eventosBi = pgTable('eventos_bi', {
       'caso_tomado',
       'conversacion_iniciada',
       'respuesta_enviada',
+      'cadena_reenviada',
       'caso_guardado',
       'caso_cerrado',
       'importacion_solicitada',

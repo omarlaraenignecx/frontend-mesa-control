@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { EstadoHilo } from '@/lib/casos/hilo'
+import { resumenDeCadena } from '@/lib/correo/cadena'
 import { LIMITE_GMAIL_BYTES } from '@/lib/correo/mime'
 import { enviarMensaje, refrescarConversacion, type ResultadoEnvio } from './acciones-correo'
+import { ReenviarCadena } from './reenviar-cadena'
 
 type Props = {
   fila: number
@@ -257,6 +259,13 @@ export function Conversacion({
               <Send className="mr-1.5 size-4" />
               {pendiente ? 'Enviando…' : hayHilo ? 'Responder' : 'Abrir conversación'}
             </Button>
+            {hayHilo && (
+              <ReenviarCadena
+                fila={fila}
+                folio={folio}
+                resumen={resumenDeCadena(estado.hilo)}
+              />
+            )}
             {!hayHilo && (
               <Badge variant="outline" className="text-sm font-normal">
                 Sella la fecha de respuesta en la hoja

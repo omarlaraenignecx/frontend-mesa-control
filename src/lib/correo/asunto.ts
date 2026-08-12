@@ -9,6 +9,18 @@ export function componerAsunto(folio: string): string {
   return `${PREFIJO_ASUNTO} | ${folio.trim()}`
 }
 
+/**
+ * Asunto del reenvío de la conversación a un tercero.
+ *
+ * Deliberadamente **no** contiene PREFIJO_ASUNTO: `consultaDeBusqueda()` busca
+ * esa frase como subcadena en Gmail, así que un reenvío que la llevara podría
+ * devolverse como el hilo del caso el día que se pierda el vínculo guardado.
+ * El reenvío es compartir la conversación, no continuarla.
+ */
+export function asuntoDeReenvio(folio: string): string {
+  return `Conversación del caso ${folio.trim()} | Mesa de Control Gplus Seguros`
+}
+
 /** Los clientes de correo agregan Re:, RE:, Fwd: al responder o reenviar. */
 const PREFIJOS_RESPUESTA = /^((re|rv|fwd|fw)\s*:\s*)+/i
 
