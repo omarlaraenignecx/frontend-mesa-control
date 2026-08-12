@@ -1,5 +1,6 @@
 import { Inbox, Search, Settings, Timer } from 'lucide-react'
 import { updateTag } from 'next/cache'
+import { PuntoSemaforo } from '@/components/semaforo'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import {
@@ -19,16 +20,10 @@ import {
   type Vista,
 } from '@/lib/casos/cola'
 import { cargarCola } from '@/lib/casos/consulta'
-import { diasDeEspera, semaforoDe } from '@/lib/casos/semaforo'
+import { diasDeEspera } from '@/lib/casos/semaforo'
 import { CredencialMesaRevocadaError, SinCredencialMesaError } from '@/lib/google/auth-mesa'
 import { BotonActualizar } from './actualizar'
 import { Filtros } from './filtros'
-
-const SEMAFORO = {
-  verde: { punto: 'bg-emerald-500', fila: '' },
-  ambar: { punto: 'bg-amber-500', fila: '' },
-  rojo: { punto: 'bg-red-500', fila: 'bg-red-50/40 dark:bg-red-950/20' },
-} as const
 
 const ICONO_VISTA = { cola: Inbox, rezago: Timer, todos: Search } as const
 
@@ -218,20 +213,11 @@ export default async function Cola({
           </TableHeader>
           <TableBody>
             {filtrados.map((caso) => {
-              const nivel = semaforoDe(caso, hoy)
               const dias = diasDeEspera(caso, hoy)
               return (
-                <TableRow
-                  key={caso.fila}
-                  className={`text-base transition-colors hover:bg-secondary/60 ${nivel ? SEMAFORO[nivel].fila : ''}`}
-                >
+                <TableRow key={caso.fila} className="text-base transition-colors hover:bg-secondary/60">
                   <TableCell>
-                    {nivel && (
-                      <span
-                        className={`inline-block size-3 rounded-full ${SEMAFORO[nivel].punto}`}
-                        title={`${dias} días de espera`}
-                      />
-                    )}
+                    <PuntoSemaforo estatusFinal={caso.estatusFinal} />
                   </TableCell>
                   <TableCell className="font-medium">
                     <a

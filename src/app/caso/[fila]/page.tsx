@@ -9,6 +9,7 @@ import {
   Paperclip,
   UserRound,
 } from 'lucide-react'
+import { EtiquetaSemaforo } from '@/components/semaforo'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requerirUsuario } from '@/lib/auth/guard'
@@ -23,16 +24,10 @@ import { sinFolio } from '@/lib/casos/caso'
 import { Conversacion } from './conversacion'
 import { cargarCaso } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
-import { diasDeEspera, semaforoDe } from '@/lib/casos/semaforo'
+import { diasDeEspera } from '@/lib/casos/semaforo'
 import { BotonForzar, BotonLiberar } from './bloqueo-acciones'
 import { FolioForm } from './folio-form'
 import { SeguimientoForm } from './seguimiento-form'
-
-const SEMAFORO = {
-  verde: { punto: 'bg-emerald-500', texto: 'text-emerald-700 dark:text-emerald-400', etiqueta: 'En tiempo' },
-  ambar: { punto: 'bg-amber-500', texto: 'text-amber-700 dark:text-amber-400', etiqueta: 'Por vencer' },
-  rojo: { punto: 'bg-red-500', texto: 'text-red-700 dark:text-red-400', etiqueta: 'Atrasado' },
-} as const
 
 function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
@@ -124,9 +119,7 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
         )
       : []
 
-  const hoy = new Date()
-  const nivel = semaforoDe(caso, hoy)
-  const dias = diasDeEspera(caso, hoy)
+  const dias = diasDeEspera(caso, new Date())
   const bitacora = await leerBitacora(fila)
   const extras = agruparCamposExtra(caso.camposExtra)
 
@@ -171,16 +164,11 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
                     {caso.tipoTramite}
                   </Badge>
                 )}
-                {nivel && (
-                  <span className={`inline-flex items-center gap-2 text-base ${SEMAFORO[nivel].texto}`}>
-                    <span className={`size-2.5 rounded-full ${SEMAFORO[nivel].punto}`} />
-                    {SEMAFORO[nivel].etiqueta}
-                    {dias !== null && ` · ${dias} días`}
-                  </span>
-                )}
+                <EtiquetaSemaforo estatusFinal={caso.estatusFinal} />
               </div>
               <p className="text-base text-muted-foreground">
-                Recibido {caso.marcaTemporalTexto} · fila {caso.fila}
+                Recibido {caso.marcaTemporalTexto}
+                {dias !== null && ` · ${dias} días de espera`} · fila {caso.fila}
               </p>
             </div>
 
