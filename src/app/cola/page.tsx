@@ -54,7 +54,7 @@ export default async function Cola({
     q?: string
     tramite?: string
     responsable?: string
-    cerrados?: string
+    estatus?: string
     vista?: string
   }>
 }) {
@@ -104,24 +104,31 @@ export default async function Cola({
     ? (params.vista as Vista)
     : 'cola'
 
+  // El parámetro ausente significa "los abiertos", que es lo que filtrar()
+  // aplica por omisión; no se traduce aquí para no duplicar esa decisión.
+  const estatusElegidos = (params.estatus ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean)
+
   const filtrosBase = {
     texto: params.q,
     tipoTramite: params.tramite,
     responsable: params.responsable,
-    incluirCerrados: params.cerrados === '1',
+    estatusFinal: estatusElegidos,
   }
 
   const filtrados = ordenarRecientes(filtrar(resultado.casos, { ...filtrosBase, vista }, hoy))
   const conteos = Object.fromEntries(
     VISTAS.map((v) => [
       v.clave,
-      filtrar(resultado.casos, { incluirCerrados: false, vista: v.clave }, hoy).length,
+      filtrar(resultado.casos, { vista: v.clave }, hoy).length,
     ]),
   ) as Record<Vista, number>
 
   const opciones = opcionesDeFiltro(resultado.casos)
   const hayBusqueda = Boolean(
-    params.q || params.tramite || params.responsable || params.cerrados === '1',
+    params.q || params.tramite || params.responsable || estatusElegidos.length > 0,
   )
   const descripcion = VISTAS.find((v) => v.clave === vista)!.ayuda
 

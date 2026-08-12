@@ -1,13 +1,112 @@
 'use client'
 
+import { Check, ChevronDown } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
+import { SIN_ESTATUS } from '@/lib/casos/cola'
 
 type Opciones = {
   tiposTramite: string[]
   responsables: string[]
   estatus: string[]
+}
+
+const ETIQUETA_SIN_ESTATUS = 'Pendiente (sin estatus)'
+
+const selectClase =
+  'h-11 rounded-lg border border-input bg-card px-3 text-base shadow-xs outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30'
+
+/**
+ * Filtro de varios valores a la vez. Es un panel con casillas y no un
+ * `<select multiple>`: el nativo obliga a arrastrar o a usar Ctrl para elegir
+ * más de uno, y la gente que trabaja aquí no tiene por qué saber eso.
+ */
+function FiltroEstatus({
+  valores,
+  seleccion,
+  onCambio,
+}: {
+  valores: string[]
+  seleccion: string[]
+  onCambio: (nueva: string[]) => void
+}) {
+  const [abierto, setAbierto] = useState(false)
+  const caja = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!abierto) return
+    function afuera(e: PointerEvent) {
+      if (!caja.current?.contains(e.target as Node)) setAbierto(false)
+    }
+    function escape(e: KeyboardEvent) {
+      if (e.key === 'Escape') setAbierto(false)
+    }
+    document.addEventListener('pointerdown', afuera)
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('pointerdown', afuera)
+      document.removeEventListener('keydown', escape)
+    }
+  }, [abierto])
+
+  const marcados = new Set(seleccion)
+  const etiquetaDe = (v: string) => (v === SIN_ESTATUS ? ETIQUETA_SIN_ESTATUS : v)
+  const resumen =
+    seleccion.length === 0
+      ? 'Abiertos'
+      : seleccion.length <= 2
+        ? seleccion.map(etiquetaDe).join(', ')
+        : `${seleccion.length} seleccionados`
+
+  function alternar(valor: string) {
+    const nueva = marcados.has(valor)
+      ? seleccion.filter((v) => v !== valor)
+      : [...seleccion, valor]
+    onCambio(nueva)
+  }
+
+  return (
+    <div ref={caja} className="relative">
+      <button
+        type="button"
+        onClick={() => setAbierto(!abierto)}
+        aria-expanded={abierto}
+        className={`${selectClase} inline-flex items-center gap-2`}
+      >
+        <span className="text-muted-foreground">Estatus final:</span>
+        <span className="font-medium">{resumen}</span>
+        <ChevronDown className="size-4 text-muted-foreground" />
+      </button>
+
+      {abierto && (
+        <div className="absolute z-20 mt-1 min-w-64 space-y-1 rounded-lg border bg-card p-2 shadow-lg">
+          {[...valores, SIN_ESTATUS].map((v) => (
+            <label
+              key={v}
+              className="flex items-center gap-2.5 rounded-md px-2 py-2 text-base hover:bg-secondary"
+            >
+              <input
+                type="checkbox"
+                className="size-4 accent-primary"
+                checked={marcados.has(v)}
+                onChange={() => alternar(v)}
+              />
+              {etiquetaDe(v)}
+            </label>
+          ))}
+          <button
+            type="button"
+            onClick={() => onCambio([])}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-base text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            <Check className="size-4" />
+            Volver a solo los abiertos
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function Filtros({ opciones }: { opciones: Opciones }) {
@@ -24,8 +123,10 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
     router.push(`/cola?${nuevos.toString()}`)
   }
 
-  const selectClase =
-    'h-11 rounded-lg border border-input bg-card px-3 text-base shadow-xs outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30'
+  const estatusElegidos = (params.get('estatus') ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean)
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -42,6 +143,12 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
           className="h-11 w-72 bg-card text-base"
         />
       </form>
+
+      <FiltroEstatus
+        valores={opciones.estatus}
+        seleccion={estatusElegidos}
+        onCambio={(nueva) => aplicar({ estatus: nueva.join(',') })}
+      />
 
       <select
         aria-label="Filtrar por trámite"
@@ -71,17 +178,7 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
         ))}
       </select>
 
-      <label className="flex cursor-pointer items-center gap-2 text-base text-muted-foreground">
-        <input
-          type="checkbox"
-          className="size-4 accent-primary"
-          checked={params.get('cerrados') === '1'}
-          onChange={(e) => aplicar({ cerrados: e.target.checked ? '1' : '' })}
-        />
-        Incluir cerrados
-      </label>
-
-      {['q', 'tramite', 'responsable', 'cerrados'].some((k) => params.get(k)) && (
+      {['q', 'tramite', 'responsable', 'estatus'].some((k) => params.get(k)) && (
         <button
           type="button"
           onClick={() => {

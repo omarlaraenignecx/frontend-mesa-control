@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { Caso } from './caso'
-import { VENTANA_COLA_DIAS, filtrar, opcionesDeFiltro, ordenarRecientes } from './cola'
+import {
+  SIN_ESTATUS,
+  VENTANA_COLA_DIAS,
+  filtrar,
+  opcionesDeFiltro,
+  ordenarRecientes,
+} from './cola'
 
 function c(parcial: Partial<Caso> & { fila: number }): Caso {
   return {
@@ -87,16 +93,43 @@ describe('filtrar', () => {
     }),
   ]
 
-  it('por omisión muestra solo los casos vivos', () => {
+  it('por omisión muestra solo los casos abiertos: en trámite o sin estatus', () => {
     expect(filtrar(casos, {}).map((x) => x.folio)).toEqual(['7001', '7003'])
   })
 
-  it('incluye los cerrados cuando se pide explícitamente', () => {
-    expect(filtrar(casos, { incluirCerrados: true })).toHaveLength(4)
+  it('selecciona un estatus', () => {
+    expect(filtrar(casos, { estatusFinal: ['Concluida'] }).map((x) => x.folio)).toEqual(['7002'])
+  })
+
+  it('selecciona varios estatus a la vez', () => {
+    expect(
+      filtrar(casos, { estatusFinal: ['Concluida', 'Improcedente'] }).map((x) => x.folio),
+    ).toEqual(['7002', '7004'])
+  })
+
+  it('el testigo del vacío selecciona los casos sin estatus final', () => {
+    expect(filtrar(casos, { estatusFinal: [SIN_ESTATUS] }).map((x) => x.folio)).toEqual(['7001'])
+  })
+
+  it('con todos los estatus seleccionados no filtra nada', () => {
+    const todos = ['Concluida', 'Improcedente', 'Tramite', SIN_ESTATUS]
+    expect(filtrar(casos, { estatusFinal: todos })).toHaveLength(4)
+  })
+
+  it('compara el estatus sin distinguir acentos ni mayúsculas', () => {
+    const conAcento = [c({ fila: 9, folio: '9009', estatusFinal: 'Trámite' })]
+    expect(filtrar(conAcento, { estatusFinal: ['Tramite'] })).toHaveLength(1)
+  })
+
+  it('una selección vacía se trata como si no hubiera filtro', () => {
+    // Desmarcar todas las casillas no debe dejar la pantalla en blanco sin
+    // explicación: se vuelve al comportamiento por omisión.
+    expect(filtrar(casos, { estatusFinal: [] }).map((x) => x.folio)).toEqual(['7001', '7003'])
   })
 
   it('busca por folio', () => {
-    expect(filtrar(casos, { texto: '7003', incluirCerrados: true }).map((x) => x.folio)).toEqual([
+    const todos = ['Concluida', 'Improcedente', 'Tramite', SIN_ESTATUS]
+    expect(filtrar(casos, { texto: '7003', estatusFinal: todos }).map((x) => x.folio)).toEqual([
       '7003',
     ])
   })
@@ -115,12 +148,9 @@ describe('filtrar', () => {
     expect(filtrar(otros, { texto: 'pro qro' })).toHaveLength(1)
   })
 
-  it('filtra por tipo de trámite, estatus y responsable', () => {
+  it('filtra por tipo de trámite y por responsable', () => {
     expect(filtrar(casos, { tipoTramite: 'Cotización' }).map((x) => x.folio)).toEqual(['7003'])
     expect(filtrar(casos, { responsable: 'Keynor' }).map((x) => x.folio)).toEqual(['7001'])
-    expect(
-      filtrar(casos, { estatus: 'Concluida', incluirCerrados: true }).map((x) => x.folio),
-    ).toEqual(['7002'])
   })
 
   it('combina filtros con la búsqueda de texto', () => {
@@ -175,6 +205,12 @@ describe('corte por antigüedad', () => {
       c({ fila: 1, folio: '5787', marcaTemporalIso: new Date(2026, 0, 6).toISOString(), quienAtendio: 'Norma' }),
     ]
     expect(filtrar(viejo, { vista: 'cola', responsable: 'Norma' }, HOY)).toHaveLength(1)
+  })
+
+  it('elegir estatus explícitamente también ignora el corte', () => {
+    expect(
+      filtrar(casos, { vista: 'cola', estatusFinal: ['Concluida'] }, HOY).map((x) => x.folio),
+    ).toEqual(['7002'])
   })
 
   it('sin vista declarada no hay corte: la función pura no decide por la interfaz', () => {
