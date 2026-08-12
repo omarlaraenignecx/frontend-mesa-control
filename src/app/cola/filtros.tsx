@@ -54,7 +54,7 @@ function FiltroEstatus({
   const etiquetaDe = (v: string) => (v === SIN_ESTATUS ? ETIQUETA_SIN_ESTATUS : v)
   const resumen =
     seleccion.length === 0
-      ? 'Abiertos'
+      ? 'Pendientes'
       : seleccion.length <= 2
         ? seleccion.map(etiquetaDe).join(', ')
         : `${seleccion.length} seleccionados`
@@ -101,7 +101,7 @@ function FiltroEstatus({
             className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-base text-muted-foreground hover:bg-secondary hover:text-foreground"
           >
             <Check className="size-4" />
-            Volver a solo los abiertos
+            Volver a solo los pendientes
           </button>
         </div>
       )}

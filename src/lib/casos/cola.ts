@@ -5,11 +5,11 @@ import { diasDeEspera } from './semaforo'
  * Días de antigüedad que caben en la cola de trabajo.
  *
  * Existe porque la mesa no cierra formalmente los casos que quedan esperando al
- * solicitante o a la aseguradora: se quedan sin Estatus Final y en una cola FIFO
- * estricta ocuparían los primeros lugares para siempre. Al momento de medirlo
- * había 200 casos vivos, el más antiguo con 216 días. Los que quedan fuera de la
- * ventana no se ocultan: viven en la vista de rezago y se alcanzan con la
- * búsqueda.
+ * solicitante o a la aseguradora: se quedan sin Estatus Final y sin este corte
+ * la cola mezclaría cientos de casos viejos con el trabajo del día. Al momento
+ * de medirlo había 200 casos vivos, el más antiguo con 216 días. Los que quedan
+ * fuera de la ventana no se ocultan: viven en la vista de rezago y se alcanzan
+ * con la búsqueda.
  */
 export const VENTANA_COLA_DIAS = 30
 
@@ -22,10 +22,15 @@ export type Vista = 'cola' | 'rezago' | 'todos'
 export const SIN_ESTATUS = 'sin'
 
 /**
- * Selección por omisión del filtro de estatus final: los casos abiertos, que es
- * con lo que el área trabaja. Todo lo demás se ve marcando su casilla.
+ * Selección por omisión del filtro de estatus final: solo los pendientes, los
+ * que todavía no tienen estatus.
+ *
+ * Ni los cerrados ni los que están en trámite ocupan la pantalla de entrada: que
+ * un caso diga "Tramite" significa que alguien ya lo tomó, así que estorba a
+ * quien abre la cola buscando lo que nadie ha visto. Se ven marcando su casilla
+ * en el filtro.
  */
-export const ESTATUS_ABIERTOS = ['Tramite', SIN_ESTATUS]
+export const ESTATUS_POR_OMISION = [SIN_ESTATUS]
 
 export type Filtros = {
   texto?: string
@@ -86,7 +91,7 @@ export function filtrar(casos: Caso[], filtros: Filtros, hoy: Date = new Date())
 
   // Una selección vacía se trata como si no hubiera filtro: desmarcar todas las
   // casillas no debe dejar la pantalla en blanco sin explicación.
-  const seleccion = filtros.estatusFinal?.length ? filtros.estatusFinal : ESTATUS_ABIERTOS
+  const seleccion = filtros.estatusFinal?.length ? filtros.estatusFinal : ESTATUS_POR_OMISION
   const estatusAceptados = new Set(seleccion.map(claveEstatus))
 
   // Buscar o filtrar explícitamente es pedir "encuéntramelo donde sea": en ese

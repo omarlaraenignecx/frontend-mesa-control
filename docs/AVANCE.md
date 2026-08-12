@@ -97,10 +97,10 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 | Identidad del caso | El **número de fila**. El folio puede faltar y hay folios arrastrados sin petición |
 | Orden de la cola | **Del más reciente al más antiguo** (pedido del cliente el 11/8/2026; antes era FIFO) |
 | Corte de la cola | **30 días**; lo anterior vive en la vista Rezago. Buscar o filtrar desactiva el corte |
-| Filtro de estatus final | Selección múltiple con casillas, incluida la opción "sin estatus". Por omisión solo los abiertos (Tramite o vacío); sustituye a la casilla "Incluir cerrados" |
+| Filtro de estatus final | Selección múltiple con casillas, incluida la opción "sin estatus". Por omisión **solo los pendientes** (sin estatus final): los de Tramite tampoco entran, porque ese valor significa que alguien ya tomó el caso. Sustituye a la casilla "Incluir cerrados" |
 | Reenvío de la conversación | Correo aparte con asunto propio, transcripción legible y los adjuntos que se dejen marcados. Las respuestas al reenvío no entran al chat del caso |
 | Columnas de la cola | semáforo · Estatus final · Atiende · Folio · Recibido (solo el día) · Trámite · Solicitante · Agencia · Espera |
-| Caso abierto | `KA` distinto de `Concluida` e `Improcedente` |
+| Caso abierto | `KA` distinto de `Concluida` e `Improcedente`. Distinto de "pendiente", que es `KA` vacío y es lo que la cola muestra por omisión |
 | Acceso a Google | Todo con OAuth de `mesadecontrol@`; consentimiento Interno aprobado por el admin |
 | Identidad de usuario | Cuenta personal del dominio contra allowlist en base; revalidada en cada carga |
 | Bloqueo de caso | **No hay.** Todos los casos están abiertos para todos; la marca de responsable es la columna `KE`, que se llena con el botón "Atender yo este caso" o desde el seguimiento |

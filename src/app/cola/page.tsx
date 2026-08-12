@@ -37,14 +37,18 @@ const VISTAS: { clave: Vista; etiqueta: string; ayuda: string }[] = [
   {
     clave: 'cola',
     etiqueta: 'Cola de trabajo',
-    ayuda: `Casos abiertos de los últimos ${VENTANA_COLA_DIAS} días, del más reciente al más antiguo`,
+    ayuda: `Casos sin estatus final de los últimos ${VENTANA_COLA_DIAS} días, del más reciente al más antiguo`,
   },
   {
     clave: 'rezago',
     etiqueta: 'Rezago',
-    ayuda: `Casos abiertos con más de ${VENTANA_COLA_DIAS} días sin cerrarse`,
+    ayuda: `Casos sin estatus final con más de ${VENTANA_COLA_DIAS} días encima`,
   },
-  { clave: 'todos', etiqueta: 'Todos los abiertos', ayuda: 'Todos los casos sin estatus terminal' },
+  {
+    clave: 'todos',
+    etiqueta: 'Todos los pendientes',
+    ayuda: 'Todos los casos sin estatus final, sin corte por fecha',
+  },
 ]
 
 export default async function Cola({

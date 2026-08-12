@@ -93,8 +93,14 @@ describe('filtrar', () => {
     }),
   ]
 
-  it('por omisión muestra solo los casos abiertos: en trámite o sin estatus', () => {
-    expect(filtrar(casos, {}).map((x) => x.folio)).toEqual(['7001', '7003'])
+  it('por omisión muestra solo los pendientes: los que no tienen estatus final', () => {
+    // El área pidió que ni los cerrados ni los que están en trámite ocupen la
+    // pantalla de entrada: en trámite significa que alguien ya lo está viendo.
+    expect(filtrar(casos, {}).map((x) => x.folio)).toEqual(['7001'])
+  })
+
+  it('los de trámite se ven eligiéndolos en el filtro', () => {
+    expect(filtrar(casos, { estatusFinal: ['Tramite'] }).map((x) => x.folio)).toEqual(['7003'])
   })
 
   it('selecciona un estatus', () => {
@@ -124,7 +130,7 @@ describe('filtrar', () => {
   it('una selección vacía se trata como si no hubiera filtro', () => {
     // Desmarcar todas las casillas no debe dejar la pantalla en blanco sin
     // explicación: se vuelve al comportamiento por omisión.
-    expect(filtrar(casos, { estatusFinal: [] }).map((x) => x.folio)).toEqual(['7001', '7003'])
+    expect(filtrar(casos, { estatusFinal: [] }).map((x) => x.folio)).toEqual(['7001'])
   })
 
   it('busca por folio', () => {
@@ -149,14 +155,20 @@ describe('filtrar', () => {
   })
 
   it('filtra por tipo de trámite y por responsable', () => {
-    expect(filtrar(casos, { tipoTramite: 'Cotización' }).map((x) => x.folio)).toEqual(['7003'])
+    const todos = ['Concluida', 'Improcedente', 'Tramite', SIN_ESTATUS]
+    expect(filtrar(casos, { tipoTramite: 'Cotización', estatusFinal: todos }).map((x) => x.folio)).toEqual([
+      '7002',
+      '7003',
+    ])
     expect(filtrar(casos, { responsable: 'Keynor' }).map((x) => x.folio)).toEqual(['7001'])
   })
 
   it('combina filtros con la búsqueda de texto', () => {
-    expect(filtrar(casos, { responsable: 'Paty', texto: '7003' }).map((x) => x.folio)).toEqual([
-      '7003',
-    ])
+    expect(
+      filtrar(casos, { responsable: 'Paty', texto: '7003', estatusFinal: ['Tramite'] }).map(
+        (x) => x.folio,
+      ),
+    ).toEqual(['7003'])
   })
 
   it('un caso sin folio se encuentra buscando por su solicitante', () => {
@@ -178,19 +190,19 @@ describe('corte por antigüedad', () => {
     c({ fila: 5, folio: '7002', marcaTemporalIso: new Date(2026, 7, 8).toISOString(), estatusFinal: 'Concluida' }),
   ]
 
-  it('la vista cola solo muestra los casos vivos de los últimos 30 días', () => {
-    expect(filtrar(casos, { vista: 'cola' }, HOY).map((x) => x.folio)).toEqual(['7000', '7001'])
+  it('la vista cola solo muestra los pendientes de los últimos 30 días', () => {
+    expect(filtrar(casos, { vista: 'cola' }, HOY).map((x) => x.folio)).toEqual(['7000'])
   })
 
-  it('la vista rezago muestra exactamente los vivos que la cola dejó fuera', () => {
+  it('la vista rezago muestra exactamente los pendientes que la cola dejó fuera', () => {
     expect(filtrar(casos, { vista: 'rezago' }, HOY).map((x) => x.folio)).toEqual(['5787', '6900'])
   })
 
-  it('cola y rezago juntos suman todos los casos vivos, sin traslapes ni huecos', () => {
+  it('cola y rezago juntos suman todos los pendientes, sin traslapes ni huecos', () => {
     const enCola = filtrar(casos, { vista: 'cola' }, HOY).map((x) => x.folio)
     const enRezago = filtrar(casos, { vista: 'rezago' }, HOY).map((x) => x.folio)
-    const vivos = filtrar(casos, { vista: 'todos' }, HOY).map((x) => x.folio)
-    expect([...enCola, ...enRezago].sort()).toEqual([...vivos].sort())
+    const pendientes = filtrar(casos, { vista: 'todos' }, HOY).map((x) => x.folio)
+    expect([...enCola, ...enRezago].sort()).toEqual([...pendientes].sort())
     expect(enCola.filter((f) => enRezago.includes(f))).toEqual([])
   })
 
@@ -214,7 +226,7 @@ describe('corte por antigüedad', () => {
   })
 
   it('sin vista declarada no hay corte: la función pura no decide por la interfaz', () => {
-    expect(filtrar(casos, {}, HOY)).toHaveLength(4) // los 4 vivos
+    expect(filtrar(casos, {}, HOY)).toHaveLength(3) // los 3 pendientes
   })
 
   it('la ventana de la cola es de 30 días y vive en un solo lugar', () => {
