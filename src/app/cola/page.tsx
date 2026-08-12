@@ -1,5 +1,6 @@
 import { Inbox, Search, Settings, Timer } from 'lucide-react'
 import { updateTag } from 'next/cache'
+import { PuntoSemaforo } from '@/components/semaforo'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import {
@@ -15,35 +16,39 @@ import {
   VENTANA_COLA_DIAS,
   filtrar,
   opcionesDeFiltro,
-  ordenarFifo,
+  ordenarRecientes,
   type Vista,
 } from '@/lib/casos/cola'
 import { cargarCola } from '@/lib/casos/consulta'
-import { diasDeEspera, semaforoDe } from '@/lib/casos/semaforo'
+import { fechaCorta } from '@/lib/fecha'
+import { diasDeEspera } from '@/lib/casos/semaforo'
 import { CredencialMesaRevocadaError, SinCredencialMesaError } from '@/lib/google/auth-mesa'
 import { BotonActualizar } from './actualizar'
 import { Filtros } from './filtros'
 
-const SEMAFORO = {
-  verde: { punto: 'bg-emerald-500', fila: '' },
-  ambar: { punto: 'bg-amber-500', fila: '' },
-  rojo: { punto: 'bg-red-500', fila: 'bg-red-50/40 dark:bg-red-950/20' },
-} as const
-
 const ICONO_VISTA = { cola: Inbox, rezago: Timer, todos: Search } as const
+
+/** Lo que va en las celdas de estatus y de responsable cuando la hoja está vacía. */
+function Pendiente() {
+  return <span className="text-muted-foreground">Pendiente</span>
+}
 
 const VISTAS: { clave: Vista; etiqueta: string; ayuda: string }[] = [
   {
     clave: 'cola',
     etiqueta: 'Cola de trabajo',
-    ayuda: `Casos abiertos de los últimos ${VENTANA_COLA_DIAS} días, del más antiguo al más reciente`,
+    ayuda: `Casos sin estatus final de los últimos ${VENTANA_COLA_DIAS} días, del más reciente al más antiguo`,
   },
   {
     clave: 'rezago',
     etiqueta: 'Rezago',
-    ayuda: `Casos abiertos con más de ${VENTANA_COLA_DIAS} días sin cerrarse`,
+    ayuda: `Casos sin estatus final con más de ${VENTANA_COLA_DIAS} días encima`,
   },
-  { clave: 'todos', etiqueta: 'Todos los abiertos', ayuda: 'Todos los casos sin estatus terminal' },
+  {
+    clave: 'todos',
+    etiqueta: 'Todos los pendientes',
+    ayuda: 'Todos los casos sin estatus final, sin corte por fecha',
+  },
 ]
 
 export default async function Cola({
@@ -53,7 +58,7 @@ export default async function Cola({
     q?: string
     tramite?: string
     responsable?: string
-    cerrados?: string
+    estatus?: string
     vista?: string
   }>
 }) {
@@ -103,24 +108,31 @@ export default async function Cola({
     ? (params.vista as Vista)
     : 'cola'
 
+  // El parámetro ausente significa "los abiertos", que es lo que filtrar()
+  // aplica por omisión; no se traduce aquí para no duplicar esa decisión.
+  const estatusElegidos = (params.estatus ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean)
+
   const filtrosBase = {
     texto: params.q,
     tipoTramite: params.tramite,
     responsable: params.responsable,
-    incluirCerrados: params.cerrados === '1',
+    estatusFinal: estatusElegidos,
   }
 
-  const filtrados = ordenarFifo(filtrar(resultado.casos, { ...filtrosBase, vista }, hoy))
+  const filtrados = ordenarRecientes(filtrar(resultado.casos, { ...filtrosBase, vista }, hoy))
   const conteos = Object.fromEntries(
     VISTAS.map((v) => [
       v.clave,
-      filtrar(resultado.casos, { incluirCerrados: false, vista: v.clave }, hoy).length,
+      filtrar(resultado.casos, { vista: v.clave }, hoy).length,
     ]),
   ) as Record<Vista, number>
 
   const opciones = opcionesDeFiltro(resultado.casos)
   const hayBusqueda = Boolean(
-    params.q || params.tramite || params.responsable || params.cerrados === '1',
+    params.q || params.tramite || params.responsable || estatusElegidos.length > 0,
   )
   const descripcion = VISTAS.find((v) => v.clave === vista)!.ayuda
 
@@ -206,32 +218,29 @@ export default async function Cola({
           <TableHeader className="bg-secondary/60">
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-10" />
+              <TableHead className="text-base">Estatus final</TableHead>
+              <TableHead className="text-base">Atiende</TableHead>
               <TableHead className="text-base">Folio</TableHead>
               <TableHead className="text-base">Recibido</TableHead>
               <TableHead className="text-base">Trámite</TableHead>
               <TableHead className="text-base">Solicitante</TableHead>
               <TableHead className="text-base">Agencia</TableHead>
-              <TableHead className="text-base">Estatus</TableHead>
-              <TableHead className="text-base">Atiende</TableHead>
               <TableHead className="text-right text-base">Espera</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtrados.map((caso) => {
-              const nivel = semaforoDe(caso, hoy)
               const dias = diasDeEspera(caso, hoy)
               return (
-                <TableRow
-                  key={caso.fila}
-                  className={`text-base transition-colors hover:bg-secondary/60 ${nivel ? SEMAFORO[nivel].fila : ''}`}
-                >
+                <TableRow key={caso.fila} className="text-base transition-colors hover:bg-secondary/60">
                   <TableCell>
-                    {nivel && (
-                      <span
-                        className={`inline-block size-3 rounded-full ${SEMAFORO[nivel].punto}`}
-                        title={`${dias} días de espera`}
-                      />
-                    )}
+                    <PuntoSemaforo estatusFinal={caso.estatusFinal} />
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {caso.estatusFinal?.trim() || <Pendiente />}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {caso.quienAtendio?.trim() || <Pendiente />}
                   </TableCell>
                   <TableCell className="font-medium">
                     <a
@@ -247,17 +256,11 @@ export default async function Cola({
                     </a>
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {caso.marcaTemporalTexto}
+                    {fechaCorta(caso.marcaTemporalIso, caso.marcaTemporalTexto)}
                   </TableCell>
                   <TableCell>{caso.tipoTramite ?? '—'}</TableCell>
                   <TableCell>{caso.nombreSolicitante ?? '—'}</TableCell>
                   <TableCell>{caso.agencia ?? '—'}</TableCell>
-                  <TableCell>
-                    {caso.estatusInicial ?? (
-                      <span className="text-muted-foreground">— sin tomar —</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{caso.quienAtendio ?? '—'}</TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
                     {dias === null ? '—' : `${dias} d`}
                   </TableCell>

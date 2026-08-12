@@ -95,13 +95,16 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 | Caso cerrado con respuesta nueva | Se muestra con aviso y se puede contestar; la app no reabre el caso ni toca su estatus |
 | Archivos del caso | Se listan juntos los del formulario (Drive) y los de la conversación (Gmail), agrupados por origen |
 | Identidad del caso | El **número de fila**. El folio puede faltar y hay folios arrastrados sin petición |
-| Orden de la cola | **FIFO**, el abierto más antiguo primero (sustituye a RF-01) |
+| Orden de la cola | **Del más reciente al más antiguo** (pedido del cliente el 11/8/2026; antes era FIFO) |
 | Corte de la cola | **30 días**; lo anterior vive en la vista Rezago. Buscar o filtrar desactiva el corte |
-| Caso abierto | `KA` distinto de `Concluida` e `Improcedente` |
+| Filtro de estatus final | Selección múltiple con casillas, incluida la opción "sin estatus". Por omisión **solo los pendientes** (sin estatus final): los de Tramite tampoco entran, porque ese valor significa que alguien ya tomó el caso. Sustituye a la casilla "Incluir cerrados" |
+| Reenvío de la conversación | Correo aparte con asunto propio, transcripción legible y los adjuntos que se dejen marcados. Las respuestas al reenvío no entran al chat del caso |
+| Columnas de la cola | semáforo · Estatus final · Atiende · Folio · Recibido (solo el día) · Trámite · Solicitante · Agencia · Espera |
+| Caso abierto | `KA` distinto de `Concluida` e `Improcedente`. Distinto de "pendiente", que es `KA` vacío y es lo que la cola muestra por omisión |
 | Acceso a Google | Todo con OAuth de `mesadecontrol@`; consentimiento Interno aprobado por el admin |
 | Identidad de usuario | Cuenta personal del dominio contra allowlist en base; revalidada en cada carga |
-| Bloqueo de caso | Se toma al abrir; lo libera el dueño o cualquiera puede forzarlo, con registro |
-| Semáforo | Calculado por días de espera (verde ≤2, ámbar 3-5, rojo ≥6). No se captura |
+| Bloqueo de caso | **No hay.** Todos los casos están abiertos para todos; la marca de responsable es la columna `KE`, que se llena con el botón "Atender yo este caso" o desde el seguimiento |
+| Semáforo | **Por el Estatus Final de `KA`**: verde Concluida, rojo Improcedente, ámbar Tramite, hueco si no hay valor, gris si el valor no está en la validación. Los días de espera se siguen mostrando en su propia columna |
 | Fechas `KB` y `KD` | Selladas automáticamente por la app |
 | Asunto del correo | `Seguimiento de Caso \| Gplus Seguros \| <folio>` |
 | Correos | HTML profesional al enviar, texto plano en el chat |
@@ -122,12 +125,15 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 8. **El `attachmentId` de Gmail no es estable**: se regenera en cada lectura del mensaje. El id del mensaje sí es estable. Por eso los adjuntos se referencian por su **posición** dentro del mensaje y el id se toma de la lectura del momento. Poner el `attachmentId` en una URL y compararlo después nunca coincide.
 9. **La hoja tiene sus propias protecciones**, que refuerzan el diseño: columna `A` y columnas `B`–`JX` protegidas sin editores; `JY` protegida con excepción para `omar.lara@enginecx.com`, la cuenta de servicio y `mesadecontrol@`; `JZ`–`KJ` libres. Es un segundo candado sobre la lista blanca del escritor, y por eso no se puede crear una fila de prueba desde la aplicación.
 10. **El build de Next no typechequea los archivos de prueba.** Usar `pnpm typecheck` (`tsc --noEmit`) antes de dar por bueno un cambio de tipos.
+11. **Tailwind 4 no pone `cursor: pointer` en los botones.** Su preflight deja el valor del navegador, así que hay una regla en `@layer base` de `globals.css` que lo declara para todo lo clicable, con una prueba que lee el CSS (`estilos-base.test.ts`).
+12. **La búsqueda de Gmail por asunto encuentra subcadenas.** Por eso el asunto del reenvío evita a propósito la frase `Seguimiento de Caso | Gplus Seguros`: si la llevara, el hilo del reenvío podría devolverse como el hilo del caso cuando se pierda el vínculo guardado en la base.
+13. **No usar `prettier` sin configuración en este repo.** Sus valores por omisión (comillas dobles, punto y coma) contradicen el estilo del código y reescriben archivos completos.
 
 ## Hallazgos de operación (para conversar con Norma y Keynor)
 
 1. **140 de 200 casos abiertos son rezago**, el más antiguo con **216 días** (folio 5787, del 6 de enero). La mesa no cierra formalmente los casos que quedan esperando al solicitante o a la aseguradora. Es lo que motivó el corte de 30 días.
-2. **Aparece "Ernesto"** como responsable histórico, y no está en el catálogo actual de `KE` ni en la allowlist.
-3. **Los umbrales del semáforo** (3 y 6 días) los definió el desarrollo, no la operación. Falta validarlos con quien conoce el SLA.
+2. **Aparece "Ernesto"** como responsable histórico, y no está en el catálogo actual de `KE` ni en la allowlist. Medido el 11/8/2026: **475 de las filas de 2026** lo tienen como responsable, así que no es residuo antiguo. Conviene preguntar quién es y si debe volver al catálogo.
+3. **El Estatus Final tiene basura histórica.** La validación de `KA` permite solo `Concluida`, `Improcedente` y `Tramite`, pero el histórico completo trae **570 filas con `N/A`**, una con "Información incompleta" y una con "Trámite de aplicación de pago (ingresos y egresos)", capturadas antes de que existiera la validación. En 2026 no hay ninguna, así que no afecta a la operación diaria; el semáforo las pinta gris en lugar de reventar.
 4. **Un caso puede llegar sin folio.** Ya se observó en producción: la fila 7180 y otra que entró el 10 de agosto.
 5. **112 columnas sin clasificar** en 34 encabezados: número de póliza, número de siniestro, teléfono del cliente, tipo de endoso, versión de la unidad y similares. Son datos legítimos que varían por trámite y se mostrarán como campos del caso; no requieren entrar al modelo. Posible mejora a consultar: permitir búsqueda por número de póliza, que hoy no está en RF-02.
 
@@ -144,7 +150,8 @@ Fila **7181** de la copia, folio **9001**, con `omar.lara@enginecx.com` como sol
 - Que Keynor, Paty, Norma y José Juan **entren en producción**. Si algún correo no coincide con lo sembrado, se corrige con `pnpm db:seed`.
 - Conexión de GitHub en la cuenta de Vercel, si se quieren previews automáticos por push (hoy el despliegue es por CLI).
 - **Sellado de `KD` en vivo**: cerrar un caso desde la interfaz y comprobar que la fecha de atención final se llena sola y el caso sale de la cola. La lógica tiene 9 pruebas unitarias, pero no se ha ejercido desde la aplicación.
-- **Bloqueo entre dos personas**: abrir el mismo caso con dos cuentas distintas y comprobar el aviso y el forzado. Requiere dos sesiones simultáneas.
-- **Umbrales del semáforo y el rezago** (3 días, 6 días, ventana de 30) los definió el desarrollo; falta validarlos con quien conoce el SLA.
+- **La ventana de 30 días del rezago** la definió el desarrollo; falta validarla con quien conoce el SLA. (Los umbrales de 3 y 6 días desaparecieron con el cambio de semáforo.)
+- **Reenvío de la conversación en vivo**: enviar una cadena real con adjuntos y comprobar que llega completa y que la respuesta del tercero **no** aparece en el chat del caso.
+- **Botón "Atender yo este caso"** con una cuenta de operador. Con `mesadecontrol@` no funciona a propósito: ese usuario no tiene nombre en `KE` y la app avisa en lugar de inventar un valor para la columna.
 - **Los textos de las 14 plantillas** siguen siendo borradores con un `[Escribe aquí…]`. Keynor los corrige desde Ajustes; el texto real lo conoce la mesa.
 - **Respuestas fuera del hilo**: si una agencia contesta con un asunto distinto, ese mensaje no llega al caso. Riesgo ya reconocido en el PRD; se decidirá con Keynor si vale la pena atacarlo cuando se vea su frecuencia real.

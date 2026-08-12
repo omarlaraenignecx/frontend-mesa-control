@@ -5,6 +5,7 @@ type TipoEvento =
   | 'caso_tomado'
   | 'conversacion_iniciada'
   | 'respuesta_enviada'
+  | 'cadena_reenviada'
   | 'caso_guardado'
   | 'caso_cerrado'
   | 'importacion_solicitada'

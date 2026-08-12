@@ -136,4 +136,24 @@
   html {
     @apply font-sans;
   }
+
+  /* Tailwind 4 ya no le pone la mano al cursor sobre los botones: su preflight
+     deja el valor del navegador, que es una flecha. Aquí se declara una sola vez
+     para todo lo que se puede pulsar, porque un botón que no cambia el cursor se
+     lee como deshabilitado. */
+  button:not(:disabled),
+  [role="button"],
+  summary,
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]),
+  a[href] {
+    cursor: pointer;
+  }
+
+  :disabled {
+    cursor: not-allowed;
+  }
 }

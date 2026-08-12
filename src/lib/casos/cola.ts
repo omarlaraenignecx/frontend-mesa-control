@@ -1,27 +1,44 @@
-import { estaVivo, fechaDe, type Caso } from './caso'
+import { fechaDe, type Caso } from './caso'
 import { diasDeEspera } from './semaforo'
 
 /**
  * Días de antigüedad que caben en la cola de trabajo.
  *
  * Existe porque la mesa no cierra formalmente los casos que quedan esperando al
- * solicitante o a la aseguradora: se quedan sin Estatus Final y en una cola FIFO
- * estricta ocuparían los primeros lugares para siempre. Al momento de medirlo
- * había 200 casos vivos, el más antiguo con 216 días. Los que quedan fuera de la
- * ventana no se ocultan: viven en la vista de rezago y se alcanzan con la
- * búsqueda.
+ * solicitante o a la aseguradora: se quedan sin Estatus Final y sin este corte
+ * la cola mezclaría cientos de casos viejos con el trabajo del día. Al momento
+ * de medirlo había 200 casos vivos, el más antiguo con 216 días. Los que quedan
+ * fuera de la ventana no se ocultan: viven en la vista de rezago y se alcanzan
+ * con la búsqueda.
  */
 export const VENTANA_COLA_DIAS = 30
 
 export type Vista = 'cola' | 'rezago' | 'todos'
 
+/**
+ * Testigo del "sin valor" en el filtro de estatus final. Existe porque el filtro
+ * viaja en la URL y una cadena vacía ahí no se distingue de "no filtrar".
+ */
+export const SIN_ESTATUS = 'sin'
+
+/**
+ * Selección por omisión del filtro de estatus final: solo los pendientes, los
+ * que todavía no tienen estatus.
+ *
+ * Ni los cerrados ni los que están en trámite ocupan la pantalla de entrada: que
+ * un caso diga "Tramite" significa que alguien ya lo tomó, así que estorba a
+ * quien abre la cola buscando lo que nadie ha visto. Se ven marcando su casilla
+ * en el filtro.
+ */
+export const ESTATUS_POR_OMISION = [SIN_ESTATUS]
+
 export type Filtros = {
   texto?: string
   tipoTramite?: string
-  estatus?: string
+  /** Valores de Estatus Final aceptados; SIN_ESTATUS representa la celda vacía. */
+  estatusFinal?: string[]
   responsable?: string
   agencia?: string
-  incluirCerrados?: boolean
   vista?: Vista
 }
 
@@ -33,14 +50,21 @@ function normalizar(texto: string): string {
     .trim()
 }
 
-/** El más antiguo primero: la cola es de trabajo, no un historial. */
-export function ordenarFifo(casos: Caso[]): Caso[] {
+/**
+ * El más reciente arriba, como pidió el área: lo que acaba de llegar es lo que
+ * la mesa quiere ver al abrir la pantalla. Los casos viejos que siguen abiertos
+ * se atienden desde la vista de rezago, que es donde se vuelven visibles.
+ *
+ * Un caso sin fecha legible se va al final: no se puede ordenar, pero tampoco
+ * debe desaparecer.
+ */
+export function ordenarRecientes(casos: Caso[]): Caso[] {
   return [...casos].sort((a, b) => {
     const ta = fechaDe(a)?.getTime()
     const tb = fechaDe(b)?.getTime()
     if (ta === undefined) return 1
     if (tb === undefined) return -1
-    return ta - tb
+    return tb - ta
   })
 }
 
@@ -57,18 +81,32 @@ function coincideTexto(caso: Caso, aguja: string): boolean {
   return campos.some((c) => c && normalizar(c).includes(aguja))
 }
 
+/** Clave con la que se compara el estatus final de un caso contra la selección. */
+function claveEstatus(estatus: string | null): string {
+  return normalizar(estatus ?? '') || SIN_ESTATUS
+}
+
 export function filtrar(casos: Caso[], filtros: Filtros, hoy: Date = new Date()): Caso[] {
   const aguja = filtros.texto ? normalizar(filtros.texto) : ''
+
+  // Una selección vacía se trata como si no hubiera filtro: desmarcar todas las
+  // casillas no debe dejar la pantalla en blanco sin explicación.
+  const seleccion = filtros.estatusFinal?.length ? filtros.estatusFinal : ESTATUS_POR_OMISION
+  const estatusAceptados = new Set(seleccion.map(claveEstatus))
 
   // Buscar o filtrar explícitamente es pedir "encuéntramelo donde sea": en ese
   // caso el corte por antigüedad estorba, así que se desactiva.
   const busquedaExplicita = Boolean(
-    aguja || filtros.tipoTramite || filtros.estatus || filtros.responsable || filtros.agencia,
+    aguja ||
+      filtros.tipoTramite ||
+      filtros.estatusFinal?.length ||
+      filtros.responsable ||
+      filtros.agencia,
   )
   const vista: Vista = busquedaExplicita ? 'todos' : (filtros.vista ?? 'todos')
 
   return casos.filter((caso) => {
-    if (!filtros.incluirCerrados && !estaVivo(caso)) return false
+    if (!estatusAceptados.has(claveEstatus(caso.estatusFinal))) return false
 
     if (vista !== 'todos') {
       const dias = diasDeEspera(caso, hoy)
@@ -80,7 +118,6 @@ export function filtrar(casos: Caso[], filtros: Filtros, hoy: Date = new Date())
     }
 
     if (filtros.tipoTramite && caso.tipoTramite !== filtros.tipoTramite) return false
-    if (filtros.estatus && caso.estatusFinal !== filtros.estatus) return false
     if (filtros.responsable && caso.quienAtendio !== filtros.responsable) return false
     if (filtros.agencia && caso.agencia !== filtros.agencia) return false
     if (aguja && !coincideTexto(caso, aguja)) return false

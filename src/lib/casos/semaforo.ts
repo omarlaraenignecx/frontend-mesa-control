@@ -1,15 +1,37 @@
 import { fechaDe, type Caso } from './caso'
 
-export type NivelSemaforo = 'verde' | 'ambar' | 'rojo'
+export type NivelSemaforo = 'verde' | 'ambar' | 'rojo' | 'desconocido'
 
 /**
- * Días de espera a partir de los cuales cambia el indicador. Sujetos a
- * validación con Keynor y Norma, que conocen el SLA real del área.
+ * Colores del semáforo según el Estatus Final que la mesa captura en la hoja
+ * (columna KA). No mide antigüedad: el área pidió que el punto diga en qué
+ * terminó el caso, no cuánto lleva esperando, que es lo que informa la columna
+ * de días.
+ *
+ * Las llaves están normalizadas —sin acentos, en minúsculas— porque la
+ * validación de la hoja dice "Tramite" pero el histórico tiene filas con
+ * "Trámite" capturadas antes de que esa validación existiera.
  */
-export const UMBRALES_SEMAFORO = { ambar: 3, rojo: 6 }
+const POR_ESTATUS: Record<string, NivelSemaforo> = {
+  concluida: 'verde',
+  improcedente: 'rojo',
+  tramite: 'ambar',
+}
 
 const MS_POR_DIA = 24 * 60 * 60 * 1000
 
+function normalizar(texto: string): string {
+  return texto
+    .normalize('NFD')
+    .replace(/\p{Mn}/gu, '')
+    .toLowerCase()
+    .trim()
+}
+
+/**
+ * Días naturales desde que llegó la petición. Alimenta la columna de espera y el
+ * corte de la ventana de la cola; ya no decide el color del semáforo.
+ */
 export function diasDeEspera(caso: Pick<Caso, 'marcaTemporalIso'>, hoy: Date): number | null {
   const recibido = fechaDe(caso)
   if (!recibido) return null
@@ -18,10 +40,14 @@ export function diasDeEspera(caso: Pick<Caso, 'marcaTemporalIso'>, hoy: Date): n
   return Math.max(0, Math.round((hasta.getTime() - desde.getTime()) / MS_POR_DIA))
 }
 
-export function semaforoDe(caso: Pick<Caso, 'marcaTemporalIso'>, hoy: Date): NivelSemaforo | null {
-  const dias = diasDeEspera(caso, hoy)
-  if (dias === null) return null
-  if (dias >= UMBRALES_SEMAFORO.rojo) return 'rojo'
-  if (dias >= UMBRALES_SEMAFORO.ambar) return 'ambar'
-  return 'verde'
+/**
+ * Devuelve null cuando la hoja no trae estatus: la interfaz dibuja el círculo
+ * hueco, que se lee como "todavía nadie lo resolvió". Un valor fuera de la
+ * validación se pinta gris en lugar de reventar, porque el histórico tiene 570
+ * filas con "N/A" y algún texto suelto.
+ */
+export function semaforoDe(caso: Pick<Caso, 'estatusFinal'>): NivelSemaforo | null {
+  const clave = normalizar(caso.estatusFinal ?? '')
+  if (!clave) return null
+  return POR_ESTATUS[clave] ?? 'desconocido'
 }

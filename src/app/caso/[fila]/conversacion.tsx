@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { EstadoHilo } from '@/lib/casos/hilo'
+import { resumenDeCadena } from '@/lib/correo/cadena'
 import { LIMITE_GMAIL_BYTES } from '@/lib/correo/mime'
 import { enviarMensaje, refrescarConversacion, type ResultadoEnvio } from './acciones-correo'
+import { ReenviarCadena } from './reenviar-cadena'
 
 type Props = {
   fila: number
@@ -18,7 +20,6 @@ type Props = {
   destinatario: string | null
   copiaSugerida: string | null
   casoCerrado: boolean
-  bloqueado: boolean
 }
 
 const enMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(1)
@@ -40,7 +41,6 @@ export function Conversacion({
   destinatario,
   copiaSugerida,
   casoCerrado,
-  bloqueado,
 }: Props) {
   const hayHilo = estado.estado === 'con-conversacion'
   const [cuerpo, setCuerpo] = useState(hayHilo ? '' : plantilla)
@@ -168,110 +168,109 @@ export function Conversacion({
         </ol>
       )}
 
-      {bloqueado ? (
-        <p className="rounded-xl border border-dashed bg-secondary/30 p-4 text-base text-muted-foreground">
-          Otra persona tiene el caso abierto; no puedes escribir hasta que lo libere.
-        </p>
-      ) : (
-        <div className="space-y-3 rounded-xl border bg-card p-4">
-          <div className="space-y-1 text-sm text-muted-foreground">
+      <div className="space-y-3 rounded-xl border bg-card p-4">
+        <div className="space-y-1 text-sm text-muted-foreground">
+          <p>
+            <span className="font-medium">Para:</span> {destinatario ?? '(sin correo)'}
+          </p>
+          {copiaSugerida && (
             <p>
-              <span className="font-medium">Para:</span> {destinatario ?? '(sin correo)'}
+              <span className="font-medium">Copia:</span> {copiaSugerida}
             </p>
-            {copiaSugerida && (
-              <p>
-                <span className="font-medium">Copia:</span> {copiaSugerida}
-              </p>
-            )}
-            <p>
-              <span className="font-medium">Asunto:</span> Seguimiento de Caso | Gplus Seguros |{' '}
-              {folio}
-            </p>
-          </div>
+          )}
+          <p>
+            <span className="font-medium">Asunto:</span> Seguimiento de Caso | Gplus Seguros |{' '}
+            {folio}
+          </p>
+        </div>
 
-          <textarea
-            value={cuerpo}
-            onChange={(e) => {
-              setCuerpo(e.target.value)
-              setResultado(null)
-            }}
-            rows={hayHilo ? 4 : 9}
-            className="w-full rounded-lg border border-input bg-background p-3 text-base leading-relaxed outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30"
-            placeholder={hayHilo ? 'Escribe tu respuesta…' : 'Mensaje de apertura del caso…'}
-          />
+        <textarea
+          value={cuerpo}
+          onChange={(e) => {
+            setCuerpo(e.target.value)
+            setResultado(null)
+          }}
+          rows={hayHilo ? 4 : 9}
+          className="w-full rounded-lg border border-input bg-background p-3 text-base leading-relaxed outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30"
+          placeholder={hayHilo ? 'Escribe tu respuesta…' : 'Mensaje de apertura del caso…'}
+        />
 
-          <Input
-            value={copias}
-            onChange={(e) => setCopias(e.target.value)}
-            placeholder="Agregar copias (opcional, separadas por coma)"
-            className="h-11 text-base"
-          />
+        <Input
+          value={copias}
+          onChange={(e) => setCopias(e.target.value)}
+          placeholder="Agregar copias (opcional, separadas por coma)"
+          className="h-11 text-base"
+        />
 
-          {archivos.length > 0 && (
-            <ul className="space-y-1">
-              {archivos.map((a, i) => (
-                <li
-                  key={`${a.name}-${i}`}
-                  className="flex items-center gap-2 rounded-lg bg-secondary/60 px-2.5 py-1.5 text-sm"
+        {archivos.length > 0 && (
+          <ul className="space-y-1">
+            {archivos.map((a, i) => (
+              <li
+                key={`${a.name}-${i}`}
+                className="flex items-center gap-2 rounded-lg bg-secondary/60 px-2.5 py-1.5 text-sm"
+              >
+                <Paperclip className="size-3.5 shrink-0" />
+                <span className="truncate">{a.name}</span>
+                <span className="text-muted-foreground">{enMb(a.size)} MB</span>
+                <button
+                  type="button"
+                  className="ml-auto text-muted-foreground hover:text-foreground"
+                  onClick={() => setArchivos((prev) => prev.filter((_, j) => j !== i))}
+                  aria-label={`Quitar ${a.name}`}
                 >
-                  <Paperclip className="size-3.5 shrink-0" />
-                  <span className="truncate">{a.name}</span>
-                  <span className="text-muted-foreground">{enMb(a.size)} MB</span>
-                  <button
-                    type="button"
-                    className="ml-auto text-muted-foreground hover:text-foreground"
-                    onClick={() => setArchivos((prev) => prev.filter((_, j) => j !== i))}
-                    aria-label={`Quitar ${a.name}`}
-                  >
-                    <X className="size-4" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+                  <X className="size-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
 
-          {excede && (
-            <p className="text-base text-red-600">
-              Los archivos pesan {enMb(pesoEstimado)} MB al enviarse y Gmail acepta hasta{' '}
-              {enMb(LIMITE_GMAIL_BYTES)} MB. Quita o comprime alguno.
-            </p>
-          )}
+        {excede && (
+          <p className="text-base text-red-600">
+            Los archivos pesan {enMb(pesoEstimado)} MB al enviarse y Gmail acepta hasta{' '}
+            {enMb(LIMITE_GMAIL_BYTES)} MB. Quita o comprime alguno.
+          </p>
+        )}
 
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              ref={inputArchivos}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={(e) => setArchivos([...archivos, ...Array.from(e.target.files ?? [])])}
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={inputArchivos}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => setArchivos([...archivos, ...Array.from(e.target.files ?? [])])}
+          />
+          <Button variant="outline" onClick={() => inputArchivos.current?.click()}>
+            <Paperclip className="mr-1.5 size-4" />
+            Adjuntar
+          </Button>
+          <Button
+            className="text-base"
+            disabled={pendiente || excede || !cuerpo.trim()}
+            onClick={enviar}
+          >
+            <Send className="mr-1.5 size-4" />
+            {pendiente ? 'Enviando…' : hayHilo ? 'Responder' : 'Abrir conversación'}
+          </Button>
+          {hayHilo && (
+            <ReenviarCadena
+              fila={fila}
+              folio={folio}
+              resumen={resumenDeCadena(estado.hilo)}
             />
-            <Button variant="outline" onClick={() => inputArchivos.current?.click()}>
-              <Paperclip className="mr-1.5 size-4" />
-              Adjuntar
-            </Button>
-            <Button
-              className="text-base"
-              disabled={pendiente || excede || !cuerpo.trim()}
-              onClick={enviar}
-            >
-              <Send className="mr-1.5 size-4" />
-              {pendiente ? 'Enviando…' : hayHilo ? 'Responder' : 'Abrir conversación'}
-            </Button>
-            {!hayHilo && (
-              <Badge variant="outline" className="text-sm font-normal">
-                Sella la fecha de respuesta en la hoja
-              </Badge>
-            )}
-          </div>
-
-          {resultado?.ok && (
-            <p className="text-base font-medium text-emerald-600">Correo enviado.</p>
           )}
-          {resultado && !resultado.ok && (
-            <p className="text-base text-red-600">{resultado.error}</p>
+          {!hayHilo && (
+            <Badge variant="outline" className="text-sm font-normal">
+              Sella la fecha de respuesta en la hoja
+            </Badge>
           )}
         </div>
-      )}
+
+        {resultado?.ok && (
+          <p className="text-base font-medium text-emerald-600">Correo enviado.</p>
+        )}
+        {resultado && !resultado.ok && <p className="text-base text-red-600">{resultado.error}</p>}
+      </div>
     </div>
   )
 }
