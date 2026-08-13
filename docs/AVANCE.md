@@ -8,7 +8,7 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Diseño técnico | `docs/superpowers/specs/2026-08-05-frontend-mesa-control-design.md` |
 | Repositorio | https://github.com/omarlaraenignecx/frontend-mesa-control |
 | Producción | https://frontend-mesa-control.vercel.app |
-| Última actualización | 11 de agosto de 2026 (Etapa 3 cerrada) |
+| Última actualización | 13 de agosto de 2026 (ajustes del cliente en producción; hoja productiva inspeccionada) |
 
 ## Estado por etapas
 
@@ -18,9 +18,10 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | 1 · Lectura del Sheet y cola | **Completa y en producción** | `docs/superpowers/plans/2026-08-06-etapa-1-lectura-y-cola.md` |
 | 2 · Vista de caso y escritura | **Completa y en producción** | `docs/superpowers/plans/2026-08-10-etapa-2-caso-y-escritura.md` |
 | 3 · Conversación por correo | **Completa y en producción** | `docs/superpowers/plans/2026-08-11-etapa-3-conversacion-por-correo.md` |
-| 4 · Producción y cierre | Pendiente | — |
+| Ajustes del cliente | **Completa y en producción** | `docs/superpowers/plans/2026-08-11-ajustes-del-cliente.md` |
+| 4 · Producción y cierre | En preparación: hoja productiva inspeccionada | — |
 
-Suite: **278 pruebas** en 25 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
+Suite: **310 pruebas** en 27 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
 
 ## Infraestructura
 
@@ -128,30 +129,64 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 11. **Tailwind 4 no pone `cursor: pointer` en los botones.** Su preflight deja el valor del navegador, así que hay una regla en `@layer base` de `globals.css` que lo declara para todo lo clicable, con una prueba que lee el CSS (`estilos-base.test.ts`).
 12. **La búsqueda de Gmail por asunto encuentra subcadenas.** Por eso el asunto del reenvío evita a propósito la frase `Seguimiento de Caso | Gplus Seguros`: si la llevara, el hilo del reenvío podría devolverse como el hilo del caso cuando se pierda el vínculo guardado en la base.
 13. **No usar `prettier` sin configuración en este repo.** Sus valores por omisión (comillas dobles, punto y coma) contradicen el estilo del código y reescriben archivos completos.
+14. **El servidor corre en UTC y la hoja vive en UTC−6.** Las dos hojas declaran `locale=es_MX` y `timeZone=Etc/GMT+6` (sin horario de verano, que México eliminó en 2022), pero Vercel ejecuta en UTC y `new Date()` toma la hora local del proceso. Cualquier fecha que se escriba en la hoja o se muestre a la mesa tiene que convertirse a UTC−6 explícitamente.
+15. **`valueInputOption=RAW` guarda texto, no fechas.** Las fechas del histórico de `KB` y `KD` son números de serie con formato de fecha; lo que escribe RAW queda como cadena, que no se ordena ni entra en una fórmula. Solo los dos campos de fecha se escriben con `USER_ENTERED`, para que Sheets las interprete; el resto sigue con RAW a propósito, porque `USER_ENTERED` convertiría en fórmula unas Observaciones que empiecen con `=`.
 
 ## Hallazgos de operación (para conversar con Norma y Keynor)
 
 1. **140 de 200 casos abiertos son rezago**, el más antiguo con **216 días** (folio 5787, del 6 de enero). La mesa no cierra formalmente los casos que quedan esperando al solicitante o a la aseguradora. Es lo que motivó el corte de 30 días.
-2. **Aparece "Ernesto"** como responsable histórico, y no está en el catálogo actual de `KE` ni en la allowlist. Medido el 11/8/2026: **475 de las filas de 2026** lo tienen como responsable, así que no es residuo antiguo. Conviene preguntar quién es y si debe volver al catálogo.
+2. **Aparece "Ernesto"** como responsable histórico, y no está en el catálogo actual de `KE` ni en la allowlist. Medido sobre la **hoja productiva** el 13/8/2026: **475 de los 1,466 casos de 2026**, casi un tercio, con un valor que la propia validación de `KE` no permite. El reparto completo del año es Keynor 767, Ernesto 475, Paty 175, Norma 30, José Juan 9 y 10 sin valor. Conviene preguntar quién es y si debe volver al catálogo.
 3. **El Estatus Final tiene basura histórica.** La validación de `KA` permite solo `Concluida`, `Improcedente` y `Tramite`, pero el histórico completo trae **570 filas con `N/A`**, una con "Información incompleta" y una con "Trámite de aplicación de pago (ingresos y egresos)", capturadas antes de que existiera la validación. En 2026 no hay ninguna, así que no afecta a la operación diaria; el semáforo las pinta gris en lugar de reventar.
 4. **Un caso puede llegar sin folio.** Ya se observó en producción: la fila 7180 y otra que entró el 10 de agosto.
 5. **112 columnas sin clasificar** en 34 encabezados: número de póliza, número de siniestro, teléfono del cliente, tipo de endoso, versión de la unidad y similares. Son datos legítimos que varían por trámite y se mostrarán como campos del caso; no requieren entrar al modelo. Posible mejora a consultar: permitir búsqueda por número de póliza, que hoy no está en RF-02.
+6. **La mesa dejó de llenar `KB` y `KD` el 20 de marzo de 2026** (últimas filas con dato: 6383 y 6363). Unos 837 casos de 2026 no tienen fecha de respuesta ni de atención final. La herramienta las va a sellar de aquí en adelante, así que a partir del cambio habrá dato, pero no hay con qué comparar los meses anteriores. Lo mismo pasa con `KC`, cuya fórmula `=KB−A` tampoco sigue después de la fila 6383.
+7. **El catálogo de `KG` cambia según la banda de filas.** Los datos terminan en la fila 7220; la banda de 10 aseguradoras alcanza hasta la 7221 y de la 7222 en adelante hay otra de 8, que pierde `TODAS LAS ASEGURADORAS`, `GPLUS ` (con espacio final) y `LA LATINO`, y agrega `N/A`. Es decir que de la segunda petición nueva en adelante la mesa verá una lista distinta a la del histórico. La app lee el catálogo de la fila del caso, así que refleja fielmente esa inconsistencia; corregirla es editar la validación de la hoja y le toca al área decidir cuál de las dos listas es la correcta.
+8. **Puede haber gente de la mesa en el dominio `garantiplus.mx`.** La lista de editores de la protección de `JY` en la hoja productiva incluye `patricia.ramirez@garantiplus.mx`, `israel.escutia@garantiplus.mx` y `mario.luna@garantiplus.mx`, además de `angeles.martinez@` y `jose.mendoza@gplusseguros.mx`. La allowlist tiene a Paty como `patricia.ramirez@gplusseguros.mx`. Si su cuenta real es la de `garantiplus.mx` **no podrá entrar**, porque la pantalla de consentimiento es Interna al dominio `gplusseguros.mx`; y `jose.mendoza@` no coincide con `juan.palafox@`, que es el José Juan que sembramos. Hay que confirmar las cuatro cuentas antes de la jornada real.
 
 ## Hallazgo adicional (Etapa 2)
 
 **Las fórmulas de `KL`–`KU` solo están arrastradas hasta la fila 3126**, que corresponde a septiembre de 2024. Estatus Real, Días de Espera, Total Días, SLA, Año y Mes Recibe están vacíos para todos los casos de 2025 y 2026, y en la hoja productiva aparecen como `#REF!`. Explica por qué el semáforo tuvo que calcularse en la aplicación. Si el reporte semanal de Keynor usa esas columnas, hoy no tiene datos de los últimos dos años. Arreglarlo está fuera del alcance de la herramienta —son fórmulas de la hoja— pero conviene plantearlo al área.
 
+## Inspección de la hoja productiva (13 de agosto de 2026)
+
+Hecha con la cuenta de servicio y alcance `spreadsheets.readonly` para que ningún error de un script de inspección pudiera escribir. La única lectura con la credencial de la mesa fue la de protecciones, explicada abajo, y también solo con GET.
+
+**Equivalente a la copia en todo lo que la app necesita:**
+
+| Qué | Resultado |
+| --- | --- |
+| Pestaña y tamaño | `Respuestas de formulario 1`, 307 columnas, 7,320 filas de cuadrícula (la copia tiene 7,280) |
+| Encabezados de la fila 1 | **Cero diferencias** en las 307 columnas; 297 con texto. El mapeador resuelve las mismas columnas |
+| Catálogos de `JZ`, `KA`, `KE`, `KH`, `KI` | Idénticos a la copia en la zona de 2026 |
+| `KL`–`KU` | Fórmulas arrastradas solo hasta la fila 3126, con `#REF!` en `KO` y `KS`. Confirma el hallazgo de la Etapa 2 sobre la hoja real |
+| Protecciones | Misma forma: `A` y `B`–`JX` cerradas para la mesa, `JZ`–`KJ` libres |
+
+**`mesadecontrol@` sí puede escribir `JY`.** La API oculta la lista de editores de una protección a quien no es editor de ella, así que desde la cuenta de servicio la respuesta era indistinguible de "nadie puede". Se resolvió preguntando con la credencial de la mesa: la lista aparece visible, y ese hecho es la prueba. La captura de folio faltante funcionará, lo cual importa de inmediato porque **los tres casos más recientes (filas 7218–7220) llegaron sin folio**.
+
+**Datos de 2026 en la hoja real:** 1,466 casos en las filas 5755–7220, de 7,218 peticiones en total (2023: 1,277 · 2024: 2,511 · 2025: 1,963; dos filas con marca temporal ilegible, ninguna de 2026). Estatus Final: 1,158 Concluida, 206 Tramite, 94 Improcedente y **8 sin valor**.
+
+**Lo que mostrará la cola al cambiar de hoja:** 8 casos sin estatus final, de los cuales **6 caen en la ventana de 30 días** y 2 van a Rezago. Los 206 de Tramite quedan detrás del filtro. Conviene anticipárselo al área para que una cola de 6 casos no se lea como una falla.
+
 ## Caso de prueba
 
 Fila **7181** de la copia, folio **9001**, con `omar.lara@enginecx.com` como solicitante. Es un caso simulado creado a mano para probar el correo; se puede seguir usando o limpiar sus columnas de seguimiento cuando estorbe.
 
+## Defecto abierto: las fechas que sella la app
+
+Detectado en la inspección del 13 de agosto de 2026 y **hay que corregirlo antes de apuntar a la hoja productiva**, porque escribe datos incorrectos en el registro real del cliente. Son dos problemas en la misma línea de código, `formatearFechaHoja(new Date())`:
+
+1. **Seis horas de desfase.** No hay manejo de zona horaria en el código y Vercel corre en UTC. Comprobado con evidencia: el evento `conversacion_iniciada` de la fila 7182 quedó en la bitácora a las 16:07 de la Ciudad de México y el sello de `KB` en la hoja dice `11/8/2026 22:07:11`. Afecta a `KB`, a `KD` y al prefijo de fecha de las Observaciones, que después de las 18:00 locales escribe además el día siguiente.
+2. **Se guardan como texto.** Con `valueInputOption=RAW` el sello queda como cadena, mientras el histórico de esas columnas son fechas de verdad. Hoy no rompe nada porque la fórmula de `KC` no llega a las filas nuevas, pero el valor no sirve para ordenar ni calcular.
+
+Decidido con el área el 13/8/2026: **`USER_ENTERED` solo para `KB` y `KD`**, para que Sheets las interprete como fecha, y el resto de las columnas se sigue escribiendo con RAW a propósito (ver restricción 15). Más la conversión a UTC−6 en un solo lugar.
+
 ## Pendientes de verificación
 
-- Que Keynor, Paty, Norma y José Juan **entren en producción**. Si algún correo no coincide con lo sembrado, se corrige con `pnpm db:seed`.
+- Que Keynor, Paty, Norma y José Juan **entren en producción**, con la duda del dominio `garantiplus.mx` del hallazgo 8 resuelta antes. Si algún correo no coincide con lo sembrado, se corrige con `pnpm db:seed`.
 - Conexión de GitHub en la cuenta de Vercel, si se quieren previews automáticos por push (hoy el despliegue es por CLI).
 - **Sellado de `KD` en vivo**: cerrar un caso desde la interfaz y comprobar que la fecha de atención final se llena sola y el caso sale de la cola. La lógica tiene 9 pruebas unitarias, pero no se ha ejercido desde la aplicación.
 - **La ventana de 30 días del rezago** la definió el desarrollo; falta validarla con quien conoce el SLA. (Los umbrales de 3 y 6 días desaparecieron con el cambio de semáforo.)
-- **Reenvío de la conversación en vivo**: enviar una cadena real con adjuntos y comprobar que llega completa y que la respuesta del tercero **no** aparece en el chat del caso.
+- **Reenvío de la conversación con adjuntos**: la bitácora registra un `cadena_reenviada` del 12/8/2026 a la 1:23 pm sobre la fila 7182, así que el reenvío ya se ejerció en vivo; falta confirmar que fue con archivos adjuntos y que la respuesta del tercero **no** aparece en el chat del caso.
 - **Botón "Atender yo este caso"** con una cuenta de operador. Con `mesadecontrol@` no funciona a propósito: ese usuario no tiene nombre en `KE` y la app avisa en lugar de inventar un valor para la columna.
 - **Los textos de las 14 plantillas** siguen siendo borradores con un `[Escribe aquí…]`. Keynor los corrige desde Ajustes; el texto real lo conoce la mesa.
 - **Respuestas fuera del hilo**: si una agencia contesta con un asunto distinto, ese mensaje no llega al caso. Riesgo ya reconocido en el PRD; se decidirá con Keynor si vale la pena atacarlo cuando se vea su frecuencia real.
