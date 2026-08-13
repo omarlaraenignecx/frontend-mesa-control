@@ -228,6 +228,7 @@ export default async function PaginaDeLaFila({
               <TableHead className="text-base">Recibido</TableHead>
               <TableHead className="text-base">Trámite</TableHead>
               <TableHead className="text-base">Solicitante</TableHead>
+              <TableHead className="text-base">Correo</TableHead>
               <TableHead className="text-base">Agencia</TableHead>
               <TableHead className="text-right text-base">Espera</TableHead>
             </TableRow>
@@ -266,6 +267,11 @@ export default async function PaginaDeLaFila({
                   </TableCell>
                   <TableCell>{caso.tipoTramite ?? '—'}</TableCell>
                   <TableCell>{caso.nombreSolicitante ?? '—'}</TableCell>
+                  {/* break-all: un correo largo no tiene espacios donde cortar y
+                      sin esto estira la tabla hasta sacar la columna de espera. */}
+                  <TableCell className="break-all text-muted-foreground">
+                    {caso.correoSolicitante ?? '—'}
+                  </TableCell>
                   <TableCell>{caso.agencia ?? '—'}</TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
                     {dias === null ? '—' : `${dias} d`}
@@ -275,7 +281,7 @@ export default async function PaginaDeLaFila({
             })}
             {filtrados.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="py-12 text-center text-base text-muted-foreground">
+                <TableCell colSpan={10} className="py-12 text-center text-base text-muted-foreground">
                   {hayBusqueda
                     ? 'Ningún caso coincide con lo que buscas.'
                     : 'No hay casos en esta vista.'}
