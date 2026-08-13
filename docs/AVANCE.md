@@ -46,7 +46,7 @@ El push a GitHub usa un credential helper local que lee el token de `~/.gh-token
 | `keynor.rivas@gplusseguros.mx` | Keynor | operador |
 | `patricia.ramirez@gplusseguros.mx` | Paty | operador |
 | `norma.zacarias@gplusseguros.mx` | Norma | operador |
-| `juan.palafox@gplusseguros.mx` | José Juan | operador |
+| `jose.mendoza@gplusseguros.mx` | José Juan | operador |
 | `mesadecontrol@gplusseguros.mx` | — | admin |
 
 ## Anatomía de la hoja (verificado el 5 de agosto de 2026)
@@ -146,7 +146,7 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 5. **112 columnas sin clasificar** en 34 encabezados: número de póliza, número de siniestro, teléfono del cliente, tipo de endoso, versión de la unidad y similares. Son datos legítimos que varían por trámite y se mostrarán como campos del caso; no requieren entrar al modelo. Posible mejora a consultar: permitir búsqueda por número de póliza, que hoy no está en RF-02.
 6. **La mesa dejó de llenar `KB` y `KD` el 20 de marzo de 2026** (últimas filas con dato: 6383 y 6363). Unos 837 casos de 2026 no tienen fecha de respuesta ni de atención final. La herramienta las va a sellar de aquí en adelante, así que a partir del cambio habrá dato, pero no hay con qué comparar los meses anteriores. Lo mismo pasa con `KC`, cuya fórmula `=KB−A` tampoco sigue después de la fila 6383.
 7. **El catálogo de `KG` cambia según la banda de filas.** Los datos terminan en la fila 7220; la banda de 10 aseguradoras alcanza hasta la 7221 y de la 7222 en adelante hay otra de 8, que pierde `TODAS LAS ASEGURADORAS`, `GPLUS ` (con espacio final) y `LA LATINO`, y agrega `N/A`. Es decir que de la segunda petición nueva en adelante la mesa verá una lista distinta a la del histórico. La app lee el catálogo de la fila del caso, así que refleja fielmente esa inconsistencia; corregirla es editar la validación de la hoja y le toca al área decidir cuál de las dos listas es la correcta.
-8. **Puede haber gente de la mesa en el dominio `garantiplus.mx`.** La lista de editores de la protección de `JY` en la hoja productiva incluye `patricia.ramirez@garantiplus.mx`, `israel.escutia@garantiplus.mx` y `mario.luna@garantiplus.mx`, además de `angeles.martinez@` y `jose.mendoza@gplusseguros.mx`. La allowlist tiene a Paty como `patricia.ramirez@gplusseguros.mx`. Si su cuenta real es la de `garantiplus.mx` **no podrá entrar**, porque la pantalla de consentimiento es Interna al dominio `gplusseguros.mx`; y `jose.mendoza@` no coincide con `juan.palafox@`, que es el José Juan que sembramos. Hay que confirmar las cuatro cuentas antes de la jornada real.
+8. **Puede haber gente de la mesa en el dominio `garantiplus.mx`.** La lista de editores de la protección de `JY` en la hoja productiva incluye `patricia.ramirez@garantiplus.mx`, `israel.escutia@garantiplus.mx` y `mario.luna@garantiplus.mx`, además de `angeles.martinez@` y `jose.mendoza@gplusseguros.mx`. La allowlist tiene a Paty como `patricia.ramirez@gplusseguros.mx`. Si su cuenta real es la de `garantiplus.mx` **no podrá entrar**, porque la pantalla de consentimiento es Interna al dominio `gplusseguros.mx`. **Resuelto en parte el 13 de agosto de 2026:** el área confirmó que José Juan es `jose.mendoza@gplusseguros.mx`; se corrigió la semilla y se borró de la tabla el `juan.palafox@` que habíamos inferido del catálogo de `KE` —no tenía bitácora ni eventos, así que no dejó huérfanos—. Queda por confirmar la cuenta de Paty.
 
 ## Hallazgo adicional (Etapa 2)
 
@@ -187,7 +187,7 @@ Decidido con el área el 13/8/2026: **`USER_ENTERED` solo para `KB` y `KD`**, pa
 
 ## Pendientes de verificación
 
-- Que Keynor, Paty, Norma y José Juan **entren en producción**, con la duda del dominio `garantiplus.mx` del hallazgo 8 resuelta antes. Si algún correo no coincide con lo sembrado, se corrige con `pnpm db:seed`.
+- Que Keynor, Paty, Norma y José Juan **entren en producción**. La cuenta de José Juan ya quedó confirmada; falta la de Paty, por la duda del dominio `garantiplus.mx` del hallazgo 8. Si un correo no coincide con lo sembrado se corrige en `src/db/seed-usuarios.ts` y se corre `pnpm db:seed`; ojo, el *upsert* es por correo, así que cambiar una dirección **agrega** la nueva y deja la anterior activa: hay que borrar la vieja a mano.
 - Conexión de GitHub en la cuenta de Vercel, si se quieren previews automáticos por push (hoy el despliegue es por CLI).
 - **Sellado de `KD` en vivo**: cerrar un caso desde la interfaz y comprobar que la fecha de atención final se llena sola y el caso sale de la fila. La lógica tiene 9 pruebas unitarias, pero no se ha ejercido desde la aplicación.
 - **La ventana de 30 días del rezago** la definió el desarrollo; falta validarla con quien conoce el SLA. (Los umbrales de 3 y 6 días desaparecieron con el cambio de semáforo.)
