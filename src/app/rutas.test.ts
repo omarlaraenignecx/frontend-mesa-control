@@ -55,3 +55,18 @@ describe('la navegación interna es de cliente', () => {
     expect(ajustes.texto).toContain('href="/api/mesa/autorizar"')
   })
 })
+
+describe('cada vista lenta tiene su pantalla de carga', () => {
+  // Son las dos navegaciones que cambian de ruta y leen la hoja de cálculo.
+  it('la fila y el caso declaran loading.tsx', () => {
+    const rutas = ARCHIVOS.map((a) => a.ruta)
+    expect(rutas).toContain('src/app/fila/loading.tsx')
+    expect(rutas).toContain('src/app/caso/[fila]/loading.tsx')
+  })
+
+  it('el indicador de clic vive dentro de un Link y es de cliente', () => {
+    const punto = ARCHIVOS.find((a) => a.ruta === 'src/components/punto-de-carga.tsx')!
+    expect(punto.texto).toContain("'use client'")
+    expect(punto.texto).toContain('useLinkStatus')
+  })
+})

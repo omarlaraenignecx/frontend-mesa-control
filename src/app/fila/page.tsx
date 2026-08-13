@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { PuntoDeCarga } from '@/components/punto-de-carga'
 import { Inbox, Search, Settings, Timer } from 'lucide-react'
 import { updateTag } from 'next/cache'
 import { PuntoSemaforo } from '@/components/semaforo'
@@ -190,6 +191,7 @@ export default async function PaginaDeLaFila({
                   >
                     {conteos[v.clave]}
                   </span>
+                  <PuntoDeCarga />
                 </Link>
               )
             })}
@@ -248,7 +250,7 @@ export default async function PaginaDeLaFila({
                     <Link
                       href={`/caso/${caso.fila}`}
                       prefetch={false}
-                      className="text-primary underline decoration-primary/30 underline-offset-4 transition-colors hover:decoration-primary"
+                      className="inline-flex items-center gap-1.5 text-primary underline decoration-primary/30 underline-offset-4 transition-colors hover:decoration-primary"
                       title="Abrir el caso"
                     >
                       {caso.folio ?? (
@@ -256,6 +258,7 @@ export default async function PaginaDeLaFila({
                           sin folio
                         </Badge>
                       )}
+                      <PuntoDeCarga />
                     </Link>
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
