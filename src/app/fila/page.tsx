@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Inbox, Search, Settings, Timer } from 'lucide-react'
 import { updateTag } from 'next/cache'
 import { PuntoSemaforo } from '@/components/semaforo'
@@ -89,9 +90,9 @@ export default async function PaginaDeLaFila({
             {e instanceof Error ? e.message : 'Error desconocido'}
           </p>
           {necesitaAutorizar && usuario.rol === 'admin' && (
-            <a href="/ajustes" className="inline-block underline">
+            <Link href="/ajustes" className="inline-block underline">
               Ir a Ajustes para autorizar el acceso a Google
-            </a>
+            </Link>
           )}
           {necesitaAutorizar && usuario.rol !== 'admin' && (
             <p className="text-muted-foreground">
@@ -152,13 +153,13 @@ export default async function PaginaDeLaFila({
                 {usuario.nombreEnHoja ?? usuario.correo}
               </span>
               {usuario.rol === 'admin' && (
-                <a
+                <Link
                   href="/ajustes"
                   className="inline-flex items-center gap-1.5 text-base text-muted-foreground transition-colors hover:text-foreground"
                 >
                   <Settings className="size-4" />
                   Ajustes
-                </a>
+                </Link>
               )}
               <BotonActualizar accion={actualizar} />
             </div>
@@ -169,9 +170,10 @@ export default async function PaginaDeLaFila({
               const activa = v.clave === vista && !hayBusqueda
               const Icono = ICONO_VISTA[v.clave]
               return (
-                <a
+                <Link
                   key={v.clave}
                   href={`/fila?vista=${v.clave}`}
+                  prefetch={false}
                   title={v.ayuda}
                   className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-base transition-colors ${
                     activa
@@ -188,7 +190,7 @@ export default async function PaginaDeLaFila({
                   >
                     {conteos[v.clave]}
                   </span>
-                </a>
+                </Link>
               )
             })}
           </nav>
@@ -243,8 +245,9 @@ export default async function PaginaDeLaFila({
                     {caso.quienAtendio?.trim() || <Pendiente />}
                   </TableCell>
                   <TableCell className="font-medium">
-                    <a
+                    <Link
                       href={`/caso/${caso.fila}`}
+                      prefetch={false}
                       className="text-primary underline decoration-primary/30 underline-offset-4 transition-colors hover:decoration-primary"
                       title="Abrir el caso"
                     >
@@ -253,7 +256,7 @@ export default async function PaginaDeLaFila({
                           sin folio
                         </Badge>
                       )}
-                    </a>
+                    </Link>
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
                     {fechaCorta(caso.marcaTemporalIso, caso.marcaTemporalTexto)}

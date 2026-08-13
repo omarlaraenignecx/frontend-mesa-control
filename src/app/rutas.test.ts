@@ -33,3 +33,25 @@ describe('la bandeja de casos vive en /fila', () => {
     expect(config).toContain('permanent: true')
   })
 })
+
+describe('la navegación interna es de cliente', () => {
+  // Un <a href="/…"> recarga el documento completo: vuelve a pedir el HTML,
+  // revalida la sesión y rerenderiza todo. Era la causa de la lentitud que
+  // reportó el área el 13/8/2026, y además impide cualquier indicador de carga,
+  // porque durante la recarga la página anterior queda congelada.
+  const ANCLA_INTERNA = /<a[\s\S]{0,200}?href=["'`]\/(?!api\/)/
+
+  it('ninguna página navega dentro de la app con <a>', () => {
+    const culpables = ARCHIVOS.filter(
+      (a) => a.ruta.startsWith('src/app/') && ANCLA_INTERNA.test(a.texto),
+    ).map((a) => a.ruta)
+    expect(culpables).toEqual([])
+  })
+
+  it('las rutas de API sí se visitan con <a>, porque redirigen fuera de la app', () => {
+    // /api/mesa/autorizar manda a la pantalla de consentimiento de Google: un
+    // Link de cliente no puede seguir esa redirección.
+    const ajustes = ARCHIVOS.find((a) => a.ruta === 'src/app/ajustes/page.tsx')!
+    expect(ajustes.texto).toContain('href="/api/mesa/autorizar"')
+  })
+})

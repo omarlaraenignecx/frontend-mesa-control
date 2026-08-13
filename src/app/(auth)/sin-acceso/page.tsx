@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 const MENSAJES: Record<string, string> = {
   'dominio-ajeno': 'Esa cuenta no pertenece al dominio gplusseguros.mx.',
   'fuera-de-allowlist':
@@ -22,9 +24,9 @@ export default async function SinAcceso({
         <p className="text-base text-muted-foreground">
           Si crees que deberías tener acceso, solicítalo al administrador de la Mesa de Control.
         </p>
-        <a href="/login" className="inline-block text-base text-primary underline underline-offset-4">
+        <Link href="/login" className="inline-block text-base text-primary underline underline-offset-4">
           Intentar con otra cuenta
-        </a>
+        </Link>
       </div>
     </main>
   )

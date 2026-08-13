@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import {
   ArrowLeft,
   ClipboardList,
@@ -45,9 +46,9 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
     return (
       <main className="mx-auto max-w-2xl space-y-3 p-8">
         <h1 className="text-2xl font-semibold">Caso no válido</h1>
-        <a href="/fila" className="text-base text-primary underline">
+        <Link href="/fila" className="text-base text-primary underline">
           Volver a la fila
-        </a>
+        </Link>
       </main>
     )
   }
@@ -60,9 +61,9 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
         <p className="text-base text-muted-foreground">
           Puede que el registro {fila} sea anterior a 2026 o que no tenga fecha de recepción.
         </p>
-        <a href="/fila" className="text-base text-primary underline">
+        <Link href="/fila" className="text-base text-primary underline">
           Volver a la fila
-        </a>
+        </Link>
       </main>
     )
   }
@@ -132,13 +133,13 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
       {/* Encabezado del caso, pegado arriba para no perder la referencia al bajar */}
       <header className="sticky top-0 z-10 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="mx-auto max-w-7xl space-y-3 px-6 py-4">
-          <a
+          <Link
             href="/fila"
             className="inline-flex items-center gap-1.5 text-base text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="size-4" />
             Fila de casos
-          </a>
+          </Link>
 
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-1.5">
