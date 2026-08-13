@@ -67,7 +67,7 @@ export class FilaCambiadaError extends Error {
     readonly detalle: { campo: string; esperado: string | null; encontrado: string | null },
   ) {
     super(
-      `La fila cambió desde que abriste el caso: su ${detalle.campo} era "${
+      `El registro cambió desde que abriste el caso: su ${detalle.campo} era "${
         detalle.esperado ?? '(vacío)'
       }" y ahora es "${detalle.encontrado ?? '(vacío)'}".`,
     )

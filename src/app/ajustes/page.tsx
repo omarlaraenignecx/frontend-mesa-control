@@ -82,8 +82,8 @@ export default async function Ajustes() {
         <AdminPlantillas plantillas={plantillas} />
       </section>
 
-      <a href="/cola" className="inline-block text-base text-primary underline underline-offset-4">
-        Volver a la cola
+      <a href="/fila" className="inline-block text-base text-primary underline underline-offset-4">
+        Volver a la fila
       </a>
     </main>
   )

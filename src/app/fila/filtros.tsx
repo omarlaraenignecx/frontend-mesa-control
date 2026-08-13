@@ -120,7 +120,7 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
       if (v) nuevos.set(k, v)
       else nuevos.delete(k)
     }
-    router.push(`/cola?${nuevos.toString()}`)
+    router.push(`/fila?${nuevos.toString()}`)
   }
 
   const estatusElegidos = (params.get('estatus') ?? '')
@@ -184,7 +184,7 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
           onClick={() => {
             setTexto('')
             const vista = params.get('vista')
-            router.push(vista ? `/cola?vista=${vista}` : '/cola')
+            router.push(vista ? `/fila?vista=${vista}` : '/fila')
           }}
           className="text-base text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
         >

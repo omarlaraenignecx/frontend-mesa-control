@@ -13,7 +13,13 @@ import { diasDeEspera } from './semaforo'
  */
 export const VENTANA_COLA_DIAS = 30
 
-export type Vista = 'cola' | 'rezago' | 'todos'
+/**
+ * Las tres vistas de la bandeja. El literal viaja en la URL como `?vista=…`, y
+ * por eso dice `fila`: es el nombre que el área le puso a la bandeja el 13 de
+ * agosto de 2026. El módulo sigue llamándose `cola` porque en el código `fila`
+ * es el renglón de la hoja (`caso.fila`).
+ */
+export type Vista = 'fila' | 'rezago' | 'todos'
 
 /**
  * Testigo del "sin valor" en el filtro de estatus final. Existe porque el filtro
@@ -113,7 +119,7 @@ export function filtrar(casos: Caso[], filtros: Filtros, hoy: Date = new Date())
       // Un caso sin fecha legible no se puede cortar por antigüedad: se queda en
       // la cola para que alguien lo revise, nunca se pierde en el rezago.
       const enVentana = dias === null || dias <= VENTANA_COLA_DIAS
-      if (vista === 'cola' && !enVentana) return false
+      if (vista === 'fila' && !enVentana) return false
       if (vista === 'rezago' && enVentana) return false
     }
 

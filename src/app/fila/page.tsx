@@ -26,7 +26,7 @@ import { CredencialMesaRevocadaError, SinCredencialMesaError } from '@/lib/googl
 import { BotonActualizar } from './actualizar'
 import { Filtros } from './filtros'
 
-const ICONO_VISTA = { cola: Inbox, rezago: Timer, todos: Search } as const
+const ICONO_VISTA = { fila: Inbox, rezago: Timer, todos: Search } as const
 
 /** Lo que va en las celdas de estatus y de responsable cuando la hoja está vacía. */
 function Pendiente() {
@@ -35,8 +35,8 @@ function Pendiente() {
 
 const VISTAS: { clave: Vista; etiqueta: string; ayuda: string }[] = [
   {
-    clave: 'cola',
-    etiqueta: 'Cola de trabajo',
+    clave: 'fila',
+    etiqueta: 'Fila de trabajo',
     ayuda: `Casos sin estatus final de los últimos ${VENTANA_COLA_DIAS} días, del más reciente al más antiguo`,
   },
   {
@@ -51,7 +51,7 @@ const VISTAS: { clave: Vista; etiqueta: string; ayuda: string }[] = [
   },
 ]
 
-export default async function Cola({
+export default async function PaginaDeLaFila({
   searchParams,
 }: {
   searchParams: Promise<{
@@ -80,7 +80,7 @@ export default async function Cola({
       e instanceof SinCredencialMesaError || e instanceof CredencialMesaRevocadaError
     return (
       <main className="mx-auto max-w-3xl space-y-4 p-8">
-        <h1 className="text-xl font-semibold">Cola de casos</h1>
+        <h1 className="text-xl font-semibold">Fila de casos</h1>
         <div className="space-y-2 rounded-lg border border-red-300 bg-red-50 p-6 text-sm dark:border-red-900 dark:bg-red-950">
           <p className="font-medium text-red-700 dark:text-red-300">
             No se pudieron leer los casos de la hoja
@@ -106,7 +106,7 @@ export default async function Cola({
   const hoy = new Date()
   const vista: Vista = VISTAS.some((v) => v.clave === params.vista)
     ? (params.vista as Vista)
-    : 'cola'
+    : 'fila'
 
   // El parámetro ausente significa "los abiertos", que es lo que filtrar()
   // aplica por omisión; no se traduce aquí para no duplicar esa decisión.
@@ -171,7 +171,7 @@ export default async function Cola({
               return (
                 <a
                   key={v.clave}
-                  href={`/cola?vista=${v.clave}`}
+                  href={`/fila?vista=${v.clave}`}
                   title={v.ayuda}
                   className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-base transition-colors ${
                     activa

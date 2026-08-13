@@ -18,6 +18,6 @@ export async function requerirUsuario() {
 
 export async function requerirAdmin() {
   const usuario = await requerirUsuario()
-  if (usuario.rol !== 'admin') redirect('/cola')
+  if (usuario.rol !== 'admin') redirect('/fila')
   return usuario
 }
