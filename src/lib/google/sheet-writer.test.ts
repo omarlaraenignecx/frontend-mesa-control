@@ -5,6 +5,7 @@ import {
   CAMPOS_ESCRIBIBLES,
   ColumnaNoEscribibleError,
   FilaCambiadaError,
+  SelloNoEscritoError,
   escribirFolio,
   escribirSeguimiento,
 } from './sheet-writer'
@@ -231,6 +232,70 @@ describe('forma de la escritura', () => {
       data: { range: string }[]
     }
     expect(cuerpo.data).toHaveLength(4)
+  })
+
+  it('escribe las fechas con USER_ENTERED para que la hoja las guarde como fecha', async () => {
+    const { fetchMock, llamadas } = fetchDeEscritura()
+    await escribirSeguimiento(
+      { ...DEPS_BASE, fetch: fetchMock },
+      MAPA,
+      7176,
+      { fechaRespuestaCorreo: '11/8/2026 16:07:11' },
+      TESTIGO,
+    )
+    const hechas = escrituras(llamadas)
+    expect(hechas).toHaveLength(1)
+    expect(hechas[0].url).toContain('valueInputOption=USER_ENTERED')
+  })
+
+  it('separa el texto de las fechas en dos peticiones, y el texto va primero', async () => {
+    const { fetchMock, llamadas } = fetchDeEscritura()
+    await escribirSeguimiento(
+      { ...DEPS_BASE, fetch: fetchMock },
+      MAPA,
+      7176,
+      {
+        estatusFinal: 'Concluida',
+        observaciones: 'nota',
+        fechaAtencionFinal: '11/8/2026 16:07:11',
+      },
+      TESTIGO,
+    )
+    const hechas = escrituras(llamadas)
+    expect(hechas).toHaveLength(2)
+    expect(hechas[0].url).toContain('valueInputOption=RAW')
+    expect(hechas[1].url).toContain('valueInputOption=USER_ENTERED')
+
+    const primera = JSON.parse(hechas[0].init!.body as string) as { data: { range: string }[] }
+    const segunda = JSON.parse(hechas[1].init!.body as string) as { data: { range: string }[] }
+    expect(primera.data).toHaveLength(2)
+    expect(segunda.data).toHaveLength(1)
+    expect(segunda.data[0].range).toContain('KD') // fecha de atención final
+  })
+
+  it('si falla el sello, avisa cuál quedó pendiente y no niega lo ya guardado', async () => {
+    // El texto se escribe en la primera llamada; la segunda, la del sello, falla.
+    const { fetchMock, llamadas } = fetchDeEscritura()
+    let escrituraNumero = 0
+    const fetchQueFallaElSello: typeof globalThis.fetch = async (url, init) => {
+      const esEscritura = String(url).includes('values:batchUpdate')
+      if (esEscritura && ++escrituraNumero === 2) {
+        return new Response('{}', { status: 500 })
+      }
+      return fetchMock(url, init)
+    }
+
+    await expect(
+      escribirSeguimiento(
+        { ...DEPS_BASE, fetch: fetchQueFallaElSello },
+        MAPA,
+        7176,
+        { estatusFinal: 'Concluida', fechaAtencionFinal: '11/8/2026 16:07:11' },
+        TESTIGO,
+      ),
+    ).rejects.toThrow(SelloNoEscritoError)
+
+    expect(escrituras(llamadas)).toHaveLength(1) // el estatus sí quedó escrito
   })
 
   it('usa RAW para que Sheets no reinterprete el texto que captura la mesa', async () => {
