@@ -9,6 +9,7 @@ import {
   MessageSquareText,
   Paperclip,
 } from 'lucide-react'
+import { GenerarFolios } from '@/components/generar-folios'
 import { EtiquetaSemaforo } from '@/components/semaforo'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,13 +20,11 @@ import { sustituirVariables } from '@/lib/correo/render-correo'
 import { estaVivo } from '@/lib/casos/caso'
 import { leerBitacora } from '@/lib/casos/bitacora'
 import { agruparCamposExtra } from '@/lib/casos/campos-extra'
-import { sinFolio } from '@/lib/casos/caso'
 import { Conversacion } from './conversacion'
 import { cargarCaso } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
 import { diasDeEspera } from '@/lib/casos/semaforo'
 import { Atender } from './atender'
-import { FolioForm } from './folio-form'
 import { SeguimientoForm } from './seguimiento-form'
 
 function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
@@ -68,7 +67,7 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
     )
   }
 
-  const { caso, catalogos } = cargado
+  const { caso, catalogos, sinFolioTotal } = cargado
 
   await emitirEvento({
     tipo: 'caso_visualizado',
@@ -170,7 +169,9 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
       </header>
 
       <main className="mx-auto max-w-7xl space-y-5 px-6 py-6">
-        {sinFolio(caso) && <FolioForm fila={fila} />}
+        {/* Aparece aunque el folio que falte sea de otro registro: la acción
+            llena la columna completa, así que se resuelve desde donde se esté. */}
+        <GenerarFolios faltantes={sinFolioTotal} />
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="space-y-5">

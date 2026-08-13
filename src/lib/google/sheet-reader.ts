@@ -55,6 +55,24 @@ export async function leerFilas(deps: DepsLectura, rango: string): Promise<strin
   return pedirValores(deps, rango)
 }
 
+/**
+ * Todos los valores de la columna del folio, desde la fila 2.
+ *
+ * Se lee la columna entera y no los casos porque las filas que la mesa
+ * pre-arrastró traen folio sin traer petición —`construirCasos` las descarta por
+ * no tener marca temporal— y son justo las que fijan el máximo de la serie.
+ */
+export async function leerColumnaFolios(
+  deps: DepsLectura,
+  mapa: MapaEsquema,
+): Promise<string[]> {
+  const columna = mapa.columnasPorCampo.folio[0]
+  if (!columna) return []
+  const letra = letraColumna(columna)
+  const filas = await pedirValores(deps, `${letra}2:${letra}`)
+  return filas.map((f) => f[0] ?? '')
+}
+
 /** Primer valor no vacío recorriendo el grupo de columnas equivalentes del campo. */
 function valorDe(fila: string[], columnas: number[]): string | null {
   for (const c of columnas) {

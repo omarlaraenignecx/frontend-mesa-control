@@ -13,7 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { GenerarFolios } from '@/components/generar-folios'
 import { requerirUsuario } from '@/lib/auth/guard'
+import { sinFolio } from '@/lib/casos/caso'
 import {
   VENTANA_COLA_DIAS,
   filtrar,
@@ -137,6 +139,9 @@ export default async function PaginaDeLaFila({
     params.q || params.tramite || params.responsable || estatusElegidos.length > 0,
   )
   const descripcion = VISTAS.find((v) => v.clave === vista)!.ayuda
+  // Sobre todos los casos leídos y no sobre los filtrados: el arrastre llena la
+  // columna entera de la hoja, no la vista que se esté mirando.
+  const faltanFolio = resultado.casos.filter(sinFolio).length
 
   return (
     <div className="min-h-full">
@@ -200,6 +205,8 @@ export default async function PaginaDeLaFila({
       </header>
 
       <main className="mx-auto max-w-7xl space-y-4 px-6 py-6">
+        <GenerarFolios faltantes={faltanFolio} />
+
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-base text-muted-foreground">
             {hayBusqueda

@@ -6,7 +6,7 @@ import {
   ColumnaNoEscribibleError,
   FilaCambiadaError,
   SelloNoEscritoError,
-  escribirFolio,
+  escribirFolios,
   escribirSeguimiento,
 } from './sheet-writer'
 
@@ -360,35 +360,148 @@ describe('forma de la escritura', () => {
   })
 })
 
-describe('escribirFolio', () => {
-  it('es la única vía que puede tocar la columna del folio', async () => {
-    const { fetchMock, llamadas } = fetchDeEscritura({ folio: '' })
-    await escribirFolio({ ...DEPS_BASE, fetch: fetchMock }, MAPA, 7180, '7010', {
-      marcaTemporalTexto: '5/8/2026 15:14:58',
-      folio: null,
+describe('escribirFolios', () => {
+  /**
+   * A diferencia de `fetchDeEscritura`, este responde el batchGet a partir de los
+   * rangos que se le piden: el lote pregunta por dos celdas de cada fila y el
+   * número varía con el tamaño del lote.
+   */
+  function fetchDeLote(celdas: Record<string, string>) {
+    const llamadas: { url: string; init?: RequestInit }[] = []
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      llamadas.push({ url: String(url), init })
+      const esLectura = !init?.method || init.method === 'GET'
+      if (esLectura) {
+        const rangos = new URL(String(url)).searchParams.getAll('ranges')
+        return new Response(
+          JSON.stringify({
+            valueRanges: rangos.map((r) => {
+              const celda = r.split('!')[1]
+              const valor = celdas[celda]
+              return valor ? { values: [[valor]] } : {}
+            }),
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      }
+      return new Response(JSON.stringify({ totalUpdatedCells: 1 }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    }) as unknown as typeof globalThis.fetch
+    return { fetchMock, llamadas }
+  }
+
+  const DOS_FILAS = [
+    { fila: 7228, folio: '7055' },
+    { fila: 7229, folio: '7056' },
+  ]
+  const DOS_TESTIGOS = new Map([
+    [7228, '12/8/2026 13:50:48'],
+    [7229, '12/8/2026 13:53:27'],
+  ])
+
+  it('escribe todos los folios en un solo lote', async () => {
+    const { fetchMock, llamadas } = fetchDeLote({
+      A7228: '12/8/2026 13:50:48',
+      A7229: '12/8/2026 13:53:27',
     })
-    const cuerpo = JSON.parse(escrituras(llamadas)[0].init!.body as string) as {
+    await escribirFolios({ ...DEPS_BASE, fetch: fetchMock }, MAPA, DOS_FILAS, DOS_TESTIGOS)
+
+    const hechas = escrituras(llamadas)
+    expect(hechas).toHaveLength(1)
+    const cuerpo = JSON.parse(hechas[0].init!.body as string) as {
       data: { range: string; values: string[][] }[]
     }
-    expect(cuerpo.data[0].range).toContain('JY')
-    expect(cuerpo.data[0].values[0][0]).toBe('7010')
+    expect(cuerpo.data).toHaveLength(2)
+    expect(cuerpo.data[0].range).toContain('JY7228')
+    expect(cuerpo.data[0].values[0][0]).toBe('7055')
+    expect(cuerpo.data[1].range).toContain('JY7229')
   })
 
-  it('se niega a sobrescribir un folio que ya existe', async () => {
-    const { fetchMock, llamadas } = fetchDeEscritura({ folio: '7000' })
+  it('escribe el folio como número y no como texto', async () => {
+    // La columna es numérica en toda la hoja; con RAW quedaría alineado a la
+    // izquierda y fuera del orden de la propia hoja.
+    const { fetchMock, llamadas } = fetchDeLote({ A7228: '12/8/2026 13:50:48' })
+    await escribirFolios(
+      { ...DEPS_BASE, fetch: fetchMock },
+      MAPA,
+      [DOS_FILAS[0]],
+      DOS_TESTIGOS,
+    )
+    expect(escrituras(llamadas)[0].url).toContain('valueInputOption=USER_ENTERED')
+  })
+
+  it('revalida las dos celdas de cada fila en una sola lectura', async () => {
+    const { fetchMock, llamadas } = fetchDeLote({
+      A7228: '12/8/2026 13:50:48',
+      A7229: '12/8/2026 13:53:27',
+    })
+    await escribirFolios({ ...DEPS_BASE, fetch: fetchMock }, MAPA, DOS_FILAS, DOS_TESTIGOS)
+
+    const lecturas = llamadas.filter((l) => !l.init?.method || l.init.method === 'GET')
+    expect(lecturas).toHaveLength(1)
+    expect(new URL(lecturas[0].url).searchParams.getAll('ranges')).toHaveLength(4)
+  })
+
+  it('no escribe nada si una de las filas ya tiene folio', async () => {
+    const { fetchMock, llamadas } = fetchDeLote({
+      A7228: '12/8/2026 13:50:48',
+      A7229: '12/8/2026 13:53:27',
+      JY7229: '9999',
+    })
     await expect(
-      escribirFolio({ ...DEPS_BASE, fetch: fetchMock }, MAPA, 7176, '9999', TESTIGO),
-    ).rejects.toThrow(/ya tiene folio/)
+      escribirFolios({ ...DEPS_BASE, fetch: fetchMock }, MAPA, DOS_FILAS, DOS_TESTIGOS),
+    ).rejects.toThrow(FilaCambiadaError)
+    // Ni la primera fila, que sí estaba libre: un lote a medias dejaría un hueco
+    // en la serie y nadie sabría por dónde se quedó.
     expect(escrituras(llamadas)).toHaveLength(0)
   })
 
-  it('rechaza un folio vacío', async () => {
-    const { fetchMock } = fetchDeEscritura({ folio: '' })
+  it('no escribe nada si una marca temporal cambió', async () => {
+    const { fetchMock, llamadas } = fetchDeLote({
+      A7228: '12/8/2026 13:50:48',
+      A7229: 'otra fecha',
+    })
     await expect(
-      escribirFolio({ ...DEPS_BASE, fetch: fetchMock }, MAPA, 7180, '   ', {
-        marcaTemporalTexto: '5/8/2026 15:14:58',
-        folio: null,
-      }),
-    ).rejects.toThrow(/no puede quedar vacío/)
+      escribirFolios({ ...DEPS_BASE, fetch: fetchMock }, MAPA, DOS_FILAS, DOS_TESTIGOS),
+    ).rejects.toThrow(FilaCambiadaError)
+    expect(escrituras(llamadas)).toHaveLength(0)
+  })
+
+  it('rechaza folios que no sean dígitos antes de tocar la hoja', async () => {
+    // Con USER_ENTERED, un valor que empiece con "=" se guardaría como fórmula.
+    const { fetchMock, llamadas } = fetchDeLote({})
+    await expect(
+      escribirFolios(
+        { ...DEPS_BASE, fetch: fetchMock },
+        MAPA,
+        [{ fila: 7228, folio: '=SUMA(A1)' }],
+        DOS_TESTIGOS,
+      ),
+    ).rejects.toThrow(/dígitos/)
+    expect(llamadas).toHaveLength(0)
+  })
+
+  it('rechaza un lote con folios repetidos entre sí', async () => {
+    const { fetchMock, llamadas } = fetchDeLote({})
+    await expect(
+      escribirFolios(
+        { ...DEPS_BASE, fetch: fetchMock },
+        MAPA,
+        [
+          { fila: 7228, folio: '7055' },
+          { fila: 7229, folio: '7055' },
+        ],
+        DOS_TESTIGOS,
+      ),
+    ).rejects.toThrow(/repetido/)
+    expect(llamadas).toHaveLength(0)
+  })
+
+  it('sin asignaciones no habla con Google', async () => {
+    const { fetchMock, llamadas } = fetchDeLote({})
+    await escribirFolios({ ...DEPS_BASE, fetch: fetchMock }, MAPA, [], new Map())
+    expect(llamadas).toHaveLength(0)
   })
 })

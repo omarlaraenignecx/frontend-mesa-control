@@ -243,19 +243,80 @@ export async function escribirSeguimiento(
   }
 }
 
-/** Única vía autorizada para escribir la columna del folio. */
-export async function escribirFolio(
+/**
+ * Única vía autorizada para escribir la columna del folio.
+ *
+ * Escribe todas las filas pendientes en un solo lote, y solo después de
+ * comprobar en una sola lectura que las dos condiciones se cumplen en **todas**:
+ * la marca temporal sigue siendo la que el usuario vio, y el folio sigue vacío.
+ * Si una falla no se escribe ninguna, porque un lote a medias dejaría un hueco
+ * en la serie y nadie sabría por dónde se quedó.
+ *
+ * Va con `USER_ENTERED` y no con RAW, al contrario que el resto del seguimiento:
+ * la columna es numérica en toda la hoja, y el valor son dígitos generados por la
+ * aplicación —lo comprueba antes—, así que no hay riesgo de que Sheets lo
+ * interprete como fórmula o como fecha.
+ */
+export async function escribirFolios(
   deps: DepsLectura,
   mapa: MapaEsquema,
-  fila: number,
-  folio: string,
-  testigo: Testigo,
+  asignaciones: { fila: number; folio: string }[],
+  testigos: Map<number, string>,
 ): Promise<void> {
-  if (testigo.folio?.trim()) {
-    throw new Error('Este caso ya tiene folio; la herramienta no lo sobrescribe.')
-  }
-  if (!folio.trim()) throw new Error('El folio no puede quedar vacío.')
+  if (asignaciones.length === 0) return
 
-  await confirmarFila(deps, mapa, fila, testigo)
-  await escribirCeldas(deps, fila, [{ columna: columnaDe(mapa, 'folio'), valor: folio.trim() }])
+  for (const { folio } of asignaciones) {
+    if (!/^\d+$/.test(folio)) {
+      throw new Error(`El folio "${folio}" no son solo dígitos; la herramienta no lo escribe.`)
+    }
+  }
+  if (new Set(asignaciones.map((a) => a.folio)).size !== asignaciones.length) {
+    throw new Error('El lote trae un folio repetido; no se escribe nada.')
+  }
+
+  const colFecha = columnaDe(mapa, 'marcaTemporal')
+  const colFolio = columnaDe(mapa, 'folio')
+  const celda = (columna: number, fila: number) =>
+    `${deps.pestana}!${letraColumna(columna)}${fila}`
+
+  const rangos = asignaciones.flatMap(({ fila }) => [celda(colFecha, fila), celda(colFolio, fila)])
+  const respuesta = await pedir(
+    deps,
+    `${BASE}/${deps.sheetId}/values:batchGet?` +
+      rangos.map((r) => `ranges=${encodeURIComponent(r)}`).join('&') +
+      '&majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE',
+  )
+  const cuerpo = (await respuesta.json()) as { valueRanges?: { values?: string[][] }[] }
+  const leer = (indice: number) =>
+    (cuerpo.valueRanges?.[indice]?.values?.[0]?.[0] ?? '').trim() || null
+
+  asignaciones.forEach(({ fila }, i) => {
+    const fechaActual = leer(i * 2)
+    const esperada = (testigos.get(fila) ?? '').trim() || null
+    if (fechaActual !== esperada) {
+      throw new FilaCambiadaError({
+        campo: 'marca temporal',
+        esperado: esperada,
+        encontrado: fechaActual,
+      })
+    }
+    const folioActual = leer(i * 2 + 1)
+    if (folioActual) {
+      throw new FilaCambiadaError({ campo: 'folio', esperado: null, encontrado: folioActual })
+    }
+  })
+
+  // No se usa `escribirCeldas`: esa función recibe una fila y le pega la letra de
+  // cada columna, y aquí cada celda va en una fila distinta.
+  await pedir(deps, `${BASE}/${deps.sheetId}/values:batchUpdate?valueInputOption=USER_ENTERED`, {
+    method: 'POST',
+    body: JSON.stringify({
+      valueInputOption: 'USER_ENTERED',
+      data: asignaciones.map(({ fila, folio }) => ({
+        range: celda(colFolio, fila),
+        majorDimension: 'ROWS',
+        values: [[folio]],
+      })),
+    }),
+  })
 }
