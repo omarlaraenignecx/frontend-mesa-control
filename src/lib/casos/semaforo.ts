@@ -1,3 +1,4 @@
+import { diaDeLaMesa } from '@/lib/reloj'
 import { fechaDe, type Caso } from './caso'
 
 export type NivelSemaforo = 'verde' | 'ambar' | 'rojo' | 'desconocido'
@@ -35,9 +36,9 @@ function normalizar(texto: string): string {
 export function diasDeEspera(caso: Pick<Caso, 'marcaTemporalIso'>, hoy: Date): number | null {
   const recibido = fechaDe(caso)
   if (!recibido) return null
-  const desde = new Date(recibido.getFullYear(), recibido.getMonth(), recibido.getDate())
-  const hasta = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
-  return Math.max(0, Math.round((hasta.getTime() - desde.getTime()) / MS_POR_DIA))
+  // Los dos extremos se llevan al día de la mesa: con la medianoche local del
+  // servidor, las últimas seis horas de cada día contaban un día de más.
+  return Math.max(0, Math.round((diaDeLaMesa(hoy) - diaDeLaMesa(recibido)) / MS_POR_DIA))
 }
 
 /**

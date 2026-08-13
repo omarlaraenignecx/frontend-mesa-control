@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { partesDeLaMesa } from '@/lib/reloj'
 import { estaVivo, parsearFechaHoja, sinFolio, type Caso } from './caso'
 
 function caso(parcial: Partial<Caso> = {}): Caso {
@@ -33,21 +34,36 @@ function caso(parcial: Partial<Caso> = {}): Caso {
 }
 
 describe('parsearFechaHoja', () => {
+  // La hoja escribe hora de pared de la Ciudad de México y lo que se guarda es
+  // un instante, así que las comprobaciones van contra `partesDeLaMesa` o contra
+  // el ISO: leer el resultado con los getters locales daría la hora del proceso,
+  // que en el servidor es UTC.
   it('interpreta el formato D/M/YYYY H:mm:ss de la columna A', () => {
     const d = parsearFechaHoja('5/8/2026 15:14:58')
     expect(d).not.toBeNull()
-    expect([d!.getFullYear(), d!.getMonth() + 1, d!.getDate()]).toEqual([2026, 8, 5])
-    expect([d!.getHours(), d!.getMinutes(), d!.getSeconds()]).toEqual([15, 14, 58])
+    expect(partesDeLaMesa(d!)).toEqual({
+      anio: 2026,
+      mes: 8,
+      dia: 5,
+      horas: 15,
+      minutos: 14,
+      segundos: 58,
+    })
+  })
+
+  it('interpreta el texto de la hoja como hora de la mesa, no del servidor', () => {
+    // La hoja dice 9:30 del 11 de agosto; ese instante es 15:30 UTC.
+    expect(parsearFechaHoja('11/8/2026 9:30:00')?.toISOString()).toBe('2026-08-11T15:30:00.000Z')
   })
 
   it('interpreta día y mes de un dígito', () => {
-    const d = parsearFechaHoja('9/1/2026 9:05:03')
-    expect([d!.getDate(), d!.getMonth() + 1, d!.getHours()]).toEqual([9, 1, 9])
+    const { dia, mes, horas } = partesDeLaMesa(parsearFechaHoja('9/1/2026 9:05:03')!)
+    expect([dia, mes, horas]).toEqual([9, 1, 9])
   })
 
   it('acepta una fecha sin hora', () => {
-    const d = parsearFechaHoja('20/2/2023')
-    expect([d!.getDate(), d!.getMonth() + 1, d!.getFullYear()]).toEqual([20, 2, 2023])
+    const { dia, mes, anio } = partesDeLaMesa(parsearFechaHoja('20/2/2023')!)
+    expect([dia, mes, anio]).toEqual([20, 2, 2023])
   })
 
   it('devuelve null ante basura, sin lanzar', () => {

@@ -1,4 +1,5 @@
 import type { Adjunto } from '@/lib/google/drive-links'
+import { instanteDeLaMesa } from '@/lib/reloj'
 
 /**
  * El caso es un objeto plano y serializable a JSON, sin excepciones.
@@ -39,7 +40,11 @@ export type Caso = {
 
 export const ESTATUS_TERMINALES = ['concluida', 'improcedente'] as const
 
-/** La columna A guarda las fechas como D/M/YYYY H:mm:ss, no en ISO. */
+/**
+ * La columna A guarda las fechas como D/M/YYYY H:mm:ss, no en ISO, y esa hora es
+ * de pared: la que la mesa ve en la hoja, en UTC−6. Se interpreta con el reloj
+ * para que el instante resultante sea el correcto aunque el servidor corra en UTC.
+ */
 export function parsearFechaHoja(texto: string): Date | null {
   if (!texto?.trim()) return null
   const m = texto
@@ -47,7 +52,14 @@ export function parsearFechaHoja(texto: string): Date | null {
     .match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/)
   if (!m) return null
   const [, d, mes, a, h = '0', min = '0', s = '0'] = m
-  const fecha = new Date(Number(a), Number(mes) - 1, Number(d), Number(h), Number(min), Number(s))
+  const fecha = instanteDeLaMesa({
+    anio: Number(a),
+    mes: Number(mes),
+    dia: Number(d),
+    horas: Number(h),
+    minutos: Number(min),
+    segundos: Number(s),
+  })
   return Number.isNaN(fecha.getTime()) ? null : fecha
 }
 

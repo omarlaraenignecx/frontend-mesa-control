@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { componerObservaciones } from './observaciones'
 
-const CUANDO = new Date(2026, 7, 10, 14, 30, 0)
+/**
+ * Las 14:30 del 10 de agosto **en la hoja**, escritas como instante: el prefijo
+ * de la nota se arma con la hora de la mesa, así que un `new Date(2026, 7, 10,
+ * 14, 30)` diría otra cosa según la zona en que corran las pruebas.
+ */
+const CUANDO = new Date('2026-08-10T20:30:00Z')
 
 describe('componerObservaciones', () => {
   it('antepone la nota nueva con fecha y autor', () => {
@@ -22,7 +27,7 @@ describe('componerObservaciones', () => {
   })
 
   it('acumula varias entradas manteniendo la más reciente arriba', () => {
-    const uno = componerObservaciones(null, 'primera', 'Keynor', new Date(2026, 7, 9, 9, 0, 0))
+    const uno = componerObservaciones(null, 'primera', 'Keynor', new Date('2026-08-09T15:00:00Z'))
     const dos = componerObservaciones(uno, 'segunda', 'Paty', CUANDO)
     const lineas = dos.split('\n')
     expect(lineas[0]).toContain('segunda')
