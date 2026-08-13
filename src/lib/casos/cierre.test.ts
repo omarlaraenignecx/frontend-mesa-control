@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { fechaDeCierreASellar, seCierraAhora } from './cierre'
 
-const CUANDO = new Date(2026, 7, 10, 16, 45, 30)
+/** Las 16:45:30 del 10 de agosto en la hoja, escritas como instante. */
+const CUANDO = new Date('2026-08-10T22:45:30Z')
 
 describe('seCierraAhora', () => {
   it('detecta el cierre cuando un caso abierto pasa a Concluida', () => {

@@ -8,10 +8,15 @@ import { cargarCaso, depsDeGoogle } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
 import { componerObservaciones } from '@/lib/casos/observaciones'
 import { calcularDiff, type Seguimiento } from '@/lib/casos/seguimiento'
-import { FilaCambiadaError, escribirFolio, escribirSeguimiento } from '@/lib/google/sheet-writer'
+import {
+  FilaCambiadaError,
+  SelloNoEscritoError,
+  escribirFolio,
+  escribirSeguimiento,
+} from '@/lib/google/sheet-writer'
 
 export type ResultadoGuardado =
-  | { ok: true; cambios: number }
+  | { ok: true; cambios: number; aviso?: string }
   | { ok: false; error: string; conflicto: boolean }
 
 export async function guardarSeguimiento(
@@ -49,6 +54,7 @@ export async function guardarSeguimiento(
   const cambios = calcularDiff(caso, valores)
   if (cambios.length === 0) return { ok: true, cambios: 0 }
 
+  let aviso: string | undefined
   try {
     await escribirSeguimiento(
       await depsDeGoogle(),
@@ -58,10 +64,17 @@ export async function guardarSeguimiento(
       { marcaTemporalTexto: caso.marcaTemporalTexto, folio: caso.folio },
     )
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : 'Error desconocido al guardar.',
-      conflicto: e instanceof FilaCambiadaError,
+    // El sello es una falla parcial: los cambios sí quedaron en la hoja, así que
+    // el guardado sigue su curso —bitácora, eventos y caché— y el aviso viaja
+    // con el resultado. Reportarlo como error perdería el rastro de lo escrito.
+    if (e instanceof SelloNoEscritoError) {
+      aviso = e.message
+    } else {
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : 'Error desconocido al guardar.',
+        conflicto: e instanceof FilaCambiadaError,
+      }
     }
   }
 
@@ -87,7 +100,7 @@ export async function guardarSeguimiento(
 
   updateTag('casos')
   revalidatePath(`/caso/${fila}`)
-  return { ok: true, cambios: cambios.length }
+  return { ok: true, cambios: cambios.length, aviso }
 }
 
 export async function capturarFolio(fila: number, folio: string): Promise<ResultadoGuardado> {

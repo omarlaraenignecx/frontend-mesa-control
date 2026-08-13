@@ -3,5 +3,5 @@ import { auth } from '@/auth'
 
 export default async function Inicio() {
   const sesion = await auth()
-  redirect(sesion ? '/cola' : '/login')
+  redirect(sesion ? '/fila' : '/login')
 }

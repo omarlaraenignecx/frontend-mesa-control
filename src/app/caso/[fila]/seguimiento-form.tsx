@@ -187,10 +187,13 @@ export function SeguimientoForm({ caso, catalogos, nombreUsuario }: Props) {
           {resultado.cambios === 1 ? 'campo' : 'campos'}.
         </p>
       )}
+      {resultado?.ok && resultado.aviso && (
+        <p className="text-base text-amber-700 dark:text-amber-400">{resultado.aviso}</p>
+      )}
       {resultado && !resultado.ok && (
         <div className="space-y-2 rounded-xl border border-red-300 bg-red-50 p-4 text-base shadow-sm dark:border-red-900 dark:bg-red-950">
           <p className="font-medium text-red-700 dark:text-red-300">
-            {resultado.conflicto ? 'No se guardó: la fila cambió' : 'No se pudo guardar'}
+            {resultado.conflicto ? 'No se guardó: el registro cambió' : 'No se pudo guardar'}
           </p>
           <p className="text-muted-foreground">{resultado.error}</p>
           <p className="text-muted-foreground">

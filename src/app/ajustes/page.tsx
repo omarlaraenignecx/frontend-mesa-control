@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { requerirAdmin } from '@/lib/auth/guard'
 import { listarPlantillas, sembrarPlantillas } from '@/lib/correo/plantillas'
 import { AdminPlantillas } from './plantillas'
@@ -69,6 +70,8 @@ export default async function Ajustes() {
           </div>
         )}
 
+        {/* Ruta de servidor que redirige al consentimiento de Google: tiene que
+            ser una navegación del documento, no un Link de cliente. */}
         <a
           href="/api/mesa/autorizar"
           className="inline-block rounded-lg bg-primary px-5 py-3 text-base font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
@@ -82,9 +85,9 @@ export default async function Ajustes() {
         <AdminPlantillas plantillas={plantillas} />
       </section>
 
-      <a href="/cola" className="inline-block text-base text-primary underline underline-offset-4">
-        Volver a la cola
-      </a>
+      <Link href="/fila" className="inline-block text-base text-primary underline underline-offset-4">
+        Volver a la fila
+      </Link>
     </main>
   )
 }

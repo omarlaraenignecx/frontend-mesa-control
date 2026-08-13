@@ -191,7 +191,7 @@ describe('corte por antigüedad', () => {
   ]
 
   it('la vista cola solo muestra los pendientes de los últimos 30 días', () => {
-    expect(filtrar(casos, { vista: 'cola' }, HOY).map((x) => x.folio)).toEqual(['7000'])
+    expect(filtrar(casos, { vista: 'fila' }, HOY).map((x) => x.folio)).toEqual(['7000'])
   })
 
   it('la vista rezago muestra exactamente los pendientes que la cola dejó fuera', () => {
@@ -199,7 +199,7 @@ describe('corte por antigüedad', () => {
   })
 
   it('cola y rezago juntos suman todos los pendientes, sin traslapes ni huecos', () => {
-    const enCola = filtrar(casos, { vista: 'cola' }, HOY).map((x) => x.folio)
+    const enCola = filtrar(casos, { vista: 'fila' }, HOY).map((x) => x.folio)
     const enRezago = filtrar(casos, { vista: 'rezago' }, HOY).map((x) => x.folio)
     const pendientes = filtrar(casos, { vista: 'todos' }, HOY).map((x) => x.folio)
     expect([...enCola, ...enRezago].sort()).toEqual([...pendientes].sort())
@@ -207,7 +207,7 @@ describe('corte por antigüedad', () => {
   })
 
   it('la búsqueda por texto ignora el corte, para poder encontrar un caso viejo', () => {
-    expect(filtrar(casos, { vista: 'cola', texto: '5787' }, HOY).map((x) => x.folio)).toEqual([
+    expect(filtrar(casos, { vista: 'fila', texto: '5787' }, HOY).map((x) => x.folio)).toEqual([
       '5787',
     ])
   })
@@ -216,12 +216,12 @@ describe('corte por antigüedad', () => {
     const viejo = [
       c({ fila: 1, folio: '5787', marcaTemporalIso: new Date(2026, 0, 6).toISOString(), quienAtendio: 'Norma' }),
     ]
-    expect(filtrar(viejo, { vista: 'cola', responsable: 'Norma' }, HOY)).toHaveLength(1)
+    expect(filtrar(viejo, { vista: 'fila', responsable: 'Norma' }, HOY)).toHaveLength(1)
   })
 
   it('elegir estatus explícitamente también ignora el corte', () => {
     expect(
-      filtrar(casos, { vista: 'cola', estatusFinal: ['Concluida'] }, HOY).map((x) => x.folio),
+      filtrar(casos, { vista: 'fila', estatusFinal: ['Concluida'] }, HOY).map((x) => x.folio),
     ).toEqual(['7002'])
   })
 

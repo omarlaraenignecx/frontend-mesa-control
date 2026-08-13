@@ -11,7 +11,7 @@ export default function Login() {
         <form
           action={async () => {
             'use server'
-            await signIn('google', { redirectTo: '/cola' })
+            await signIn('google', { redirectTo: '/fila' })
           }}
         >
           <button

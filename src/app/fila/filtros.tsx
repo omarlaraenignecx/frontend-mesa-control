@@ -1,8 +1,8 @@
 'use client'
 
-import { Check, ChevronDown } from 'lucide-react'
+import { Check, ChevronDown, LoaderCircle } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { Input } from '@/components/ui/input'
 import { SIN_ESTATUS } from '@/lib/casos/cola'
 
@@ -111,6 +111,10 @@ function FiltroEstatus({
 
 export function Filtros({ opciones }: { opciones: Opciones }) {
   const router = useRouter()
+  // Cambiar de filtro no cambia de ruta, solo los parámetros, y en ese caso
+  // `loading.tsx` no se vuelve a mostrar: el aviso de aquí es la única señal de
+  // que el clic se recibió.
+  const [pendiente, iniciarTransicion] = useTransition()
   const params = useSearchParams()
   const [texto, setTexto] = useState(params.get('q') ?? '')
 
@@ -120,7 +124,9 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
       if (v) nuevos.set(k, v)
       else nuevos.delete(k)
     }
-    router.push(`/cola?${nuevos.toString()}`)
+    iniciarTransicion(() => {
+      router.push(`/fila?${nuevos.toString()}`)
+    })
   }
 
   const estatusElegidos = (params.get('estatus') ?? '')
@@ -184,12 +190,21 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
           onClick={() => {
             setTexto('')
             const vista = params.get('vista')
-            router.push(vista ? `/cola?vista=${vista}` : '/cola')
+            iniciarTransicion(() => {
+              router.push(vista ? `/fila?vista=${vista}` : '/fila')
+            })
           }}
           className="text-base text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
         >
           Limpiar
         </button>
+      )}
+
+      {pendiente && (
+        <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+          <LoaderCircle aria-hidden className="size-4 animate-spin" />
+          Filtrando…
+        </span>
       )}
     </div>
   )

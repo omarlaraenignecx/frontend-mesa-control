@@ -36,6 +36,25 @@ export const CAMPOS_ESCRIBIBLES = [
   'observaciones',
 ] as const satisfies readonly CampoEscribible[]
 
+/**
+ * Los dos campos que van a columnas con formato de fecha (`KB` y `KD`). Se
+ * escriben aparte, con `USER_ENTERED`, para que Sheets los guarde como fecha de
+ * verdad: el histórico de esas columnas son números de serie con formato y la
+ * fórmula de `KC` es `=KB−A`, que con una cadena daría `#VALUE!`.
+ *
+ * El resto sigue con RAW a propósito. `USER_ENTERED` convertiría en fórmula unas
+ * Observaciones que empiecen con `=`, y dejaría el folio interno `0426014703`
+ * como el número `426014703`, sin su cero inicial.
+ */
+const CAMPOS_DE_FECHA = [
+  'fechaRespuestaCorreo',
+  'fechaAtencionFinal',
+] as const satisfies readonly CampoEscribible[]
+
+function esCampoDeFecha(campo: CampoEscribible): boolean {
+  return (CAMPOS_DE_FECHA as readonly string[]).includes(campo)
+}
+
 export class ColumnaNoEscribibleError extends Error {
   constructor(readonly campo: string) {
     super(`El campo "${campo}" no está en la lista de columnas que la herramienta puede escribir.`)
@@ -48,11 +67,29 @@ export class FilaCambiadaError extends Error {
     readonly detalle: { campo: string; esperado: string | null; encontrado: string | null },
   ) {
     super(
-      `La fila cambió desde que abriste el caso: su ${detalle.campo} era "${
+      `El registro cambió desde que abriste el caso: su ${detalle.campo} era "${
         detalle.esperado ?? '(vacío)'
       }" y ahora es "${detalle.encontrado ?? '(vacío)'}".`,
     )
     this.name = 'FilaCambiadaError'
+  }
+}
+
+/**
+ * El guardado ocurrió y el sello de fecha no. Es una falla parcial, y quien la
+ * atrape debe tratarla como guardado: negarlo haría que la mesa volviera a
+ * capturar lo que ya está en la hoja.
+ */
+export class SelloNoEscritoError extends Error {
+  constructor(
+    readonly campos: string[],
+    opciones?: { cause?: unknown },
+  ) {
+    super(
+      'Se guardaron los cambios en la hoja, pero no se pudo sellar la fecha. Vuelve a guardar para completarla.',
+      opciones,
+    )
+    this.name = 'SelloNoEscritoError'
   }
 }
 
@@ -137,17 +174,22 @@ async function confirmarFila(
   }
 }
 
-/** Una sola petición por lote: la fila nunca queda escrita a medias (RNF-06). */
+/**
+ * Una petición por tipo de dato, y todas las celdas de ese tipo en el mismo
+ * lote (RNF-06). El texto y las fechas no pueden ir juntos porque
+ * `values:batchUpdate` acepta un solo `valueInputOption` por llamada.
+ */
 async function escribirCeldas(
   deps: DepsLectura,
   fila: number,
   celdas: { columna: number; valor: string }[],
+  modo: 'RAW' | 'USER_ENTERED' = 'RAW',
 ): Promise<void> {
   if (celdas.length === 0) return
-  await pedir(deps, `${BASE}/${deps.sheetId}/values:batchUpdate?valueInputOption=RAW`, {
+  await pedir(deps, `${BASE}/${deps.sheetId}/values:batchUpdate?valueInputOption=${modo}`, {
     method: 'POST',
     body: JSON.stringify({
-      valueInputOption: 'RAW',
+      valueInputOption: modo,
       data: celdas.map(({ columna, valor }) => ({
         range: `${deps.pestana}!${letraColumna(columna)}${fila}`,
         majorDimension: 'ROWS',
@@ -178,11 +220,27 @@ export async function escribirSeguimiento(
 
   await confirmarFila(deps, mapa, fila, testigo)
 
-  await escribirCeldas(
-    deps,
-    fila,
-    entradas.map(([campo, valor]) => ({ columna: columnaDe(mapa, campo), valor })),
-  )
+  const celdas = entradas.map(([campo, valor]) => ({
+    campo,
+    columna: columnaDe(mapa, campo),
+    valor,
+  }))
+  const fechas = celdas.filter((c) => esCampoDeFecha(c.campo))
+  const texto = celdas.filter((c) => !esCampoDeFecha(c.campo))
+
+  // El texto primero: es lo que la mesa capturó. El sello lo deriva la app y se
+  // puede reconstruir volviendo a guardar, así que es el que puede quedar
+  // pendiente sin que se pierda trabajo de nadie.
+  await escribirCeldas(deps, fila, texto)
+  if (fechas.length === 0) return
+  try {
+    await escribirCeldas(deps, fila, fechas, 'USER_ENTERED')
+  } catch (causa) {
+    throw new SelloNoEscritoError(
+      fechas.map((f) => f.campo),
+      { cause: causa },
+    )
+  }
 }
 
 /** Única vía autorizada para escribir la columna del folio. */

@@ -19,9 +19,10 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | 2 · Vista de caso y escritura | **Completa y en producción** | `docs/superpowers/plans/2026-08-10-etapa-2-caso-y-escritura.md` |
 | 3 · Conversación por correo | **Completa y en producción** | `docs/superpowers/plans/2026-08-11-etapa-3-conversacion-por-correo.md` |
 | Ajustes del cliente | **Completa y en producción** | `docs/superpowers/plans/2026-08-11-ajustes-del-cliente.md` |
-| 4 · Producción y cierre | En preparación: hoja productiva inspeccionada | — |
+| Fila y loader | **Completa**, sin desplegar | `docs/superpowers/plans/2026-08-13-fila-y-loader.md` |
+| 4 · Producción y cierre | En preparación: dos correcciones hechas, falta el cambio de hoja | `docs/superpowers/plans/2026-08-13-etapa-4-produccion-y-cierre.md` |
 
-Suite: **310 pruebas** en 27 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
+Suite: **330 pruebas** en 29 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
 
 ## Infraestructura
 
@@ -96,12 +97,15 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 | Caso cerrado con respuesta nueva | Se muestra con aviso y se puede contestar; la app no reabre el caso ni toca su estatus |
 | Archivos del caso | Se listan juntos los del formulario (Drive) y los de la conversación (Gmail), agrupados por origen |
 | Identidad del caso | El **número de fila**. El folio puede faltar y hay folios arrastrados sin petición |
-| Orden de la cola | **Del más reciente al más antiguo** (pedido del cliente el 11/8/2026; antes era FIFO) |
-| Corte de la cola | **30 días**; lo anterior vive en la vista Rezago. Buscar o filtrar desactiva el corte |
+| Orden de la fila | **Del más reciente al más antiguo** (pedido del cliente el 11/8/2026; antes era FIFO) |
+| Corte de la fila | **30 días**; lo anterior vive en la vista Rezago. Buscar o filtrar desactiva el corte |
 | Filtro de estatus final | Selección múltiple con casillas, incluida la opción "sin estatus". Por omisión **solo los pendientes** (sin estatus final): los de Tramite tampoco entran, porque ese valor significa que alguien ya tomó el caso. Sustituye a la casilla "Incluir cerrados" |
 | Reenvío de la conversación | Correo aparte con asunto propio, transcripción legible y los adjuntos que se dejen marcados. Las respuestas al reenvío no entran al chat del caso |
-| Columnas de la cola | semáforo · Estatus final · Atiende · Folio · Recibido (solo el día) · Trámite · Solicitante · Agencia · Espera |
-| Caso abierto | `KA` distinto de `Concluida` e `Improcedente`. Distinto de "pendiente", que es `KA` vacío y es lo que la cola muestra por omisión |
+| Columnas de la fila | semáforo · Estatus final · Atiende · Folio · Recibido (solo el día) · Trámite · Solicitante · Agencia · Espera |
+| Nombre de la bandeja | **Fila**, no "cola" (pedido del área el 13/8/2026: la palabra resultaba agresiva). Cambian las etiquetas, la ruta `/fila` y el valor `?vista=fila`, con redirección permanente desde `/cola`. En el **código** `fila` sigue siendo el renglón de la hoja, así que el módulo de lógica conserva el nombre `cola.ts` y los mensajes que hablaban del renglón dicen **"registro"** |
+| Navegación | De cliente, con `next/link`. Antes eran `<a href>`, o sea una recarga completa del documento por clic. La única excepción es `/api/mesa/autorizar`, que redirige al consentimiento de Google. Vigilado por `src/app/rutas.test.ts` |
+| Indicadores de carga | `loading.tsx` con esqueleto para los cambios de ruta (la fila y el caso), `useLinkStatus` en las pestañas y en el folio de cada caso, y `useTransition` en los filtros. Los enlaces de la tabla y las pestañas llevan `prefetch={false}` para no disparar una petición por renglón |
+| Caso abierto | `KA` distinto de `Concluida` e `Improcedente`. Distinto de "pendiente", que es `KA` vacío y es lo que la fila muestra por omisión |
 | Acceso a Google | Todo con OAuth de `mesadecontrol@`; consentimiento Interno aprobado por el admin |
 | Identidad de usuario | Cuenta personal del dominio contra allowlist en base; revalidada en cada carga |
 | Bloqueo de caso | **No hay.** Todos los casos están abiertos para todos; la marca de responsable es la columna `KE`, que se llena con el botón "Atender yo este caso" o desde el seguimiento |
@@ -130,7 +134,8 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 12. **La búsqueda de Gmail por asunto encuentra subcadenas.** Por eso el asunto del reenvío evita a propósito la frase `Seguimiento de Caso | Gplus Seguros`: si la llevara, el hilo del reenvío podría devolverse como el hilo del caso cuando se pierda el vínculo guardado en la base.
 13. **No usar `prettier` sin configuración en este repo.** Sus valores por omisión (comillas dobles, punto y coma) contradicen el estilo del código y reescriben archivos completos.
 14. **El servidor corre en UTC y la hoja vive en UTC−6.** Las dos hojas declaran `locale=es_MX` y `timeZone=Etc/GMT+6` (sin horario de verano, que México eliminó en 2022), pero Vercel ejecuta en UTC y `new Date()` toma la hora local del proceso. Cualquier fecha que se escriba en la hoja o se muestre a la mesa tiene que convertirse a UTC−6 explícitamente.
-15. **`valueInputOption=RAW` guarda texto, no fechas.** Las fechas del histórico de `KB` y `KD` son números de serie con formato de fecha; lo que escribe RAW queda como cadena, que no se ordena ni entra en una fórmula. Solo los dos campos de fecha se escriben con `USER_ENTERED`, para que Sheets las interprete; el resto sigue con RAW a propósito, porque `USER_ENTERED` convertiría en fórmula unas Observaciones que empiecen con `=`.
+15. **`loading.tsx` no se vuelve a mostrar cuando solo cambian los parámetros de búsqueda** de la misma ruta, que es lo que hacen las pestañas de vista y los filtros. Para esos casos la señal la dan `useLinkStatus` dentro del `Link` y `useTransition` alrededor del `router.push`. Además `loading.tsx` dejaría de funcionar del todo si el layout raíz empezara a leer datos de runtime —`cookies()`, sesión, un fetch sin caché—: hoy es estático a propósito y la autenticación vive en el proxy y en las páginas.
+16. **`valueInputOption=RAW` guarda texto, no fechas.** Las fechas del histórico de `KB` y `KD` son números de serie con formato de fecha; lo que escribe RAW queda como cadena, que no se ordena ni entra en una fórmula. Solo los dos campos de fecha se escriben con `USER_ENTERED`, para que Sheets las interprete; el resto sigue con RAW a propósito, porque `USER_ENTERED` convertiría en fórmula unas Observaciones que empiecen con `=`.
 
 ## Hallazgos de operación (para conversar con Norma y Keynor)
 
@@ -165,7 +170,7 @@ Hecha con la cuenta de servicio y alcance `spreadsheets.readonly` para que ning�
 
 **Datos de 2026 en la hoja real:** 1,466 casos en las filas 5755–7220, de 7,218 peticiones en total (2023: 1,277 · 2024: 2,511 · 2025: 1,963; dos filas con marca temporal ilegible, ninguna de 2026). Estatus Final: 1,158 Concluida, 206 Tramite, 94 Improcedente y **8 sin valor**.
 
-**Lo que mostrará la cola al cambiar de hoja:** 8 casos sin estatus final, de los cuales **6 caen en la ventana de 30 días** y 2 van a Rezago. Los 206 de Tramite quedan detrás del filtro. Conviene anticipárselo al área para que una cola de 6 casos no se lea como una falla.
+**Lo que mostrará la fila al cambiar de hoja:** 8 casos sin estatus final, de los cuales **6 caen en la ventana de 30 días** y 2 van a Rezago. Los 206 de Tramite quedan detrás del filtro. Conviene anticipárselo al área para que una fila de 6 casos no se lea como una falla.
 
 ## Caso de prueba
 
@@ -184,7 +189,7 @@ Decidido con el área el 13/8/2026: **`USER_ENTERED` solo para `KB` y `KD`**, pa
 
 - Que Keynor, Paty, Norma y José Juan **entren en producción**, con la duda del dominio `garantiplus.mx` del hallazgo 8 resuelta antes. Si algún correo no coincide con lo sembrado, se corrige con `pnpm db:seed`.
 - Conexión de GitHub en la cuenta de Vercel, si se quieren previews automáticos por push (hoy el despliegue es por CLI).
-- **Sellado de `KD` en vivo**: cerrar un caso desde la interfaz y comprobar que la fecha de atención final se llena sola y el caso sale de la cola. La lógica tiene 9 pruebas unitarias, pero no se ha ejercido desde la aplicación.
+- **Sellado de `KD` en vivo**: cerrar un caso desde la interfaz y comprobar que la fecha de atención final se llena sola y el caso sale de la fila. La lógica tiene 9 pruebas unitarias, pero no se ha ejercido desde la aplicación.
 - **La ventana de 30 días del rezago** la definió el desarrollo; falta validarla con quien conoce el SLA. (Los umbrales de 3 y 6 días desaparecieron con el cambio de semáforo.)
 - **Reenvío de la conversación con adjuntos**: la bitácora registra un `cadena_reenviada` del 12/8/2026 a la 1:23 pm sobre la fila 7182, así que el reenvío ya se ejerció en vivo; falta confirmar que fue con archivos adjuntos y que la respuesta del tercero **no** aparece en el chat del caso.
 - **Botón "Atender yo este caso"** con una cuenta de operador. Con `mesadecontrol@` no funciona a propósito: ese usuario no tiene nombre en `KE` y la app avisa en lugar de inventar un valor para la columna.
