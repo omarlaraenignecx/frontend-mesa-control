@@ -8,7 +8,7 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Diseño técnico | `docs/superpowers/specs/2026-08-05-frontend-mesa-control-design.md` |
 | Repositorio | https://github.com/omarlaraenignecx/frontend-mesa-control |
 | Producción | https://frontend-mesa-control.vercel.app |
-| Última actualización | 13 de agosto de 2026 (ajustes del cliente en producción; hoja productiva inspeccionada) |
+| Última actualización | 13 de agosto de 2026 (producción apunta a la hoja productiva) |
 
 ## Estado por etapas
 
@@ -19,8 +19,8 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | 2 · Vista de caso y escritura | **Completa y en producción** | `docs/superpowers/plans/2026-08-10-etapa-2-caso-y-escritura.md` |
 | 3 · Conversación por correo | **Completa y en producción** | `docs/superpowers/plans/2026-08-11-etapa-3-conversacion-por-correo.md` |
 | Ajustes del cliente | **Completa y en producción** | `docs/superpowers/plans/2026-08-11-ajustes-del-cliente.md` |
-| Fila y loader | **Completa**, sin desplegar | `docs/superpowers/plans/2026-08-13-fila-y-loader.md` |
-| 4 · Producción y cierre | En preparación: dos correcciones hechas, falta el cambio de hoja | `docs/superpowers/plans/2026-08-13-etapa-4-produccion-y-cierre.md` |
+| Fila y loader | **Completa y en producción** | `docs/superpowers/plans/2026-08-13-fila-y-loader.md` |
+| 4 · Producción y cierre | En curso: hoja productiva en uso; falta la jornada real y el cierre documental | `docs/superpowers/plans/2026-08-13-etapa-4-produccion-y-cierre.md` |
 
 Suite: **330 pruebas** en 29 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
 
@@ -34,8 +34,8 @@ Suite: **330 pruebas** en 29 archivos. Comandos: `pnpm test`, `pnpm typecheck`, 
 | Identidad operativa | `mesadecontrol@gplusseguros.mx`, refresh token cifrado en Supabase |
 | Base de datos | Supabase `supabase-cerulean-helmet`, provisionada por el Marketplace de Vercel |
 | Proyecto Vercel | `frontend-mesa-control` en el equipo `omarlara-1860s-projects` |
-| Hoja de desarrollo | `1rimFXIxaM4HrBHC9YQfwYfkh0l-RBJdbe7SLM0CGxEQ` — "Prueba formulario mesa de control" |
-| Hoja productiva | `1OfK8ve8twu5WCx-Yy3iJoiKJhs34klChq7dIqx4dfr0` — **no se escribe antes de la Etapa 4** |
+| Hoja de desarrollo | `1rimFXIxaM4HrBHC9YQfwYfkh0l-RBJdbe7SLM0CGxEQ` — "Prueba formulario mesa de control". Es la que usan `.env.local` y el entorno **Preview**, para que ninguna prueba escriba en el registro real |
+| Hoja productiva | `1OfK8ve8twu5WCx-Yy3iJoiKJhs34klChq7dIqx4dfr0` — "Formulario sin título (Respuestas)". **En uso por producción desde el 13 de agosto de 2026**, con autorización del área. La vuelta atrás es cambiar `SHEET_ID` de Production a la copia y volver a desplegar |
 
 El push a GitHub usa un credential helper local que lee el token de `~/.gh-token-mesa`, con una entrada vacía previa para descartar el `osxkeychain` del sistema (que responde con otra cuenta).
 
