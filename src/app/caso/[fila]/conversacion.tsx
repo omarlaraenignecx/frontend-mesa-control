@@ -62,7 +62,22 @@ export function Conversacion({
       datos.set('copias', copias)
       for (const a of archivos) datos.append('archivos', a)
 
-      const r = await enviarMensaje(fila, datos)
+      // La acción devuelve sus errores previstos, pero hay fallas que ocurren
+      // antes de que corra: el cuerpo rechazado por grande, la red caída, un
+      // despliegue nuevo. Sin este catch, cualquiera de esas se lleva la página
+      // entera y el mensaje que la mesa escribió se pierde.
+      let r: ResultadoEnvio
+      try {
+        r = await enviarMensaje(fila, datos)
+      } catch {
+        setResultado({
+          ok: false,
+          error:
+            'No se pudo enviar el correo. Revisa tu conexión y vuelve a intentarlo; si llevas archivos adjuntos, prueba con menos o más ligeros.',
+        })
+        return
+      }
+
       setResultado(r)
       if (r.ok) {
         setCuerpo('')

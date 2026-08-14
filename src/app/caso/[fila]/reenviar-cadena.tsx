@@ -65,7 +65,19 @@ export function ReenviarCadena({
       datos.set('nota', nota)
       for (const a of elegidos) datos.append('adjuntos', claveDe(a))
 
-      const r = await reenviarCadena(fila, datos)
+      // Igual que en el compositor: una falla anterior a la acción no debe
+      // cerrar el modal con la pantalla de error de Next.
+      let r: ResultadoReenvio
+      try {
+        r = await reenviarCadena(fila, datos)
+      } catch {
+        setResultado({
+          ok: false,
+          error: 'No se pudo reenviar la conversación. Revisa tu conexión y vuelve a intentarlo.',
+        })
+        return
+      }
+
       setResultado(r)
       if (r.ok) {
         setPara('')

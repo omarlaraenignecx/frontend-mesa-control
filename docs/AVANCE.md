@@ -8,7 +8,7 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Diseño técnico | `docs/superpowers/specs/2026-08-05-frontend-mesa-control-design.md` |
 | Repositorio | https://github.com/omarlaraenignecx/frontend-mesa-control |
 | Producción | https://frontend-mesa-control.vercel.app |
-| Última actualización | 14 de agosto de 2026 (filtro de estatus con los pendientes marcados y aviso de responder en el mismo hilo) |
+| Última actualización | 14 de agosto de 2026 (filtro de estatus, aviso de responder en el mismo hilo y arreglo del envío con adjuntos) |
 
 ## Estado por etapas
 
@@ -24,7 +24,7 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Filtros y aviso de respuesta | **Completa en código** | sin plan; dos cambios pedidos el 14/8/2026 |
 | 4 · Producción y cierre | En curso: hoja productiva en uso; falta la jornada real y el cierre documental | `docs/superpowers/plans/2026-08-13-etapa-4-produccion-y-cierre.md` |
 
-Suite: **377 pruebas** en 34 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
+Suite: **386 pruebas** en 36 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
 
 ## Infraestructura
 
@@ -140,7 +140,7 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 15. **`loading.tsx` no se vuelve a mostrar cuando solo cambian los parámetros de búsqueda** de la misma ruta, que es lo que hacen las pestañas de vista y los filtros. Para esos casos la señal la dan `useLinkStatus` dentro del `Link` y `useTransition` alrededor del `router.push`. Además `loading.tsx` dejaría de funcionar del todo si el layout raíz empezara a leer datos de runtime —`cookies()`, sesión, un fetch sin caché—: hoy es estático a propósito y la autenticación vive en el proxy y en las páginas.
 16. **`valueInputOption=RAW` guarda texto, no fechas.** Las fechas del histórico de `KB` y `KD` son números de serie con formato de fecha; lo que escribe RAW queda como cadena, que no se ordena ni entra en una fórmula. Solo los dos campos de fecha se escriben con `USER_ENTERED`, para que Sheets las interprete; el resto sigue con RAW a propósito, porque `USER_ENTERED` convertiría en fórmula unas Observaciones que empiecen con `=`.
 17. **`drizzle-kit push` se cuelga contra la URL agrupada de Supabase.** El pooler corre en modo transacción y no admite las sentencias preparadas que usa drizzle-kit: el comando se queda para siempre en `Pulling schema from database`, sin error ni tiempo de espera. `drizzle.config.ts` usa `POSTGRES_URL_NON_POOLING`. La aplicación sí usa la agrupada, con `prepare: false` en `src/db/index.ts`.
-18. **El cuerpo de una Server Action está limitado a 1 MB.** Subir archivos va por una Route Handler (`/api/archivo/subir`), no por acción: elevar `serverActions.bodySizeLimit` expondría todos los formularios de la aplicación a cuerpos grandes para resolver un solo caso.
+18. **El cuerpo de una Server Action está limitado a 1 MB por omisión, y eso rompió el envío de correo con adjuntos.** La subida de archivos al caso va por una Route Handler (`/api/archivo/subir`) para no depender de ese tope, pero el **adjunto del correo sí viaja dentro de la acción**, y ahí el límite nunca se configuró: el compositor solo revisaba el tope de Gmail (25 MB ya codificados, ~18.7 MB de archivo real), así que un PDF de tres megas pasaba la revisión y Next abortaba la petición con un **413 antes de ejecutar la acción**. En el navegador eso se ve como "This page couldn't load", sin explicación y perdiendo el mensaje escrito. Se corrigió el 14/8/2026 fijando `serverActions.bodySizeLimit` desde `LIMITE_CUERPO_ACCION_BYTES` (`src/lib/correo/limites.ts`), con una prueba que falla si el tope de la acción deja de cubrir lo que Gmail acepta. El costo asumido es que **todos** los formularios admiten cuerpos de hasta 25 MB; están detrás del proxy autenticado y solo el compositor tiene campo de archivos. Aparte, los dos compositores ahora atrapan lo que lance la acción: una falla anterior a ella ya no se lleva la página.
 19. **`fetch` no acepta un `Uint8Array<ArrayBufferLike>` como cuerpo**, que es lo que TypeScript infiere por omisión desde la 5.7. Hay que construirlo con `new Uint8Array(new ArrayBuffer(n))` para fijar el respaldo en un `ArrayBuffer`; si no, `tsc` lo rechaza aunque en ejecución funcione.
 20. **La misma base sirve a la copia y a la hoja real**, porque `POSTGRES_URL` tiene un solo valor para Production, Preview y Development. El número de fila por sí solo **no** identifica un caso: la 7181 de la copia y la 7181 de la productiva son casos distintos. `archivos_caso` lleva `sheet_id` por eso. Las tablas anteriores (`bitacora`, `eventos_bi`, `casos_hilo`) no lo llevan, así que una entrada hecha desde `pnpm dev` se ve en el caso de producción con el mismo número; son registros internos y de solo lectura para la mesa, pero conviene saberlo.
 21. **Agregar un scope no invalida la credencial guardada.** El refresh token sigue sirviendo para los permisos que sí tiene, así que la falta solo se nota al usar la función nueva —con un 403 opaco de Google—. `scopesFaltantes()` compara lo guardado con lo requerido y Ajustes lo avisa; el 403 se traduce a un mensaje que dice qué hacer.
