@@ -8,7 +8,7 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Diseño técnico | `docs/superpowers/specs/2026-08-05-frontend-mesa-control-design.md` |
 | Repositorio | https://github.com/omarlaraenignecx/frontend-mesa-control |
 | Producción | https://frontend-mesa-control.vercel.app |
-| Última actualización | 13 de agosto de 2026 (correo del solicitante, generación de folios y archivos de la mesa) |
+| Última actualización | 14 de agosto de 2026 (filtro de estatus con los pendientes marcados y aviso de responder en el mismo hilo) |
 
 ## Estado por etapas
 
@@ -20,10 +20,11 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | 3 · Conversación por correo | **Completa y en producción** | `docs/superpowers/plans/2026-08-11-etapa-3-conversacion-por-correo.md` |
 | Ajustes del cliente | **Completa y en producción** | `docs/superpowers/plans/2026-08-11-ajustes-del-cliente.md` |
 | Fila y loader | **Completa y en producción** | `docs/superpowers/plans/2026-08-13-fila-y-loader.md` |
-| Correo, folios y archivos | **Completa en código**; la subida de archivos espera la reautorización de Google | `docs/superpowers/plans/2026-08-13-correo-folios-y-archivos.md` |
+| Correo, folios y archivos | **Completa y en producción**; Google reautorizado el 13/8/2026 (9 permisos), falta subir un archivo real desde el navegador | `docs/superpowers/plans/2026-08-13-correo-folios-y-archivos.md` |
+| Filtros y aviso de respuesta | **Completa en código** | sin plan; dos cambios pedidos el 14/8/2026 |
 | 4 · Producción y cierre | En curso: hoja productiva en uso; falta la jornada real y el cierre documental | `docs/superpowers/plans/2026-08-13-etapa-4-produccion-y-cierre.md` |
 
-Suite: **358 pruebas** en 32 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
+Suite: **377 pruebas** en 34 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
 
 ## Infraestructura
 
@@ -95,12 +96,13 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 | Tipografía | Geist con nombres literales en `@theme inline`, base de 17px y controles de 44px |
 | Destinatarios del correo | `Para` = solicitante, fijo. `CC` = ejecutivo comercial solo si difiere. El usuario puede agregar copias, nunca cambiar el principal; las copias quedan en bitácora |
 | Firma del correo | `Mesa de Control — Gplus Seguros`, `Atiende: <nombre>` y el buzón de la mesa |
+| Aviso de respuesta | Todos los correos que salen de la mesa llevan un bloque ámbar antes de la firma pidiendo **responder a ese mismo mensaje** y explicando que un correo nuevo separa la respuesta del expediente. Va en el armado del correo (`avisoDeRespuesta`), no en las plantillas que edita el área: en las plantillas se podría borrar al corregir un texto, y responder en el hilo es lo que conserva el `threadId` de la fila. **No** se agregó al reenvío de la conversación, que sale como correo aparte y cuyas respuestas no entran al chat del caso |
 | Caso cerrado con respuesta nueva | Se muestra con aviso y se puede contestar; la app no reabre el caso ni toca su estatus |
 | Archivos del caso | Tres orígenes en un solo panel: el formulario (Drive), la conversación (Gmail) y **los que sube la mesa**. Sin restricción de tipo: capturas, PDF, lo que haga falta. Van a una carpeta `Mesa de Control · Archivos` del Drive de `mesadecontrol@`, **una por hoja**, para que probar contra la copia no deje archivos en la que ve el área, con el registro en `archivos_caso`; el enlace **no puede** ir a la hoja porque sus columnas de adjuntos están protegidas sin editores. El registro se identifica por **hoja más fila**, no por fila sola |
 | Identidad del caso | El **número de fila**. El folio puede faltar y hay folios arrastrados sin petición |
 | Orden de la fila | **Del más reciente al más antiguo** (pedido del cliente el 11/8/2026; antes era FIFO) |
 | Corte de la fila | **30 días**; lo anterior vive en la vista Rezago. Buscar o filtrar desactiva el corte |
-| Filtro de estatus final | Selección múltiple con casillas, incluida la opción "sin estatus". Por omisión **solo los pendientes** (sin estatus final): los de Tramite tampoco entran, porque ese valor significa que alguien ya tomó el caso. Sustituye a la casilla "Incluir cerrados" |
+| Filtro de estatus final | Selección múltiple con casillas, incluida la opción "sin estatus". Por omisión **solo los pendientes** (sin estatus final): los de Tramite tampoco entran, porque ese valor significa que alguien ya tomó el caso. Sustituye a la casilla "Incluir cerrados". Desde el 14/8/2026 la casilla de pendientes **se muestra marcada** cuando no hay nada en la URL —antes el panel se veía sin filtro aunque sí lo hubiera— y hay un **"Seleccionar todos"** que marca los estatus de golpe y en el segundo clic regresa a los pendientes. Desmarcar la última casilla también regresa ahí: la tabla nunca se queda sin ningún estatus elegido |
 | Reenvío de la conversación | Correo aparte con asunto propio, transcripción legible y los adjuntos que se dejen marcados. Las respuestas al reenvío no entran al chat del caso |
 | Columnas de la fila | semáforo · Estatus final · Atiende · Folio · Recibido (solo el día) · Trámite · Solicitante · **Correo** · Agencia · Espera. El correo sale de `correoSolicitante`, que agrupa las columnas `J` y `AD` de la hoja |
 | Nombre de la bandeja | **Fila**, no "cola" (pedido del área el 13/8/2026: la palabra resultaba agresiva). Cambian las etiquetas, la ruta `/fila` y el valor `?vista=fila`, con redirección permanente desde `/cola`. En el **código** `fila` sigue siendo el renglón de la hoja, así que el módulo de lógica conserva el nombre `cola.ts` y los mensajes que hablaban del renglón dicen **"registro"** |
