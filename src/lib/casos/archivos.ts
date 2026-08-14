@@ -1,10 +1,21 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { getDb } from '@/db/index'
 import { ajustesApp, archivosCaso } from '@/db/schema'
 import { accessTokenDeLaMesa } from '@/lib/google/auth-mesa'
 import { crearCarpeta, type DepsDrive } from '@/lib/google/drive-subida'
 
 const CLAVE_CARPETA = 'carpeta_drive_archivos'
+
+/**
+ * La hoja a la que pertenece lo que se está mirando. Entra en la identidad de
+ * cada archivo porque la base es compartida entre la copia y la hoja real, y el
+ * número de fila por sí solo no distingue un caso de otro.
+ */
+function hojaActual(): string {
+  const id = process.env.SHEET_ID
+  if (!id) throw new Error('Falta SHEET_ID: no se puede saber a qué hoja pertenece el archivo.')
+  return id
+}
 
 export async function depsDrive(): Promise<DepsDrive> {
   return { fetch: globalThis.fetch, accessToken: await accessTokenDeLaMesa() }
@@ -49,7 +60,9 @@ export async function registrarArchivo(datos: {
   bytes: number
   subidoPor: string
 }): Promise<void> {
-  await getDb().insert(archivosCaso).values(datos)
+  await getDb()
+    .insert(archivosCaso)
+    .values({ ...datos, sheetId: hojaActual() })
 }
 
 export type ArchivoDeLaMesa = {
@@ -63,7 +76,7 @@ export async function listarArchivos(fila: number): Promise<ArchivoDeLaMesa[]> {
   const filas = await getDb()
     .select()
     .from(archivosCaso)
-    .where(eq(archivosCaso.fila, fila))
+    .where(and(eq(archivosCaso.sheetId, hojaActual()), eq(archivosCaso.fila, fila)))
     .orderBy(asc(archivosCaso.creadoEn))
   return filas.map((f) => ({
     id: f.id,
@@ -76,8 +89,15 @@ export async function listarArchivos(fila: number): Promise<ArchivoDeLaMesa[]> {
 /**
  * Busca por el id interno y no por el de Drive: así la URL de descarga no expone
  * identificadores de Google, y solo se sirve lo que está registrado.
+ *
+ * Filtra también por hoja, para que un archivo subido contra la copia no se pueda
+ * descargar desde producción con solo acertar el número.
  */
 export async function buscarArchivo(id: number) {
-  const [fila] = await getDb().select().from(archivosCaso).where(eq(archivosCaso.id, id)).limit(1)
+  const [fila] = await getDb()
+    .select()
+    .from(archivosCaso)
+    .where(and(eq(archivosCaso.id, id), eq(archivosCaso.sheetId, hojaActual())))
+    .limit(1)
   return fila ?? null
 }

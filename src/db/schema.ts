@@ -89,6 +89,13 @@ export const plantillasCorreo = pgTable(
  */
 export const archivosCaso = pgTable('archivos_caso', {
   id: serial('id').primaryKey(),
+  /**
+   * La fila sola no identifica un caso: esta base es la misma para desarrollo y
+   * producción, y la fila 7181 de la copia es un caso distinto al de la hoja
+   * real. Sin la hoja, un archivo subido desde `pnpm dev` aparecería en un caso
+   * de producción que no tiene nada que ver.
+   */
+  sheetId: text('sheet_id').notNull(),
   fila: integer('fila').notNull(),
   driveFileId: text('drive_file_id').notNull(),
   nombre: text('nombre').notNull(),
