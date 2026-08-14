@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import fixture from './__fixtures__/encabezados-307.json'
-import { construirCasos, leerCasos } from './sheet-reader'
+import { construirCasos, leerCasos, leerColumnaFolios } from './sheet-reader'
 import { construirMapa } from './sheet-schema'
 
 const ENCABEZADOS: string[] = fixture.encabezados
@@ -178,5 +178,29 @@ describe('leerCasos', () => {
     const fetchMock = fetchSecuencia([{ values: [ENCABEZADOS] }, {}])
     const { casos } = await leerCasos({ ...DEPS_BASE, fetch: fetchMock })
     expect(casos).toEqual([])
+  })
+
+  describe('leerColumnaFolios', () => {
+    it('lee la columna entera desde la fila 2, con celdas vacías incluidas', async () => {
+      // Las filas que la mesa pre-arrastra traen folio y ninguna otra celda, así
+      // que `construirCasos` las descarta. El máximo de la serie solo se ve
+      // leyendo la columna directamente.
+      const fetchMock = fetchSecuencia([{ values: [['7051'], [], ['7054']] }])
+      const valores = await leerColumnaFolios({ ...DEPS_BASE, fetch: fetchMock }, MAPA)
+
+      expect(valores).toEqual(['7051', '', '7054'])
+      const [url] = (fetchMock as unknown as ReturnType<typeof vi.fn>).mock.calls[0]
+      expect(decodeURIComponent(String(url))).toContain('Respuestas de formulario 1!JY2:JY')
+    })
+
+    it('sin columna de folio en el mapa no pide nada a Google', async () => {
+      const fetchMock = fetchSecuencia([{}])
+      const mapaSinFolio = {
+        ...MAPA,
+        columnasPorCampo: { ...MAPA.columnasPorCampo, folio: [] },
+      }
+      expect(await leerColumnaFolios({ ...DEPS_BASE, fetch: fetchMock }, mapaSinFolio)).toEqual([])
+      expect((fetchMock as unknown as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0)
+    })
   })
 })

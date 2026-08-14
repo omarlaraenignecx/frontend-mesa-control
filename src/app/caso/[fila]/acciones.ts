@@ -2,7 +2,7 @@
 
 import { revalidatePath, updateTag } from 'next/cache'
 import { requerirUsuario } from '@/lib/auth/guard'
-import { registrarAccion, registrarCambios } from '@/lib/casos/bitacora'
+import { registrarCambios } from '@/lib/casos/bitacora'
 import { fechaDeCierreASellar, seCierraAhora } from '@/lib/casos/cierre'
 import { cargarCaso, depsDeGoogle } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
@@ -11,7 +11,6 @@ import { calcularDiff, type Seguimiento } from '@/lib/casos/seguimiento'
 import {
   FilaCambiadaError,
   SelloNoEscritoError,
-  escribirFolio,
   escribirSeguimiento,
 } from '@/lib/google/sheet-writer'
 
@@ -101,32 +100,6 @@ export async function guardarSeguimiento(
   updateTag('casos')
   revalidatePath(`/caso/${fila}`)
   return { ok: true, cambios: cambios.length, aviso }
-}
-
-export async function capturarFolio(fila: number, folio: string): Promise<ResultadoGuardado> {
-  const usuario = await requerirUsuario()
-  const cargado = await cargarCaso(fila)
-  if (!cargado) {
-    return { ok: false, error: 'El caso ya no existe en la hoja.', conflicto: false }
-  }
-
-  try {
-    await escribirFolio(await depsDeGoogle(), cargado.mapa, fila, folio, {
-      marcaTemporalTexto: cargado.caso.marcaTemporalTexto,
-      folio: cargado.caso.folio,
-    })
-  } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : 'Error al capturar el folio.',
-      conflicto: e instanceof FilaCambiadaError,
-    }
-  }
-
-  await registrarAccion(fila, folio, usuario.correo, 'Folio de atención', folio, 'folio_capturado')
-  updateTag('casos')
-  revalidatePath(`/caso/${fila}`)
-  return { ok: true, cambios: 1 }
 }
 
 /**

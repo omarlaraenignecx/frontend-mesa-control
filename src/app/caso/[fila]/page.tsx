@@ -9,6 +9,7 @@ import {
   MessageSquareText,
   Paperclip,
 } from 'lucide-react'
+import { GenerarFolios } from '@/components/generar-folios'
 import { EtiquetaSemaforo } from '@/components/semaforo'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,15 +19,15 @@ import { leerPlantilla } from '@/lib/correo/plantillas'
 import { sustituirVariables } from '@/lib/correo/render-correo'
 import { estaVivo } from '@/lib/casos/caso'
 import { leerBitacora } from '@/lib/casos/bitacora'
+import { listarArchivos } from '@/lib/casos/archivos'
 import { agruparCamposExtra } from '@/lib/casos/campos-extra'
-import { sinFolio } from '@/lib/casos/caso'
 import { Conversacion } from './conversacion'
 import { cargarCaso } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
 import { diasDeEspera } from '@/lib/casos/semaforo'
 import { Atender } from './atender'
-import { FolioForm } from './folio-form'
 import { SeguimientoForm } from './seguimiento-form'
+import { SubirArchivos } from './subir-archivos'
 
 function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
@@ -68,7 +69,7 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
     )
   }
 
-  const { caso, catalogos } = cargado
+  const { caso, catalogos, sinFolioTotal } = cargado
 
   await emitirEvento({
     tipo: 'caso_visualizado',
@@ -109,6 +110,7 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
 
   const dias = diasDeEspera(caso, new Date())
   const bitacora = await leerBitacora(fila)
+  const archivosDeLaMesa = await listarArchivos(fila)
   const extras = agruparCamposExtra(caso.camposExtra)
 
   // Solo los campos que traen dato (RF-03).
@@ -170,7 +172,9 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
       </header>
 
       <main className="mx-auto max-w-7xl space-y-5 px-6 py-6">
-        {sinFolio(caso) && <FolioForm fila={fila} />}
+        {/* Aparece aunque el folio que falte sea de otro registro: la acción
+            llena la columna completa, así que se resuelve desde donde se esté. */}
+        <GenerarFolios faltantes={sinFolioTotal} />
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="space-y-5">
@@ -202,7 +206,7 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
                   <Paperclip className="size-5 text-primary" />
                   Archivos del caso
                   <Badge variant="outline" className="ml-auto text-sm font-normal">
-                    {caso.adjuntos.length + adjuntosDelCorreo.length}
+                    {caso.adjuntos.length + adjuntosDelCorreo.length + archivosDeLaMesa.length}
                   </Badge>
                 </CardTitle>
               </CardHeader>
@@ -262,6 +266,38 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
                       ))}
                     </ul>
                   )}
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
+                    Subidos por la mesa
+                  </p>
+                  {archivosDeLaMesa.length === 0 ? (
+                    <p className="text-base text-muted-foreground">
+                      Todavía no se han subido archivos a este caso.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {archivosDeLaMesa.map((a) => (
+                        <li key={a.id}>
+                          <a
+                            href={`/api/archivo/${a.id}`}
+                            className="flex items-start gap-3 rounded-lg border bg-secondary/40 px-3 py-2.5 text-base transition-colors hover:border-primary/40 hover:bg-secondary"
+                          >
+                            <Download className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                            <span className="min-w-0">
+                              <span className="block break-words">{a.nombre}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {(a.bytes / (1024 * 1024)).toFixed(1)} MB ·{' '}
+                                {a.subidoPor.split('@')[0]}
+                              </span>
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <SubirArchivos fila={fila} />
                 </div>
               </CardContent>
             </Card>

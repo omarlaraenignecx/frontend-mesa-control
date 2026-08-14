@@ -13,7 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { GenerarFolios } from '@/components/generar-folios'
 import { requerirUsuario } from '@/lib/auth/guard'
+import { sinFolio } from '@/lib/casos/caso'
 import {
   VENTANA_COLA_DIAS,
   filtrar,
@@ -137,6 +139,9 @@ export default async function PaginaDeLaFila({
     params.q || params.tramite || params.responsable || estatusElegidos.length > 0,
   )
   const descripcion = VISTAS.find((v) => v.clave === vista)!.ayuda
+  // Sobre todos los casos leídos y no sobre los filtrados: el arrastre llena la
+  // columna entera de la hoja, no la vista que se esté mirando.
+  const faltanFolio = resultado.casos.filter(sinFolio).length
 
   return (
     <div className="min-h-full">
@@ -200,6 +205,8 @@ export default async function PaginaDeLaFila({
       </header>
 
       <main className="mx-auto max-w-7xl space-y-4 px-6 py-6">
+        <GenerarFolios faltantes={faltanFolio} />
+
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-base text-muted-foreground">
             {hayBusqueda
@@ -228,6 +235,7 @@ export default async function PaginaDeLaFila({
               <TableHead className="text-base">Recibido</TableHead>
               <TableHead className="text-base">Trámite</TableHead>
               <TableHead className="text-base">Solicitante</TableHead>
+              <TableHead className="text-base">Correo</TableHead>
               <TableHead className="text-base">Agencia</TableHead>
               <TableHead className="text-right text-base">Espera</TableHead>
             </TableRow>
@@ -266,6 +274,11 @@ export default async function PaginaDeLaFila({
                   </TableCell>
                   <TableCell>{caso.tipoTramite ?? '—'}</TableCell>
                   <TableCell>{caso.nombreSolicitante ?? '—'}</TableCell>
+                  {/* break-all: un correo largo no tiene espacios donde cortar y
+                      sin esto estira la tabla hasta sacar la columna de espera. */}
+                  <TableCell className="break-all text-muted-foreground">
+                    {caso.correoSolicitante ?? '—'}
+                  </TableCell>
                   <TableCell>{caso.agencia ?? '—'}</TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
                     {dias === null ? '—' : `${dias} d`}
@@ -275,7 +288,7 @@ export default async function PaginaDeLaFila({
             })}
             {filtrados.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="py-12 text-center text-base text-muted-foreground">
+                <TableCell colSpan={10} className="py-12 text-center text-base text-muted-foreground">
                   {hayBusqueda
                     ? 'Ningún caso coincide con lo que buscas.'
                     : 'No hay casos en esta vista.'}

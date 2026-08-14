@@ -8,7 +8,7 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Diseño técnico | `docs/superpowers/specs/2026-08-05-frontend-mesa-control-design.md` |
 | Repositorio | https://github.com/omarlaraenignecx/frontend-mesa-control |
 | Producción | https://frontend-mesa-control.vercel.app |
-| Última actualización | 13 de agosto de 2026 (producción apunta a la hoja productiva) |
+| Última actualización | 13 de agosto de 2026 (correo del solicitante, generación de folios y archivos de la mesa) |
 
 ## Estado por etapas
 
@@ -20,9 +20,10 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | 3 · Conversación por correo | **Completa y en producción** | `docs/superpowers/plans/2026-08-11-etapa-3-conversacion-por-correo.md` |
 | Ajustes del cliente | **Completa y en producción** | `docs/superpowers/plans/2026-08-11-ajustes-del-cliente.md` |
 | Fila y loader | **Completa y en producción** | `docs/superpowers/plans/2026-08-13-fila-y-loader.md` |
+| Correo, folios y archivos | **Completa en código**; la subida de archivos espera la reautorización de Google | `docs/superpowers/plans/2026-08-13-correo-folios-y-archivos.md` |
 | 4 · Producción y cierre | En curso: hoja productiva en uso; falta la jornada real y el cierre documental | `docs/superpowers/plans/2026-08-13-etapa-4-produccion-y-cierre.md` |
 
-Suite: **330 pruebas** en 29 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
+Suite: **358 pruebas** en 32 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
 
 ## Infraestructura
 
@@ -87,7 +88,7 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 
 | Tema | Decisión |
 | --- | --- |
-| Escritura a la hoja | Solo 10 columnas por lista blanca, comprobada antes de la llamada HTTP. `JY` solo al capturar un folio faltante |
+| Escritura a la hoja | Solo 10 columnas por lista blanca, comprobada antes de la llamada HTTP. `JY` solo al generar folios faltantes, y nunca sobre una celda con dato |
 | Concurrencia | Revalidación de la fila (marca temporal y folio) antes de escribir; detecta también las ediciones hechas en la hoja |
 | Observaciones | Se antepone `D/M/YYYY Nombre: texto` conservando íntegro lo anterior |
 | Autocompletado | Solo `KE` precargado y editable, más el sellado de `KB` y `KD`. La app no opina sobre el trámite |
@@ -95,13 +96,13 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 | Destinatarios del correo | `Para` = solicitante, fijo. `CC` = ejecutivo comercial solo si difiere. El usuario puede agregar copias, nunca cambiar el principal; las copias quedan en bitácora |
 | Firma del correo | `Mesa de Control — Gplus Seguros`, `Atiende: <nombre>` y el buzón de la mesa |
 | Caso cerrado con respuesta nueva | Se muestra con aviso y se puede contestar; la app no reabre el caso ni toca su estatus |
-| Archivos del caso | Se listan juntos los del formulario (Drive) y los de la conversación (Gmail), agrupados por origen |
+| Archivos del caso | Tres orígenes en un solo panel: el formulario (Drive), la conversación (Gmail) y **los que sube la mesa**. Sin restricción de tipo: capturas, PDF, lo que haga falta. Van a una carpeta `Mesa de Control · Archivos` del Drive de `mesadecontrol@`, **una por hoja**, para que probar contra la copia no deje archivos en la que ve el área, con el registro en `archivos_caso`; el enlace **no puede** ir a la hoja porque sus columnas de adjuntos están protegidas sin editores. El registro se identifica por **hoja más fila**, no por fila sola |
 | Identidad del caso | El **número de fila**. El folio puede faltar y hay folios arrastrados sin petición |
 | Orden de la fila | **Del más reciente al más antiguo** (pedido del cliente el 11/8/2026; antes era FIFO) |
 | Corte de la fila | **30 días**; lo anterior vive en la vista Rezago. Buscar o filtrar desactiva el corte |
 | Filtro de estatus final | Selección múltiple con casillas, incluida la opción "sin estatus". Por omisión **solo los pendientes** (sin estatus final): los de Tramite tampoco entran, porque ese valor significa que alguien ya tomó el caso. Sustituye a la casilla "Incluir cerrados" |
 | Reenvío de la conversación | Correo aparte con asunto propio, transcripción legible y los adjuntos que se dejen marcados. Las respuestas al reenvío no entran al chat del caso |
-| Columnas de la fila | semáforo · Estatus final · Atiende · Folio · Recibido (solo el día) · Trámite · Solicitante · Agencia · Espera |
+| Columnas de la fila | semáforo · Estatus final · Atiende · Folio · Recibido (solo el día) · Trámite · Solicitante · **Correo** · Agencia · Espera. El correo sale de `correoSolicitante`, que agrupa las columnas `J` y `AD` de la hoja |
 | Nombre de la bandeja | **Fila**, no "cola" (pedido del área el 13/8/2026: la palabra resultaba agresiva). Cambian las etiquetas, la ruta `/fila` y el valor `?vista=fila`, con redirección permanente desde `/cola`. En el **código** `fila` sigue siendo el renglón de la hoja, así que el módulo de lógica conserva el nombre `cola.ts` y los mensajes que hablaban del renglón dicen **"registro"** |
 | Navegación | De cliente, con `next/link`. Antes eran `<a href>`, o sea una recarga completa del documento por clic. La única excepción es `/api/mesa/autorizar`, que redirige al consentimiento de Google. Vigilado por `src/app/rutas.test.ts` |
 | Indicadores de carga | `loading.tsx` con esqueleto para los cambios de ruta (la fila y el caso), `useLinkStatus` en las pestañas y en el folio de cada caso, y `useTransition` en los filtros. Los enlaces de la tabla y las pestañas llevan `prefetch={false}` para no disparar una petición por renglón |
@@ -113,7 +114,7 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 | Fechas `KB` y `KD` | Selladas automáticamente por la app |
 | Asunto del correo | `Seguimiento de Caso \| Gplus Seguros \| <folio>` |
 | Correos | HTML profesional al enviar, texto plano en el chat |
-| Folio faltante | Se pide capturarlo antes de abrir la conversación; la app no genera folios |
+| Folio faltante | **La app lo genera**, con un aviso ámbar en la fila y en el caso que solo existe mientras haya faltantes (13/8/2026; antes se pedía teclearlo a mano). Continúa la serie desde el **máximo de toda la columna `JY`**, no desde la fila de arriba: el arrastre manual es lo que produjo los 210 folios duplicados de la hoja, porque el formulario inserta la fila nueva arriba de las pre-arrastradas. Escribe todas las pendientes en un lote y aborta completo si una cambió. Tope de 50 por tanda |
 | Reactividad | Lectura al cargar más botón Actualizar. Sin polling ni webhooks |
 | Plantillas de correo | En base de datos, editables desde la app |
 | Firma | Remitente de la mesa, indicando quién atiende |
@@ -136,13 +137,18 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 14. **El servidor corre en UTC y la hoja vive en UTC−6.** Las dos hojas declaran `locale=es_MX` y `timeZone=Etc/GMT+6` (sin horario de verano, que México eliminó en 2022), pero Vercel ejecuta en UTC y `new Date()` toma la hora local del proceso. Cualquier fecha que se escriba en la hoja o se muestre a la mesa tiene que convertirse a UTC−6 explícitamente.
 15. **`loading.tsx` no se vuelve a mostrar cuando solo cambian los parámetros de búsqueda** de la misma ruta, que es lo que hacen las pestañas de vista y los filtros. Para esos casos la señal la dan `useLinkStatus` dentro del `Link` y `useTransition` alrededor del `router.push`. Además `loading.tsx` dejaría de funcionar del todo si el layout raíz empezara a leer datos de runtime —`cookies()`, sesión, un fetch sin caché—: hoy es estático a propósito y la autenticación vive en el proxy y en las páginas.
 16. **`valueInputOption=RAW` guarda texto, no fechas.** Las fechas del histórico de `KB` y `KD` son números de serie con formato de fecha; lo que escribe RAW queda como cadena, que no se ordena ni entra en una fórmula. Solo los dos campos de fecha se escriben con `USER_ENTERED`, para que Sheets las interprete; el resto sigue con RAW a propósito, porque `USER_ENTERED` convertiría en fórmula unas Observaciones que empiecen con `=`.
+17. **`drizzle-kit push` se cuelga contra la URL agrupada de Supabase.** El pooler corre en modo transacción y no admite las sentencias preparadas que usa drizzle-kit: el comando se queda para siempre en `Pulling schema from database`, sin error ni tiempo de espera. `drizzle.config.ts` usa `POSTGRES_URL_NON_POOLING`. La aplicación sí usa la agrupada, con `prepare: false` en `src/db/index.ts`.
+18. **El cuerpo de una Server Action está limitado a 1 MB.** Subir archivos va por una Route Handler (`/api/archivo/subir`), no por acción: elevar `serverActions.bodySizeLimit` expondría todos los formularios de la aplicación a cuerpos grandes para resolver un solo caso.
+19. **`fetch` no acepta un `Uint8Array<ArrayBufferLike>` como cuerpo**, que es lo que TypeScript infiere por omisión desde la 5.7. Hay que construirlo con `new Uint8Array(new ArrayBuffer(n))` para fijar el respaldo en un `ArrayBuffer`; si no, `tsc` lo rechaza aunque en ejecución funcione.
+20. **La misma base sirve a la copia y a la hoja real**, porque `POSTGRES_URL` tiene un solo valor para Production, Preview y Development. El número de fila por sí solo **no** identifica un caso: la 7181 de la copia y la 7181 de la productiva son casos distintos. `archivos_caso` lleva `sheet_id` por eso. Las tablas anteriores (`bitacora`, `eventos_bi`, `casos_hilo`) no lo llevan, así que una entrada hecha desde `pnpm dev` se ve en el caso de producción con el mismo número; son registros internos y de solo lectura para la mesa, pero conviene saberlo.
+21. **Agregar un scope no invalida la credencial guardada.** El refresh token sigue sirviendo para los permisos que sí tiene, así que la falta solo se nota al usar la función nueva —con un 403 opaco de Google—. `scopesFaltantes()` compara lo guardado con lo requerido y Ajustes lo avisa; el 403 se traduce a un mensaje que dice qué hacer.
 
 ## Hallazgos de operación (para conversar con Norma y Keynor)
 
 1. **140 de 200 casos abiertos son rezago**, el más antiguo con **216 días** (folio 5787, del 6 de enero). La mesa no cierra formalmente los casos que quedan esperando al solicitante o a la aseguradora. Es lo que motivó el corte de 30 días.
 2. **Aparece "Ernesto"** como responsable histórico, y no está en el catálogo actual de `KE` ni en la allowlist. Medido sobre la **hoja productiva** el 13/8/2026: **475 de los 1,466 casos de 2026**, casi un tercio, con un valor que la propia validación de `KE` no permite. El reparto completo del año es Keynor 767, Ernesto 475, Paty 175, Norma 30, José Juan 9 y 10 sin valor. Conviene preguntar quién es y si debe volver al catálogo.
 3. **El Estatus Final tiene basura histórica.** La validación de `KA` permite solo `Concluida`, `Improcedente` y `Tramite`, pero el histórico completo trae **570 filas con `N/A`**, una con "Información incompleta" y una con "Trámite de aplicación de pago (ingresos y egresos)", capturadas antes de que existiera la validación. En 2026 no hay ninguna, así que no afecta a la operación diaria; el semáforo las pinta gris en lugar de reventar.
-4. **Un caso puede llegar sin folio.** Ya se observó en producción: la fila 7180 y otra que entró el 10 de agosto.
+4. **Un caso puede llegar sin folio, y el arrastre manual duplica folios.** La hoja productiva tiene **210 folios repetidos**, y el 13/8/2026 quedó claro el mecanismo: el área arrastra la serie por adelantado —el 13/8 las filas 7228-7230 tenían folio 7052-7054 sin ningún otro dato— y cuando entra una respuesta el formulario **inserta** la fila arriba de esas, así que continuar desde el folio de arriba repite uno que ya existe abajo. El botón de generar folios lo evita tomando el máximo de la columna. Los 90 registros sin folio del histórico son todos anteriores a 2026 y la app no los lee.
 5. **112 columnas sin clasificar** en 34 encabezados: número de póliza, número de siniestro, teléfono del cliente, tipo de endoso, versión de la unidad y similares. Son datos legítimos que varían por trámite y se mostrarán como campos del caso; no requieren entrar al modelo. Posible mejora a consultar: permitir búsqueda por número de póliza, que hoy no está en RF-02.
 6. **La mesa dejó de llenar `KB` y `KD` el 20 de marzo de 2026** (últimas filas con dato: 6383 y 6363). Unos 837 casos de 2026 no tienen fecha de respuesta ni de atención final. La herramienta las va a sellar de aquí en adelante, así que a partir del cambio habrá dato, pero no hay con qué comparar los meses anteriores. Lo mismo pasa con `KC`, cuya fórmula `=KB−A` tampoco sigue después de la fila 6383.
 7. **El catálogo de `KG` cambia según la banda de filas.** Los datos terminan en la fila 7220; la banda de 10 aseguradoras alcanza hasta la 7221 y de la 7222 en adelante hay otra de 8, que pierde `TODAS LAS ASEGURADORAS`, `GPLUS ` (con espacio final) y `LA LATINO`, y agrega `N/A`. Es decir que de la segunda petición nueva en adelante la mesa verá una lista distinta a la del histórico. La app lee el catálogo de la fila del caso, así que refleja fielmente esa inconsistencia; corregirla es editar la validación de la hoja y le toca al área decidir cuál de las dos listas es la correcta.
@@ -188,6 +194,8 @@ Decidido con el área el 13/8/2026: **`USER_ENTERED` solo para `KB` y `KD`**, pa
 ## Pendientes de verificación
 
 - Que Keynor, Paty, Norma y José Juan **entren en producción**. La cuenta de José Juan ya quedó confirmada; falta la de Paty, por la duda del dominio `garantiplus.mx` del hallazgo 8. Si un correo no coincide con lo sembrado se corrige en `src/db/seed-usuarios.ts` y se corre `pnpm db:seed`; ojo, el *upsert* es por correo, así que cambiar una dirección **agrega** la nueva y deja la anterior activa: hay que borrar la vieja a mano.
+- **Reautorizar el acceso a Google** desde Ajustes, con la cuenta admin: la credencial guardada es anterior al permiso `drive.file` y hasta entonces la subida de archivos responde con el aviso correspondiente. La pantalla de consentimiento debe pedir "ver, editar, crear y eliminar solo los archivos específicos de Google Drive que uses con esta app". Después: subir una captura y un PDF a un caso, comprobar que se descargan, y que en el Drive de `mesadecontrol@` aparece la carpeta **Mesa de Control · Archivos** con los archivos nombrados `[fila] nombre`.
+- **El botón de generar folios en la hoja real.** Se ejercitó contra la copia (fila 7180 → folio 9003, guardado como número, y el reintento rechazado), pero el 13/8/2026 no había ningún caso de 2026 sin folio en producción, así que el aviso nace invisible. Hay que verlo cuando llegue la primera petición nueva: el aviso ámbar debe aparecer en la fila y en el caso, el folio debe ser el máximo de la columna + 1, y el aviso debe desaparecer después.
 - Conexión de GitHub en la cuenta de Vercel, si se quieren previews automáticos por push (hoy el despliegue es por CLI).
 - **Sellado de `KD` en vivo**: cerrar un caso desde la interfaz y comprobar que la fecha de atención final se llena sola y el caso sale de la fila. La lógica tiene 9 pruebas unitarias, pero no se ha ejercido desde la aplicación.
 - **La ventana de 30 días del rezago** la definió el desarrollo; falta validarla con quien conoce el SLA. (Los umbrales de 3 y 6 días desaparecieron con el cambio de semáforo.)

@@ -82,6 +82,35 @@ export const plantillasCorreo = pgTable(
   (t) => [uniqueIndex('plantillas_tipo_tramite_idx').on(t.tipoTramite)],
 )
 
+/**
+ * Archivos que la mesa sube a un caso. El contenido vive en el Drive de
+ * `mesadecontrol@` y aquí queda el registro: la hoja no puede guardar el enlace
+ * porque sus columnas de adjuntos están protegidas sin editores.
+ */
+export const archivosCaso = pgTable('archivos_caso', {
+  id: serial('id').primaryKey(),
+  /**
+   * La fila sola no identifica un caso: esta base es la misma para desarrollo y
+   * producción, y la fila 7181 de la copia es un caso distinto al de la hoja
+   * real. Sin la hoja, un archivo subido desde `pnpm dev` aparecería en un caso
+   * de producción que no tiene nada que ver.
+   */
+  sheetId: text('sheet_id').notNull(),
+  fila: integer('fila').notNull(),
+  driveFileId: text('drive_file_id').notNull(),
+  nombre: text('nombre').notNull(),
+  tipo: text('tipo').notNull(),
+  bytes: integer('bytes').notNull(),
+  subidoPor: text('subido_por').notNull(),
+  creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/** Configuración interna en pares clave-valor, como el id de la carpeta de Drive. */
+export const ajustesApp = pgTable('ajustes_app', {
+  clave: text('clave').primaryKey(),
+  valor: text('valor').notNull(),
+})
+
 export const eventosBi = pgTable('eventos_bi', {
   id: serial('id').primaryKey(),
   tipo: text('tipo', {

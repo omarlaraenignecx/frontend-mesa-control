@@ -5,10 +5,24 @@ import { leerCredencial, marcarUso, registrarErrorCredencial } from './credencia
 export const SCOPES_MESA = [
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/drive.readonly',
+  // `drive.file` y no `drive`: da acceso únicamente a los archivos que crea esta
+  // aplicación, no al resto del Drive de la mesa. Es lo que permite subir
+  // evidencias al caso, y se agregó después de la primera autorización, así que
+  // hay credenciales guardadas que no lo tienen.
+  'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/gmail.send',
   'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/gmail.modify',
 ] as const
+
+/**
+ * Permisos que la aplicación necesita y la credencial guardada no tiene. Pasa
+ * cuando se agrega un scope después de que alguien ya autorizó: el token viejo
+ * sigue sirviendo para todo lo demás, así que no se invalida, solo se avisa.
+ */
+export function scopesFaltantes(otorgados: string[]): string[] {
+  return SCOPES_MESA.filter((s) => !otorgados.includes(s))
+}
 
 const ENDPOINT_TOKEN = 'https://oauth2.googleapis.com/token'
 

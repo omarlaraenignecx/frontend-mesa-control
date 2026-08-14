@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { CredencialMesaRevocadaError, SCOPES_MESA, intercambiarRefreshToken } from './auth-mesa'
+import {
+  CredencialMesaRevocadaError,
+  SCOPES_MESA,
+  intercambiarRefreshToken,
+  scopesFaltantes,
+} from './auth-mesa'
 
 function fetchQueResponde(status: number, cuerpo: unknown) {
   return vi.fn(
@@ -14,14 +19,44 @@ function fetchQueResponde(status: number, cuerpo: unknown) {
 const DEPS = { clientId: 'id-cliente', clientSecret: 'secreto-cliente' }
 
 describe('SCOPES_MESA', () => {
-  it('pide exactamente los cinco scopes del diseño, sin Forms ni Calendar', () => {
+  it('pide exactamente los seis scopes del diseño, sin Forms ni Calendar', () => {
     expect([...SCOPES_MESA]).toEqual([
+      'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/drive.readonly',
+      // drive.file y no drive: solo los archivos que crea esta aplicación, no el
+      // resto del Drive de la mesa.
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/gmail.send',
+      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/gmail.modify',
+    ])
+  })
+})
+
+describe('scopesFaltantes', () => {
+  it('detecta el permiso de escritura en Drive cuando la credencial es vieja', () => {
+    // La credencial se autorizó cuando la app solo leía Drive. Subir archivos
+    // necesita drive.file, y eso exige volver a pasar por la pantalla de Google.
+    const otorgados = [
       'https://www.googleapis.com/auth/spreadsheets',
       'https://www.googleapis.com/auth/drive.readonly',
       'https://www.googleapis.com/auth/gmail.send',
       'https://www.googleapis.com/auth/gmail.readonly',
       'https://www.googleapis.com/auth/gmail.modify',
-    ])
+    ]
+    expect(scopesFaltantes(otorgados)).toEqual(['https://www.googleapis.com/auth/drive.file'])
+  })
+
+  it('con todos los permisos no falta ninguno', () => {
+    expect(scopesFaltantes([...SCOPES_MESA])).toEqual([])
+  })
+
+  it('no se queja de permisos extra que Google haya concedido de más', () => {
+    // `include_granted_scopes=true` acumula lo ya autorizado; un scope de sobra
+    // no es un problema que haya que reportar.
+    expect(scopesFaltantes([...SCOPES_MESA, 'https://www.googleapis.com/auth/userinfo.email'])).toEqual(
+      [],
+    )
   })
 })
 
