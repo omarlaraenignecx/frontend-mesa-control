@@ -4,7 +4,14 @@ import { ajustesApp, archivosCaso } from '@/db/schema'
 import { accessTokenDeLaMesa } from '@/lib/google/auth-mesa'
 import { crearCarpeta, type DepsDrive } from '@/lib/google/drive-subida'
 
-const CLAVE_CARPETA = 'carpeta_drive_archivos'
+/**
+ * Una carpeta por hoja, y no una sola para todas: si no, los archivos que se
+ * suben probando contra la copia caerían en la misma carpeta de Drive que ve el
+ * área. La clave lleva el id de la hoja por eso.
+ */
+function claveDeLaCarpeta(): string {
+  return `carpeta_drive_archivos:${hojaActual()}`
+}
 
 /**
  * La hoja a la que pertenece lo que se está mirando. Entra en la identidad de
@@ -33,7 +40,7 @@ export async function carpetaDeArchivos(): Promise<string> {
   const [guardada] = await db
     .select()
     .from(ajustesApp)
-    .where(eq(ajustesApp.clave, CLAVE_CARPETA))
+    .where(eq(ajustesApp.clave, claveDeLaCarpeta()))
     .limit(1)
   if (guardada) return guardada.valor
 
@@ -42,12 +49,12 @@ export async function carpetaDeArchivos(): Promise<string> {
   // una su carpeta, gana la que se guardó primero y las dos usan esa.
   await db
     .insert(ajustesApp)
-    .values({ clave: CLAVE_CARPETA, valor: id })
+    .values({ clave: claveDeLaCarpeta(), valor: id })
     .onConflictDoNothing({ target: ajustesApp.clave })
   const [confirmada] = await db
     .select()
     .from(ajustesApp)
-    .where(eq(ajustesApp.clave, CLAVE_CARPETA))
+    .where(eq(ajustesApp.clave, claveDeLaCarpeta()))
     .limit(1)
   return confirmada?.valor ?? id
 }
