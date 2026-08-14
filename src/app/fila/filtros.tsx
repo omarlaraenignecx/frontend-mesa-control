@@ -5,6 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { Input } from '@/components/ui/input'
 import { SIN_ESTATUS } from '@/lib/casos/cola'
+import {
+  alternarEstatus,
+  alternarTodos,
+  seleccionVisible,
+  todosSeleccionados,
+} from '@/lib/casos/seleccion-estatus'
 
 type Opciones = {
   tiposTramite: string[]
@@ -50,21 +56,18 @@ function FiltroEstatus({
     }
   }, [abierto])
 
-  const marcados = new Set(seleccion)
+  const todos = [...valores, SIN_ESTATUS]
+  const visible = seleccionVisible(seleccion)
+  const marcados = new Set(visible)
+  const completo = todosSeleccionados(seleccion, todos)
   const etiquetaDe = (v: string) => (v === SIN_ESTATUS ? ETIQUETA_SIN_ESTATUS : v)
-  const resumen =
-    seleccion.length === 0
+  const resumen = completo
+    ? 'Todos'
+    : seleccion.length === 0
       ? 'Pendientes'
       : seleccion.length <= 2
         ? seleccion.map(etiquetaDe).join(', ')
         : `${seleccion.length} seleccionados`
-
-  function alternar(valor: string) {
-    const nueva = marcados.has(valor)
-      ? seleccion.filter((v) => v !== valor)
-      : [...seleccion, valor]
-    onCambio(nueva)
-  }
 
   return (
     <div ref={caja} className="relative">
@@ -81,7 +84,19 @@ function FiltroEstatus({
 
       {abierto && (
         <div className="absolute z-20 mt-1 min-w-64 space-y-1 rounded-lg border bg-card p-2 shadow-lg">
-          {[...valores, SIN_ESTATUS].map((v) => (
+          <label className="flex items-center gap-2.5 rounded-md px-2 py-2 text-base font-medium hover:bg-secondary">
+            <input
+              type="checkbox"
+              className="size-4 accent-primary"
+              checked={completo}
+              onChange={() => onCambio(alternarTodos(seleccion, todos))}
+            />
+            Seleccionar todos
+          </label>
+
+          <div className="my-1 border-t" />
+
+          {todos.map((v) => (
             <label
               key={v}
               className="flex items-center gap-2.5 rounded-md px-2 py-2 text-base hover:bg-secondary"
@@ -90,19 +105,22 @@ function FiltroEstatus({
                 type="checkbox"
                 className="size-4 accent-primary"
                 checked={marcados.has(v)}
-                onChange={() => alternar(v)}
+                onChange={() => onCambio(alternarEstatus(seleccion, v))}
               />
               {etiquetaDe(v)}
             </label>
           ))}
-          <button
-            type="button"
-            onClick={() => onCambio([])}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-base text-muted-foreground hover:bg-secondary hover:text-foreground"
-          >
-            <Check className="size-4" />
-            Volver a solo los pendientes
-          </button>
+
+          {seleccion.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onCambio([])}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-base text-muted-foreground hover:bg-secondary hover:text-foreground"
+            >
+              <Check className="size-4" />
+              Volver a solo los pendientes
+            </button>
+          )}
         </div>
       )}
     </div>
