@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderCorreo, sustituirVariables } from './render-correo'
+import { avisoDeRespuesta, renderCorreo, sustituirVariables } from './render-correo'
 
 const V = {
   solicitante: 'Ricardo Hernandez',
@@ -98,5 +98,51 @@ describe('renderCorreo', () => {
   it('descarta los párrafos vacíos que deja el usuario al teclear', () => {
     const { html } = renderCorreo('Uno\n\n\n\nDos', V)
     expect(html.match(/<p /g)?.length).toBe(2)
+  })
+})
+
+describe('avisoDeRespuesta', () => {
+  it('pide responder al mismo correo y nombra el caso', () => {
+    const aviso = avisoDeRespuesta('7000')
+    expect(aviso.titulo).toBe('Responde en este mismo correo')
+    expect(aviso.detalle).toContain('caso 7000')
+    expect(aviso.detalle).toContain('Responder')
+  })
+
+  it('advierte lo que pasa si la agencia abre un correo nuevo', () => {
+    expect(avisoDeRespuesta('7000').detalle).toContain('correo nuevo')
+  })
+
+  it('sin folio habla de la solicitud, no deja el número en blanco', () => {
+    const aviso = avisoDeRespuesta('')
+    expect(aviso.detalle).toContain('tu solicitud')
+    expect(aviso.detalle).not.toContain('caso')
+  })
+})
+
+describe('el aviso dentro del correo', () => {
+  const cuerpo = 'Recibimos tu solicitud.'
+
+  it('viaja en el HTML, resaltado y antes de la firma', () => {
+    const { html } = renderCorreo(cuerpo, V)
+    const aviso = avisoDeRespuesta(V.folio)
+    expect(html).toContain(aviso.titulo)
+    expect(html).toContain(aviso.detalle)
+    expect(html.indexOf(aviso.titulo)).toBeLessThan(html.indexOf('Atiende:'))
+    // Fondo distinto al del cuerpo: es una advertencia, tiene que verse.
+    expect(html).toContain('#fff8e1')
+  })
+
+  it('viaja también en la alternativa de texto, que es la que ven algunos clientes', () => {
+    const { texto } = renderCorreo(cuerpo, V)
+    expect(texto).toContain(avisoDeRespuesta(V.folio).titulo)
+    expect(texto).not.toContain('<')
+  })
+
+  it('queda después del cuerpo que escribió la mesa', () => {
+    const { texto } = renderCorreo(cuerpo, V)
+    expect(texto.indexOf('Recibimos tu solicitud.')).toBeLessThan(
+      texto.indexOf(avisoDeRespuesta(V.folio).titulo),
+    )
   })
 })
