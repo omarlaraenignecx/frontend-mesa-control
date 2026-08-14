@@ -22,9 +22,13 @@ export const TOPE_ARCHIVOS = 10
 const API = 'https://www.googleapis.com/drive/v3/files'
 const SUBIDA = 'https://www.googleapis.com/upload/drive/v3/files'
 
-function concatenar(partes: Uint8Array[]): Uint8Array {
+/**
+ * El tipo lleva `ArrayBuffer` explícito y no el `ArrayBufferLike` por omisión:
+ * `fetch` no acepta un cuerpo que pudiera respaldarse en un `SharedArrayBuffer`.
+ */
+function concatenar(partes: Uint8Array[]): Uint8Array<ArrayBuffer> {
   const total = partes.reduce((n, p) => n + p.length, 0)
-  const salida = new Uint8Array(total)
+  const salida = new Uint8Array(new ArrayBuffer(total))
   let offset = 0
   for (const p of partes) {
     salida.set(p, offset)
@@ -44,7 +48,7 @@ export function cuerpoMultiparte(
   metadatos: object,
   tipo: string,
   contenido: Uint8Array,
-): { cuerpo: Uint8Array; contentType: string } {
+): { cuerpo: Uint8Array<ArrayBuffer>; contentType: string } {
   const frontera = `mesa-${Math.random().toString(36).slice(2)}-${contenido.length}`
   const cod = new TextEncoder()
 
