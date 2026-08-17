@@ -22,6 +22,9 @@ import { avisosEncendidos } from './escritorio'
  */
 const INTERVALO_MS = 30_000
 
+/** Con la pestaña oculta y los avisos del escritorio encendidos. */
+const INTERVALO_OCULTO_MS = 60_000
+
 const VACIO: Sondeo = { maxId: 0, noLeidas: [], correosPorFila: {} }
 
 type Contexto = Sondeo & {
@@ -46,7 +49,7 @@ export function ProveedorNotificaciones({ children }: { children: React.ReactNod
   const escuchas = useRef<Set<(nuevas: Notificacion[]) => void>>(new Set())
   const primeraVez = useRef(true)
   const detenido = useRef(false)
-  const tics = useRef(0)
+  const ultimoOculto = useRef(0)
 
   const recargar = useCallback(async () => {
     if (detenido.current) return
@@ -87,15 +90,21 @@ export function ProveedorNotificaciones({ children }: { children: React.ReactNod
     queueMicrotask(() => void recargar())
 
     const reloj = setInterval(() => {
-      tics.current += 1
       if (!document.hidden) {
         void recargar()
         return
       }
-      // Oculta: solo se sigue sondeando para alimentar los avisos del escritorio, y
-      // uno de cada dos tics, o sea cada minuto. Se pregunta en cada vuelta porque
-      // el permiso pudo concederse o apagarse después de montar la página.
-      if (avisosEncendidos() && tics.current % 2 === 0) void recargar()
+      // Oculta: solo se sigue sondeando para alimentar los avisos del escritorio. Se
+      // pregunta en cada vuelta porque el permiso pudo concederse o apagarse después
+      // de montar la página.
+      if (!avisosEncendidos()) return
+      // Se mide el tiempo real y no se cuentan vueltas: con la pestaña oculta un
+      // rato, Chrome estira los temporizadores a uno por minuto, así que "una de cada
+      // dos vueltas" no sería un minuto sino dos.
+      const ahora = Date.now()
+      if (ahora - ultimoOculto.current < INTERVALO_OCULTO_MS) return
+      ultimoOculto.current = ahora
+      void recargar()
     }, INTERVALO_MS)
     const alVolver = () => {
       if (!document.hidden) void recargar()

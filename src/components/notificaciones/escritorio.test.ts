@@ -11,6 +11,8 @@ const ESCRITORIO = readFileSync(join(import.meta.dirname, 'escritorio.ts'), 'utf
 const EMISOR = readFileSync(join(import.meta.dirname, 'emisor-escritorio.tsx'), 'utf8')
 const AJUSTE = readFileSync(join(import.meta.dirname, 'ajuste-escritorio.tsx'), 'utf8')
 const PROVEEDOR = readFileSync(join(import.meta.dirname, 'proveedor.tsx'), 'utf8')
+const PREFERENCIAS = readFileSync(join(import.meta.dirname, 'preferencias.ts'), 'utf8')
+const TIMBRE = readFileSync(join(import.meta.dirname, 'timbre.ts'), 'utf8')
 const PANEL = readFileSync(join(import.meta.dirname, 'panel.tsx'), 'utf8')
 
 /** El código sin los comentarios, para que un comentario no haga pasar una prueba. */
@@ -44,11 +46,8 @@ describe('trato con la API Notification', () => {
     expect(ESCRITORIO).toContain('queueMicrotask')
   })
 
-  it('localStorage va envuelto: lanza en ventanas privadas', () => {
-    const veces = ESCRITORIO.match(/catch \{/g) ?? []
-    expect(veces.length).toBeGreaterThanOrEqual(3)
-    expect(ESCRITORIO).toContain('window.localStorage.getItem')
-    expect(ESCRITORIO).toContain('window.localStorage.setItem')
+  it('el permiso concedido no basta: también cuenta la preferencia del usuario', () => {
+    expect(ESCRITORIO).toContain("permisoActual() === 'concedido' && leerPreferencia(CLAVE_AVISOS")
   })
 
   it('el aviso se queda en pantalla hasta que alguien lo atienda', () => {
@@ -65,6 +64,13 @@ describe('trato con la API Notification', () => {
   it('construir la notificación no puede tumbar la página', () => {
     const cuerpo = ESCRITORIO.slice(ESCRITORIO.indexOf('export function emitirAviso'))
     expect(cuerpo).toMatch(/try \{[\s\S]*?new Notification/)
+  })
+
+  it('el aviso de prueba también suena', () => {
+    // Es el momento en que el usuario está atento y puede decir si le molesta, y es
+    // además el clic que desbloquea el audio de la página.
+    const prueba = ESCRITORIO.slice(ESCRITORIO.indexOf('export function emitirPrueba'))
+    expect(prueba).toContain('tocarTimbre()')
   })
 
   it('al activar manda un aviso de prueba', () => {
@@ -113,5 +119,78 @@ describe('ajuste en el panel', () => {
   it('con el permiso dado se pueden apagar sin ir a la configuración del sitio', () => {
     expect(AJUSTE).toContain('alternar')
     expect(AJUSTE).toMatch(/Apagar/)
+  })
+})
+
+describe('preferencias', () => {
+  it('cada acceso a localStorage va envuelto: lanza en ventanas privadas', () => {
+    const veces = PREFERENCIAS.match(/catch \{/g) ?? []
+    expect(veces.length).toBeGreaterThanOrEqual(2)
+    expect(PREFERENCIAS).toContain('window.localStorage.getItem')
+    expect(PREFERENCIAS).toContain('window.localStorage.setItem')
+  })
+
+  it('sin valor guardado responde lo que pida quien pregunta', () => {
+    expect(PREFERENCIAS).toContain('if (valor === null) return omision')
+  })
+})
+
+describe('timbre', () => {
+  it('se sintetiza y no trae un archivo de audio', () => {
+    // La opción `sound` de la API Notification está deprecada y ningún navegador la
+    // implementa, así que el sonido sale de la página de todos modos.
+    expect(TIMBRE).toContain('createOscillator')
+    expect(TIMBRE).not.toMatch(/new Audio\(/)
+  })
+
+  it('reusa un solo AudioContext', () => {
+    // Los navegadores limitan cuántos se pueden abrir; uno por aviso los agota.
+    expect(TIMBRE).toContain('contexto ??= new Constructor()')
+  })
+
+  it('reanuda el contexto suspendido por la política de reproducción automática', () => {
+    expect(TIMBRE).toContain("ctx.state === 'suspended'")
+    expect(TIMBRE).toContain('ctx.resume()')
+  })
+
+  it('respeta el interruptor antes de sonar', () => {
+    const tocar = TIMBRE.slice(TIMBRE.indexOf('export function tocarTimbre'))
+    expect(tocar).toMatch(/if \(!timbreEncendido\(\)\) return/)
+  })
+
+  it('sube y baja el volumen en lugar de cortar de golpe', () => {
+    // Un seno que arranca y corta en seco chasquea en las bocinas.
+    expect(TIMBRE).toContain('linearRampToValueAtTime')
+    expect(TIMBRE).toContain('exponentialRampToValueAtTime')
+  })
+
+  it('un fallo de WebAudio no rompe la página', () => {
+    expect(TIMBRE).toMatch(/try \{[\s\S]*?catch \{/)
+  })
+
+  it('suena una vez por tanda, no una por aviso', () => {
+    const cuerpo = EMISOR.slice(EMISOR.indexOf('alLlegar('))
+    expect(cuerpo.indexOf('tocarTimbre()')).toBeLessThan(cuerpo.indexOf('for (const aviso'))
+    expect(cuerpo.match(/tocarTimbre\(\)/g)).toHaveLength(1)
+  })
+
+  it('el primer gesto de la página desbloquea el audio', () => {
+    // Falla silenciosa que esto cierra: el contexto nace suspendido, así que quien
+    // recargara y se fuera a otra ventana sin tocar nada perdía el primer timbre.
+    expect(TIMBRE).toContain("document.addEventListener('pointerdown'")
+    expect(TIMBRE).toContain("document.addEventListener('keydown'")
+    expect(TIMBRE).toContain('{ once: true }')
+    expect(TIMBRE).toContain('removeEventListener')
+    expect(EMISOR).toContain('useEffect(() => prepararTimbre(), [])')
+  })
+
+  it('tiene su propio interruptor, aparte de los globos', () => {
+    // Hay quien quiere ver los avisos y no oírlos: oficina compartida, llamadas.
+    expect(AJUSTE).toContain('guardarTimbre')
+    expect(AJUSTE).toContain('timbreEncendido()')
+  })
+
+  it('suena al encenderlo, que es la única forma de saber si el volumen alcanza', () => {
+    expect(AJUSTE).toContain('if (siguiente) tocarTimbre()')
   })
 })

@@ -6,6 +6,8 @@ import {
   type AvisoEscritorio,
   type PermisoEscritorio,
 } from '@/lib/notificaciones/aviso-escritorio'
+import { CLAVE_AVISOS, guardarPreferencia, leerPreferencia } from './preferencias'
+import { tocarTimbre } from './timbre'
 
 /**
  * Trato con la API `Notification` del navegador, en un solo lugar.
@@ -15,9 +17,6 @@ import {
  * `sin-soporte` para que el primer render del servidor y el del navegador digan lo
  * mismo y no haya desajuste de hidratación.
  */
-
-/** Apagar los avisos sin tener que revocar el permiso en la configuración del sitio. */
-const CLAVE_PREFERENCIA = 'mesa:avisos-escritorio'
 
 /** Solo el ícono del sitio: el aviso del sistema es angosto y no cabe más. */
 const ICONO = '/favicon.ico'
@@ -31,26 +30,6 @@ function permisoActual(): PermisoEscritorio {
 }
 
 /**
- * `localStorage` lanza en ventanas privadas y con el almacenamiento bloqueado por
- * política. Que eso no tumbe la pantalla: sin preferencia guardada, encendidos.
- */
-function apagadoPorElUsuario(): boolean {
-  try {
-    return window.localStorage.getItem(CLAVE_PREFERENCIA) === 'no'
-  } catch {
-    return false
-  }
-}
-
-function guardarPreferencia(encendido: boolean): void {
-  try {
-    window.localStorage.setItem(CLAVE_PREFERENCIA, encendido ? 'si' : 'no')
-  } catch {
-    // Sin dónde guardar, la preferencia dura lo que dure la pestaña. No es grave.
-  }
-}
-
-/**
  * ¿Hay que emitir avisos del sistema ahora mismo?
  *
  * Se pregunta al navegador en el momento de emitir y no a un estado de React: el
@@ -58,7 +37,7 @@ function guardarPreferencia(encendido: boolean): void {
  * enterara nunca.
  */
 export function avisosEncendidos(): boolean {
-  return permisoActual() === 'concedido' && !apagadoPorElUsuario()
+  return permisoActual() === 'concedido' && leerPreferencia(CLAVE_AVISOS, true)
 }
 
 /**
@@ -105,10 +84,13 @@ export function emitirPrueba(): void {
   if (!soporta()) return
   try {
     new Notification('Avisos activados', {
-      body: 'Así se verán las notificaciones de la mesa de control.',
+      body: 'Así se verán —y se oirán— las notificaciones de la mesa de control.',
       tag: 'mesa-prueba',
       icon: ICONO,
     })
+    // Con timbre: es el momento en que el usuario está atento y puede decir si le
+    // molesta. Además es el clic que desbloquea el audio de la página.
+    tocarTimbre()
   } catch {
     // Igual que arriba: no es motivo para romper nada.
   }
@@ -137,7 +119,7 @@ export function useAvisosEscritorio(): ControlEscritorio {
     // que marca `react-hooks/set-state-in-effect`.
     queueMicrotask(() => {
       setPermiso(permisoActual())
-      setEncendido(!apagadoPorElUsuario())
+      setEncendido(leerPreferencia(CLAVE_AVISOS, true))
     })
   }, [])
 
@@ -146,7 +128,7 @@ export function useAvisosEscritorio(): ControlEscritorio {
     const valor = await Notification.requestPermission()
     setPermiso(permisoDeEscritorio(true, valor))
     if (valor !== 'granted') return
-    guardarPreferencia(true)
+    guardarPreferencia(CLAVE_AVISOS, true)
     setEncendido(true)
     emitirPrueba()
   }, [])
@@ -156,7 +138,7 @@ export function useAvisosEscritorio(): ControlEscritorio {
   // ejecutar, y eso es justo lo que prohíbe `react-hooks/purity`.
   const alternar = useCallback(() => {
     const siguiente = !encendido
-    guardarPreferencia(siguiente)
+    guardarPreferencia(CLAVE_AVISOS, siguiente)
     setEncendido(siguiente)
   }, [encendido])
 

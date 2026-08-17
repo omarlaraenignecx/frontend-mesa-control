@@ -3,17 +3,11 @@
 import { BellRing, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAvisosEscritorio } from '@/components/notificaciones/escritorio'
-
-/** Quien dijo "ahora no" no tiene que volver a verlo en cada carga. */
-const CLAVE_DESCARTE = 'mesa:invitacion-escritorio'
-
-function yaSeDescarto(): boolean {
-  try {
-    return window.localStorage.getItem(CLAVE_DESCARTE) === 'si'
-  } catch {
-    return false
-  }
-}
+import {
+  CLAVE_INVITACION,
+  guardarPreferencia,
+  leerPreferencia,
+} from '@/components/notificaciones/preferencias'
 
 /**
  * Ofrece los avisos del escritorio en la pantalla que el área tiene abierta todo el
@@ -31,17 +25,14 @@ export function InvitacionEscritorio() {
   useEffect(() => {
     // Arranca oculta y aparece después de consultar `localStorage`: al revés
     // parpadearía en cada carga para quien ya la descartó.
-    queueMicrotask(() => setDescartada(yaSeDescarto()))
+    queueMicrotask(() => setDescartada(leerPreferencia(CLAVE_INVITACION, false)))
   }, [])
 
   if (descartada || permiso !== 'preguntar') return null
 
   function descartar() {
-    try {
-      window.localStorage.setItem(CLAVE_DESCARTE, 'si')
-    } catch {
-      // Sin dónde guardarlo, vuelve a aparecer en la siguiente carga. Aceptable.
-    }
+    // Sin dónde guardarlo vuelve a aparecer en la siguiente carga, que es aceptable.
+    guardarPreferencia(CLAVE_INVITACION, true)
     setDescartada(true)
   }
 

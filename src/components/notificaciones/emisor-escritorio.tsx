@@ -5,6 +5,7 @@ import { useEffect } from 'react'
 import { avisosDeEscritorio } from '@/lib/notificaciones/aviso-escritorio'
 import { avisosEncendidos, emitirAviso } from './escritorio'
 import { useNotificaciones } from './proveedor'
+import { prepararTimbre, tocarTimbre } from './timbre'
 
 /**
  * Saca al escritorio lo que llega a la campanita.
@@ -20,12 +21,17 @@ export function EmisorEscritorio() {
   const { alLlegar } = useNotificaciones()
   const router = useRouter()
 
+  useEffect(() => prepararTimbre(), [])
+
   useEffect(
     () =>
       alLlegar((nuevas) => {
         // Se pregunta aquí y no al montar: el permiso puede haberse concedido o
         // revocado en medio, desde el panel o desde la configuración del sitio.
         if (!avisosEncendidos()) return
+        // Un solo timbre por tanda, antes de los globos: tres avisos juntos no son
+        // tres campanadas encimadas.
+        tocarTimbre()
         for (const aviso of avisosDeEscritorio(nuevas)) {
           emitirAviso(aviso, (destino) => router.push(destino))
         }

@@ -1,7 +1,49 @@
 'use client'
 
-import { BellRing, MonitorX } from 'lucide-react'
+import { BellRing, MonitorX, Volume2, VolumeX } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useAvisosEscritorio } from './escritorio'
+import { guardarTimbre, timbreEncendido, tocarTimbre } from './timbre'
+
+/**
+ * El timbre, aparte de los globos.
+ *
+ * Es su propio interruptor porque las molestias son distintas: hay quien quiere ver
+ * los avisos y no oírlos, en una oficina compartida o en una llamada. Y suena al
+ * encenderlo, que es la única forma de saber si el volumen alcanza.
+ */
+function Timbre() {
+  const [encendido, setEncendido] = useState(true)
+
+  useEffect(() => {
+    queueMicrotask(() => setEncendido(timbreEncendido()))
+  }, [])
+
+  function alternar() {
+    const siguiente = !encendido
+    guardarTimbre(siguiente)
+    setEncendido(siguiente)
+    if (siguiente) tocarTimbre()
+  }
+
+  const Icono = encendido ? Volume2 : VolumeX
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
+      <p className="flex items-center gap-2 text-base">
+        <Icono className="size-4 text-muted-foreground" />
+        Timbre: <span className="font-medium">{encendido ? 'activado' : 'apagado'}</span>
+      </p>
+      <button
+        type="button"
+        onClick={alternar}
+        className="text-base text-blue-600 underline underline-offset-4 transition-colors hover:text-blue-700 dark:text-blue-400"
+      >
+        {encendido ? 'Apagar' : 'Encender'}
+      </button>
+    </div>
+  )
+}
 
 /**
  * Los avisos del escritorio, dentro del panel de la campanita.
@@ -56,18 +98,23 @@ export function AjusteEscritorio() {
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
-      <p className="text-base">
-        Avisos en el escritorio:{' '}
-        <span className="font-medium">{encendido ? 'activados' : 'apagados'}</span>
-      </p>
-      <button
-        type="button"
-        onClick={alternar}
-        className="text-base text-blue-600 underline underline-offset-4 transition-colors hover:text-blue-700 dark:text-blue-400"
-      >
-        {encendido ? 'Apagar' : 'Encender'}
-      </button>
-    </div>
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
+        <p className="flex items-center gap-2 text-base">
+          <BellRing className="size-4 text-muted-foreground" />
+          Avisos en el escritorio:{' '}
+          <span className="font-medium">{encendido ? 'activados' : 'apagados'}</span>
+        </p>
+        <button
+          type="button"
+          onClick={alternar}
+          className="text-base text-blue-600 underline underline-offset-4 transition-colors hover:text-blue-700 dark:text-blue-400"
+        >
+          {encendido ? 'Apagar' : 'Encender'}
+        </button>
+      </div>
+      {/* El timbre solo tiene sentido si los globos están prendidos: es su sonido. */}
+      {encendido && <Timbre />}
+    </>
   )
 }

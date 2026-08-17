@@ -16,8 +16,8 @@ describe('invitación a los avisos de escritorio', () => {
   })
 
   it('quien la descarta no la vuelve a ver', () => {
-    expect(INVITACION).toContain('mesa:invitacion-escritorio')
-    expect(INVITACION).toContain('window.localStorage.setItem')
+    expect(INVITACION).toContain('CLAVE_INVITACION')
+    expect(INVITACION).toContain('guardarPreferencia(CLAVE_INVITACION, true)')
   })
 
   it('arranca oculta para no parpadear en cada carga', () => {
@@ -25,8 +25,9 @@ describe('invitación a los avisos de escritorio', () => {
     expect(INVITACION).toContain('queueMicrotask')
   })
 
-  it('no rompe la página donde localStorage está bloqueado', () => {
-    const veces = INVITACION.match(/catch \{/g) ?? []
-    expect(veces.length).toBeGreaterThanOrEqual(2)
+  it('lee y guarda por el módulo de preferencias, que envuelve localStorage', () => {
+    // Ahí está el `try`: `localStorage` lanza en ventanas privadas.
+    expect(INVITACION).toContain("from '@/components/notificaciones/preferencias'")
+    expect(INVITACION).not.toContain('window.localStorage')
   })
 })

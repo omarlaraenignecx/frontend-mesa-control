@@ -22,8 +22,10 @@ describe('proveedor de notificaciones', () => {
   it('con la pestaña oculta solo sigue sondeando si hay avisos de escritorio', () => {
     // Si se pausara siempre, los avisos del escritorio no llegarían nunca en el
     // único momento para el que existen: cuando el usuario está en otra ventana.
+    // El ritmo se mide en tiempo real porque Chrome estira los temporizadores de las
+    // pestañas ocultas a uno por minuto.
     expect(FUENTE).toContain('avisosEncendidos()')
-    expect(FUENTE).toContain('tics.current % 2 === 0')
+    expect(FUENTE).toContain('INTERVALO_OCULTO_MS')
   })
 
   it('deja de insistir cuando la sesión ya no vale', () => {
