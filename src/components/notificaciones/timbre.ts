@@ -21,11 +21,12 @@ const NOTAS_HZ = [880, 1318.5]
 const DURACION = 0.22
 
 /**
- * Se subió de 0.14 a 0.7 el 17/8/2026, a pedido del área: con el primer valor apenas
- * se oía sobre el ruido de una oficina. Es un seno puro, así que sigue sin
- * distorsionar, y quien lo quiera callado tiene el interruptor del panel.
+ * Se subió de 0.14 a 0.85 el 17/8/2026, en dos pasos y a pedido del área: con el
+ * primer valor apenas se oía sobre el ruido de una oficina. Es un seno puro, así que
+ * ni a este nivel distorsiona —queda margen hasta 1.0, donde empezaría a recortar—, y
+ * quien lo quiera callado tiene el interruptor del panel.
  */
-const VOLUMEN = 0.7
+const VOLUMEN = 0.85
 
 let contexto: AudioContext | null = null
 
