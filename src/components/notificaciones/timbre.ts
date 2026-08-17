@@ -63,16 +63,39 @@ export function guardarTimbre(encendido: boolean): void {
  * Devuelve la función para darse de baja.
  */
 export function prepararTimbre(): () => void {
+  let listo = false
   const desbloquear = () => {
+    if (listo) return
     const ctx = obtenerContexto()
-    if (ctx?.state === 'suspended') void ctx.resume()
+    if (!ctx) {
+      listo = true
+      return
+    }
+    void asegurarActivo(ctx).then((activo) => {
+      listo = activo
+    })
   }
-  document.addEventListener('pointerdown', desbloquear, { once: true })
-  document.addEventListener('keydown', desbloquear, { once: true })
+  // Sin `once`: se reintenta en cada gesto hasta lograrlo. Un primer gesto que no
+  // baste —o que ocurra antes de que exista el contexto— dejaba, con `once`, la
+  // página entera sin timbre y sin más intentos.
+  document.addEventListener('pointerdown', desbloquear)
+  document.addEventListener('keydown', desbloquear)
   return () => {
     document.removeEventListener('pointerdown', desbloquear)
     document.removeEventListener('keydown', desbloquear)
   }
+}
+
+/**
+ * ¿El navegador tiene el timbre callado ahora mismo?
+ *
+ * Sirve para decírselo al usuario en el momento en que le importa: llegó un aviso y
+ * no se oyó. Con el timbre apagado a propósito no hay nada que reportar.
+ */
+export function audioBloqueado(): boolean {
+  if (!timbreEncendido()) return false
+  const ctx = obtenerContexto()
+  return ctx !== null && ctx.state !== 'running'
 }
 
 /**
@@ -86,10 +109,24 @@ export function prepararTimbre(): () => void {
  * funcionaba mientras el contexto ya estuviera activo por el clic de Activar, y
  * enmudecía al recargar la página sin tocar nada.
  */
+/**
+ * Cuánto se espera a que el navegador reanude el audio antes de rendirse.
+ *
+ * Rendirse es lo importante. Chrome no rechaza `resume()` cuando la página no tiene
+ * gesto del usuario: **deja la promesa pendiente** hasta que ocurra uno, aunque sea
+ * media hora después. Sin este límite, el timbre de una petición de las 15:28 sonaba
+ * al cerrar el cartel a las 15:35 —pasó el 17/8/2026—, y un aviso que suena siete
+ * minutos tarde, fuera de contexto, enseña a desconfiar del timbre.
+ */
+const ESPERA_ACTIVACION_MS = 2_000
+
 async function asegurarActivo(ctx: AudioContext): Promise<boolean> {
   if (ctx.state === 'running') return true
   try {
-    await ctx.resume()
+    await Promise.race([
+      ctx.resume(),
+      new Promise((_, rechazar) => setTimeout(rechazar, ESPERA_ACTIVACION_MS)),
+    ])
   } catch {
     return false
   }

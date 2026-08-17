@@ -152,7 +152,8 @@ describe('timbre', () => {
     // Con el contexto suspendido el reloj de audio está congelado: programar antes de
     // que reanude deja las rampas de ganancia en el pasado y el oscilador suena en
     // silencio. Es el defecto que enmudeció el timbre el 17/8/2026.
-    expect(TIMBRE).toContain('await ctx.resume()')
+    expect(TIMBRE).toContain('await Promise.race([')
+    expect(TIMBRE).toContain('ctx.resume(),')
     expect(TIMBRE).toMatch(/return \(ctx\.state as AudioContextState\) === 'running'/)
     expect(TIMBRE).toMatch(/asegurarActivo\(ctx\)\.then\(\(activo\) => \{\s*\n\s*if \(activo\) programarNotas\(ctx\)/)
   })
@@ -178,14 +179,38 @@ describe('timbre', () => {
     expect(cuerpo.match(/tocarTimbre\(\)/g)).toHaveLength(1)
   })
 
-  it('el primer gesto de la página desbloquea el audio', () => {
+  it('cualquier gesto de la página desbloquea el audio, y se reintenta', () => {
     // Falla silenciosa que esto cierra: el contexto nace suspendido, así que quien
-    // recargara y se fuera a otra ventana sin tocar nada perdía el primer timbre.
+    // recargara y se fuera a otra ventana sin tocar nada perdía el timbre.
     expect(TIMBRE).toContain("document.addEventListener('pointerdown'")
     expect(TIMBRE).toContain("document.addEventListener('keydown'")
-    expect(TIMBRE).toContain('{ once: true }')
     expect(TIMBRE).toContain('removeEventListener')
     expect(EMISOR).toContain('useEffect(() => prepararTimbre(), [])')
+  })
+
+  it('sin `once`: un primer gesto que no baste no deja la página sin timbre', () => {
+    const preparar = TIMBRE.slice(
+      TIMBRE.indexOf('export function prepararTimbre'),
+      TIMBRE.indexOf('export function audioBloqueado'),
+    )
+    expect(preparar).not.toContain('once: true')
+    expect(preparar).toContain('if (listo) return')
+  })
+
+  it('no espera para siempre a que el navegador reanude', () => {
+    // Chrome no rechaza `resume()` sin gesto del usuario: deja la promesa pendiente.
+    // Sin límite, el timbre de un aviso sonaba siete minutos después, al primer clic.
+    expect(TIMBRE).toContain('const ESPERA_ACTIVACION_MS = 2_000')
+    expect(TIMBRE).toContain('Promise.race')
+  })
+
+  it('cuando llega un aviso sin sonido, la fila lo dice', () => {
+    const auto = readFileSync(
+      join(import.meta.dirname, '..', '..', 'app', 'fila', 'auto-actualizar.tsx'),
+      'utf8',
+    )
+    expect(auto).toContain('if (audioBloqueado()) setSinTimbre(true)')
+    expect(auto).toMatch(/El timbre no sonó/)
   })
 
   it('tiene su propio interruptor, aparte de los globos', () => {
