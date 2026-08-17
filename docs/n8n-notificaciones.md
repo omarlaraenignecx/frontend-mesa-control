@@ -83,20 +83,33 @@ Apagar los dos flujos deja la aplicación funcionando igual: sin avisos nuevos, 
 campanita se queda vacía y el botón Actualizar sigue haciendo lo suyo. Nada del
 resto de la herramienta depende de las notificaciones.
 
-## Lo que falta y por qué
+## Verificado de punta a punta el 17 de agosto de 2026
 
-**Falta ver una ejecución real de n8n contra la aplicación.** La forma de probarlo
-sin tocar la hoja productiva era un despliegue Preview —que usa la copia de
-pruebas—, pero el proyecto tiene la **protección de despliegues** de Vercel activa y
-responde `302` al inicio de sesión de Vercel ante cualquier petición de n8n. Las
-dos salidas son:
+La protección de despliegues de Vercel bloquea a n8n en Preview (responde `302` al
+inicio de sesión de Vercel), así que la prueba se hizo con un **túnel temporal** de
+`cloudflared` al entorno local, que apunta a la copia de pruebas. Los dos flujos se
+apuntaron al túnel, se activaron, se dejaron correr y se devolvieron a producción
+apagados. Lo que se observó, sin intervención humana entre una cosa y la otra:
 
-- Un **token de omisión para automatización** (Deployment Protection → Protection
-  Bypass for Automation) y mandarlo en la cabecera `x-vercel-protection-bypass`.
-- Un **túnel temporal** al entorno local (`cloudflared tunnel --url http://localhost:3000`),
-  que es lo más fiel a probar contra la hoja de prueba.
+| Ejecución | Respuesta de la app |
+| --- | --- |
+| 16:33:48 | `{"nuevos":1,"foliosGenerados":0,"avisos":0}` — régimen normal |
+| 16:34:48 | igual |
+| **16:35:48** | `{"nuevos":2,"foliosGenerados":1,"avisos":1}` — la petición insertada a las 16:35 |
+| 16:36:48 | vuelve al régimen normal: `avisos: 0` |
 
-Mientras eso no ocurra, lo verificado es que las rutas responden correctamente a
-las mismas peticiones que hará n8n: `401` sin secreto, `401` con secreto
-equivocado, y el trabajo completo con el secreto bueno, incluida la idempotencia al
-repetir. Lo único sin comprobar es el salto de red desde n8n.
+En la hoja quedó el folio **9005** (máximo de la columna más uno) y en la base el
+aviso con la fila y el folio correctos. Las siete ejecuciones de los dos flujos
+terminaron en `success`.
+
+Queda sin comprobar una sola cosa: que n8n alcance **producción**. Es la misma
+petición por la misma red, con otra URL; se verifica en el primer ciclo del paso a
+producción, descrito en `PASO-A-PRODUCCION-NOTIFICACIONES.md`.
+
+Si en el futuro hace falta repetir la prueba contra el local:
+
+```bash
+cloudflared tunnel --url http://localhost:3000     # da una URL de trycloudflare.com
+# apuntar los nodos HTTP de los dos flujos a esa URL, activarlos, observar, y
+# devolverlos a https://frontend-mesa-control.vercel.app apagados
+```

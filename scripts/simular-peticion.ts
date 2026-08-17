@@ -10,6 +10,13 @@
  *   pnpm dotenv -e .env.local -- pnpm tsx scripts/simular-peticion.ts crear
  *   pnpm dotenv -e .env.local -- pnpm tsx scripts/simular-peticion.ts borrar <fila>
  *
+ * Cuidado al borrar: quitar una fila corre hacia arriba todas las de abajo, y los
+ * avisos ya creados guardan el **número de fila**. Después de `borrar` hay que
+ * limpiar en la base los avisos de las filas afectadas, o quedan apuntando a un
+ * caso que no es —y su clave, que incluye el número de fila, bloquea el aviso
+ * legítimo del siguiente que ocupe ese número—. En producción esto no ocurre: el
+ * formulario solo agrega, nadie borra filas.
+ *
  * Requisitos:
  * - `gcloud` autenticado con la cuenta de servicio del proyecto.
  * - Que esa cuenta sea **editora del rango protegido** que cubre la columna `A` de
