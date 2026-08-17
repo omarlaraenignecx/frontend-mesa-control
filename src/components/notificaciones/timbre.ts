@@ -21,12 +21,16 @@ const NOTAS_HZ = [880, 1318.5]
 const DURACION = 0.22
 
 /**
- * Se subió de 0.14 a 0.85 el 17/8/2026, en dos pasos y a pedido del área: con el
- * primer valor apenas se oía sobre el ruido de una oficina. Es un seno puro, así que
- * ni a este nivel distorsiona —queda margen hasta 1.0, donde empezaría a recortar—, y
- * quien lo quiera callado tiene el interruptor del panel.
+ * Se subió de 0.14 a 0.95 el 17/8/2026, en tres pasos y a pedido del área: con el
+ * primer valor apenas se oía sobre el ruido de una oficina.
+ *
+ * Aquí se acaba el margen. Es un seno puro y las dos notas no se suman —cuando entra
+ * la segunda, la primera ya decayó a milésimas—, así que a 0.95 todavía no recorta,
+ * pero 1.0 es el techo del formato. Si aún hiciera falta más presencia, la palanca ya
+ * no es el nivel sino el patrón: repetir el din-don, o cambiar el seno por una onda
+ * triangular, que al mismo nivel se percibe bastante más fuerte.
  */
-const VOLUMEN = 0.85
+const VOLUMEN = 0.95
 
 let contexto: AudioContext | null = null
 
