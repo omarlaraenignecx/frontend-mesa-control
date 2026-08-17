@@ -8,7 +8,7 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Diseño técnico | `docs/superpowers/specs/2026-08-05-frontend-mesa-control-design.md` |
 | Repositorio | https://github.com/omarlaraenignecx/frontend-mesa-control |
 | Producción | https://frontend-mesa-control.vercel.app |
-| Última actualización | 17 de agosto de 2026 (notificaciones en vivo: campanita, panel, tabla y chat que se actualizan solos) |
+| Última actualización | 17 de agosto de 2026 (avisos de escritorio: las notificaciones salen además como globos del sistema operativo) |
 
 ## Estado por etapas
 
@@ -22,10 +22,11 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Fila y loader | **Completa y en producción** | `docs/superpowers/plans/2026-08-13-fila-y-loader.md` |
 | Correo, folios y archivos | **Completa y en producción**; Google reautorizado el 13/8/2026 (9 permisos), falta subir un archivo real desde el navegador | `docs/superpowers/plans/2026-08-13-correo-folios-y-archivos.md` |
 | Filtros y aviso de respuesta | **Completa en código** | sin plan; dos cambios pedidos el 14/8/2026 |
-| Notificaciones en vivo | **Completa en código y probada contra la copia**; falta activar los flujos de n8n contra producción | `docs/superpowers/plans/2026-08-14-notificaciones.md` · salida: `docs/PASO-A-PRODUCCION-NOTIFICACIONES.md` |
+| Notificaciones en vivo | **Completa y en producción** desde el 17/8/2026, con los dos flujos de n8n activos | `docs/superpowers/plans/2026-08-14-notificaciones.md` · salida: `docs/PASO-A-PRODUCCION-NOTIFICACIONES.md` |
+| Avisos de escritorio | **Completa en código**, probada en local contra la copia | `docs/superpowers/plans/2026-08-17-avisos-escritorio.md` · salida: punto 11 de `docs/PASO-A-PRODUCCION-NOTIFICACIONES.md` |
 | 4 · Producción y cierre | En curso: hoja productiva en uso; falta la jornada real y el cierre documental | `docs/superpowers/plans/2026-08-13-etapa-4-produccion-y-cierre.md` |
 
-Suite: **483 pruebas** en 50 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
+Suite: **515 pruebas** en 53 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
 
 ## Infraestructura
 
@@ -128,6 +129,9 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 | Reactividad | Lectura al cargar más botón Actualizar. Sin polling ni webhooks |
 | Plantillas de correo | En base de datos, editables desde la app |
 | Firma | Remitente de la mesa, indicando quién atiende |
+| Avisos de escritorio | Sobre el mismo sondeo, con la API `Notification` y **sin service worker ni Web Push**: llegan mientras la pestaña esté abierta, que es como trabaja el área. El permiso se pide siempre desde un clic —Chrome ignora la petición sin gesto del usuario— y al concederlo se manda un globo de prueba, porque el sistema puede estar silenciando al navegador con el permiso ya dado. Cada usuario los apaga desde el panel sin tocar la configuración del sitio (`localStorage`) |
+| Sondeo con la pestaña oculta | Pausado, **salvo** que los avisos de escritorio estén encendidos; entonces sigue a la mitad del ritmo (una petición por minuto). Pausarlo siempre dejaba el aviso sin llegar en el único momento para el que existe: cuando el usuario está en otra pestaña o en otra aplicación |
+| Tanda de avisos | Más de tres en un mismo ciclo se juntan en un solo globo de resumen que lleva a la fila. Sin eso, una tanda de correos tapa la pantalla y se cierra sin leer |
 
 ## Restricciones técnicas aprendidas
 
@@ -155,6 +159,8 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 22. **`fetch` no acepta un `Uint8Array<ArrayBufferLike>` como cuerpo**, que es lo que TypeScript infiere por omisión desde la 5.7. Hay que construirlo con `new Uint8Array(new ArrayBuffer(n))` para fijar el respaldo en un `ArrayBuffer`; si no, `tsc` lo rechaza aunque en ejecución funcione.
 23. **La misma base sirve a la copia y a la hoja real**, porque `POSTGRES_URL` tiene un solo valor para Production, Preview y Development. El número de fila por sí solo **no** identifica un caso: la 7181 de la copia y la 7181 de la productiva son casos distintos. `archivos_caso` lleva `sheet_id` por eso. Las tablas anteriores (`bitacora`, `eventos_bi`, `casos_hilo`) no lo llevan, así que una entrada hecha desde `pnpm dev` se ve en el caso de producción con el mismo número; son registros internos y de solo lectura para la mesa, pero conviene saberlo.
 24. **Agregar un scope no invalida la credencial guardada.** El refresh token sigue sirviendo para los permisos que sí tiene, así que la falta solo se nota al usar la función nueva —con un 403 opaco de Google—. `scopesFaltantes()` compara lo guardado con lo requerido y Ajustes lo avisa; el 403 se traduce a un mensaje que dice qué hacer.
+
+25. **La API `Notification` exige HTTPS y un gesto del usuario, y el permiso concedido no garantiza que el globo se vea.** `localhost` está exento del primero, y Vercel ya sirve por HTTPS. Lo segundo obliga a que el permiso se pida desde un botón. Lo tercero es lo que más engaña: con el permiso dado, el modo concentración de macOS o los avisos de Chrome apagados en Windows silencian todo sin decir nada, así que la app manda un globo de prueba al activar para que la falla se vea en ese momento y no el día que se pierda un caso.
 
 ## Hallazgos de operación (para conversar con Norma y Keynor)
 
@@ -210,6 +216,7 @@ Decidido con el área el 13/8/2026: **`USER_ENTERED` solo para `KB` y `KD`**, pa
 - **Reautorizar el acceso a Google** desde Ajustes, con la cuenta admin: la credencial guardada es anterior al permiso `drive.file` y hasta entonces la subida de archivos responde con el aviso correspondiente. La pantalla de consentimiento debe pedir "ver, editar, crear y eliminar solo los archivos específicos de Google Drive que uses con esta app". Después: subir una captura y un PDF a un caso, comprobar que se descargan, y que en el Drive de `mesadecontrol@` aparece la carpeta **Mesa de Control · Archivos** con los archivos nombrados `[fila] nombre`.
 - **El botón de generar folios en la hoja real.** Se ejercitó contra la copia (fila 7180 → folio 9003, guardado como número, y el reintento rechazado), pero el 13/8/2026 no había ningún caso de 2026 sin folio en producción, así que el aviso nace invisible. Hay que verlo cuando llegue la primera petición nueva: el aviso ámbar debe aparecer en la fila y en el caso, el folio debe ser el máximo de la columna + 1, y el aviso debe desaparecer después.
 - **Las notificaciones en el navegador del área**: la campanita con su punto azul, el panel lateral, la tabla que se actualiza sola al llegar una petición y el aviso "N mensajes nuevos" en el chat. Todo probado en local contra la copia —incluido el circuito completo de n8n por un túnel: petición insertada a las 16:35 y detectada por el flujo a las 16:35:48, con folio 9005 y su aviso— pero falta verlo con una sesión real del área. El detalle de la salida está en `docs/PASO-A-PRODUCCION-NOTIFICACIONES.md`.
+- **Los avisos de escritorio con una sesión real**: activar el permiso desde la barra azul de la fila, comprobar el globo de prueba, y verificar que llegan tanto la petición nueva como la respuesta de correo estando en otra ventana. Probado en local contra la copia.
 - **Que n8n alcance producción.** Preview no sirvió para probarlo porque la protección de despliegues de Vercel responde 302 a n8n. Se comprueba en el primer ciclo tras activar los flujos.
 - **Restaurar las protecciones de la copia de pruebas** (columnas `A` y `B–JX`), que se quitaron para poder simular peticiones con `scripts/simular-peticion.ts`. Las de la hoja productiva nunca se tocaron.
 - Conexión de GitHub en la cuenta de Vercel, si se quieren previews automáticos por push (hoy el despliegue es por CLI).

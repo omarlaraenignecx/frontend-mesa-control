@@ -189,3 +189,50 @@ y el folio se genera con el botón, como hasta ahora.
   primer ciclo del paso 5.
 - **La verificación en el navegador**: campanita, panel, la tabla que se mueve sola y
   el aviso del chat. Probado en local; falta verlo con una sesión real del área.
+
+## 11. Avisos de escritorio (agregado el 17/8/2026)
+
+Los avisos del sistema operativo se montaron sobre el mismo sondeo. **No hay nada que
+preparar antes de desplegar**: ni variables de entorno, ni tablas, ni permisos de
+Google, ni cambios en n8n. Se despliega como cualquier otro cambio de código.
+
+Lo único que cambia del lado de la plataforma es que **el sitio tiene que servirse por
+HTTPS**, requisito del navegador para la API `Notification`. Vercel ya lo cumple, y
+`localhost` está exento, que es lo que permitió probarlo en local.
+
+**Lo que cada persona del área hace una sola vez, en cada navegador que use:**
+
+1. Entrar a la fila. Aparece una barra azul: *"Recibe los avisos en el escritorio"*.
+2. Apretar **Activar**. El navegador pregunta si permite las notificaciones del sitio;
+   hay que elegir **Permitir**.
+3. Debe aparecer de inmediato un globo de prueba, *"Avisos activados"*. **Si no
+   aparece**, el permiso quedó dado pero el sistema está silenciando al navegador:
+   revisar el modo concentración de macOS o los avisos de Chrome en la configuración
+   de Windows. Sin ese globo, los avisos reales tampoco van a llegar.
+
+Quien apriete la ✕ en lugar de Activar no la vuelve a ver; puede activarlos después
+desde el panel de la campanita. Quien haya elegido **Bloquear** solo puede revertirlo
+desde el candado de la barra de direcciones: el panel se lo explica, pero el botón ya
+no vuelve a aparecer —así funciona el permiso del navegador—.
+
+**Lo que hay que saber para operarlo:**
+
+- **El aviso solo llega con la pestaña abierta.** Si el usuario cierra el navegador o
+  la pestaña, no hay avisos: no se usó Web Push. La campanita los tiene todos cuando
+  vuelva. El área trabaja con el sitio abierto todo el día, que es el caso que cubre.
+- **Se quedan en pantalla hasta que alguien los atiende** (`requireInteraction`), a
+  propósito. Chrome lo respeta; Firefox y Safari los esfuman a los pocos segundos.
+- **Más de tres avisos en el mismo ciclo se juntan** en uno solo, para no tapar la
+  pantalla en una tanda de correos.
+- **Costo:** sube un poco lo estimado en el punto 8. Antes el sondeo se pausaba con la
+  pestaña oculta; ahora, con los avisos encendidos, sigue corriendo a la mitad del
+  ritmo (una petición por minuto). Una pestaña olvidada de noche son unas 480
+  peticiones. Fue deliberado: pausado siempre, el aviso no llegaba nunca en el único
+  momento para el que existe.
+- **Vuelta atrás sin desplegar:** cada usuario puede apagarlos desde el panel de la
+  campanita, y eso también devuelve la pausa del sondeo. Para quitarlos de toda la
+  herramienta hay que revertir el código; nada más depende de ellos.
+- **Si algún día se pide que lleguen con el navegador cerrado**, el camino es Web Push:
+  service worker, claves VAPID, tabla de suscripciones por dispositivo y un emisor en
+  el servidor. Se dejó fuera a propósito por ser mucha maquinaria para el caso de uso
+  actual.
