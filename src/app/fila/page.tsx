@@ -33,6 +33,7 @@ import { actualizar } from './acciones'
 import { BotonActualizar } from './actualizar'
 import { AutoActualizarFila } from './auto-actualizar'
 import { Filtros } from './filtros'
+import { InvitacionEscritorio } from './invitacion-escritorio'
 
 const ICONO_VISTA = { fila: Inbox, rezago: Timer, todos: Search } as const
 
@@ -205,6 +206,7 @@ export default async function PaginaDeLaFila({
 
       <main className="mx-auto max-w-7xl space-y-4 px-6 py-6">
         <AutoActualizarFila />
+        <InvitacionEscritorio />
         <GenerarFolios faltantes={faltanFolio} />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
