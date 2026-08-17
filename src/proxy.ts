@@ -12,8 +12,24 @@ import { authConfig } from '@/auth.config'
  */
 const { auth } = NextAuth(authConfig)
 
+/** Rutas que se abren sin sesión porque cualquiera tiene que poder entrar. */
+const PUBLICAS = ['/login', '/sin-acceso']
+
+/**
+ * Rutas que no llevan sesión porque quien las llama es una máquina: los flujos de
+ * n8n que producen las notificaciones. **No** quedan abiertas: cada una compara un
+ * secreto compartido de tiempo constante y responde 401 sin él, y sin la variable
+ * de entorno configurada rechazan todo (ver `lib/notificaciones/secreto.ts`).
+ *
+ * La lista es de rutas exactas a propósito. Con `startsWith` sobre
+ * `/api/notificaciones`, el sondeo del navegador —que sí necesita sesión, porque
+ * devuelve datos de casos— se quedaría sin protección.
+ */
+const CON_SECRETO = ['/api/notificaciones/casos-nuevos']
+
 export default auth((req) => {
-  const publica = ['/login', '/sin-acceso'].some((p) => req.nextUrl.pathname.startsWith(p))
+  const ruta = req.nextUrl.pathname
+  const publica = PUBLICAS.some((p) => ruta.startsWith(p)) || CON_SECRETO.includes(ruta)
   if (!req.auth && !publica) {
     return NextResponse.redirect(new URL('/login', req.nextUrl.origin))
   }
