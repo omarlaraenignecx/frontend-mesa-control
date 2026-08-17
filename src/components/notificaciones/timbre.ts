@@ -18,10 +18,14 @@ import { CLAVE_TIMBRE, leerPreferencia, guardarPreferencia } from './preferencia
 const NOTAS_HZ = [880, 1318.5]
 
 /** Cada nota, en segundos. Corto: es un aviso, no una alarma. */
-const DURACION = 0.18
+const DURACION = 0.22
 
-/** Discreto a propósito: la mesa trabaja en una oficina compartida. */
-const VOLUMEN = 0.14
+/**
+ * Se subió de 0.14 a 0.7 el 17/8/2026, a pedido del área: con el primer valor apenas
+ * se oía sobre el ruido de una oficina. Es un seno puro, así que sigue sin
+ * distorsionar, y quien lo quiera callado tiene el interruptor del panel.
+ */
+const VOLUMEN = 0.7
 
 let contexto: AudioContext | null = null
 
@@ -72,22 +76,30 @@ export function prepararTimbre(): () => void {
 }
 
 /**
- * Suena el timbre, si el usuario lo quiere.
+ * Deja el contexto corriendo, esperando a que el navegador lo confirme.
  *
- * El contexto arranca suspendido cuando la página todavía no ha recibido un gesto
- * del usuario —política de reproducción automática— y hay que reanudarlo. En la
- * práctica el gesto ya ocurrió: activar los avisos es un clic. Si el navegador se
- * niega igual, se queda sin sonido y el globo aparece de todas formas; nunca se rompe
- * nada por un timbre.
+ * Esperar es el punto. `resume()` es asíncrono, y en un contexto suspendido el reloj
+ * de audio está **congelado**: programar las notas antes de que reanude las agenda
+ * contra un tiempo que no avanza, y cuando por fin arranca, sus rampas de ganancia ya
+ * quedaron en el pasado —la ganancia se queda en el valor final, casi cero—. El
+ * oscilador suena, pero en silencio. Eso es lo que se vio el 17/8/2026: el timbre
+ * funcionaba mientras el contexto ya estuviera activo por el clic de Activar, y
+ * enmudecía al recargar la página sin tocar nada.
  */
-export function tocarTimbre(): void {
-  if (!timbreEncendido()) return
-  const ctx = obtenerContexto()
-  if (!ctx) return
-
+async function asegurarActivo(ctx: AudioContext): Promise<boolean> {
+  if (ctx.state === 'running') return true
   try {
-    if (ctx.state === 'suspended') void ctx.resume()
+    await ctx.resume()
+  } catch {
+    return false
+  }
+  // El casteo es necesario: la salida temprana de arriba estrechó el tipo de
+  // `ctx.state`, y TypeScript no sabe que `resume()` acaba de cambiarlo.
+  return (ctx.state as AudioContextState) === 'running'
+}
 
+function programarNotas(ctx: AudioContext): void {
+  try {
     NOTAS_HZ.forEach((hz, i) => {
       const oscilador = ctx.createOscillator()
       const ganancia = ctx.createGain()
@@ -109,5 +121,31 @@ export function tocarTimbre(): void {
     })
   } catch {
     // Un contexto cerrado por el navegador, o WebAudio bloqueado: sin sonido y ya.
+    // Nunca se rompe nada por un timbre; el globo aparece de todas formas.
   }
+}
+
+/** Suena el timbre, si el usuario lo quiere y el navegador lo permite. */
+export function tocarTimbre(): void {
+  if (!timbreEncendido()) return
+  const ctx = obtenerContexto()
+  if (!ctx) return
+  void asegurarActivo(ctx).then((activo) => {
+    if (activo) programarNotas(ctx)
+  })
+}
+
+/**
+ * Suena a pedido, ignorando la preferencia, y **dice si se pudo**.
+ *
+ * El valor de retorno es lo que hace visible una falla que antes era muda: si el
+ * navegador no deja activar el audio, el panel lo dice en lugar de dejar al usuario
+ * creyendo que su timbre quedó listo.
+ */
+export async function probarTimbre(): Promise<boolean> {
+  const ctx = obtenerContexto()
+  if (!ctx) return false
+  const activo = await asegurarActivo(ctx)
+  if (activo) programarNotas(ctx)
+  return activo
 }

@@ -3,44 +3,72 @@
 import { BellRing, MonitorX, Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAvisosEscritorio } from './escritorio'
-import { guardarTimbre, timbreEncendido, tocarTimbre } from './timbre'
+import { guardarTimbre, probarTimbre, timbreEncendido } from './timbre'
 
 /**
  * El timbre, aparte de los globos.
  *
  * Es su propio interruptor porque las molestias son distintas: hay quien quiere ver
- * los avisos y no oírlos, en una oficina compartida o en una llamada. Y suena al
- * encenderlo, que es la única forma de saber si el volumen alcanza.
+ * los avisos y no oírlos, en una oficina compartida o en una llamada. Suena al
+ * encenderlo y tiene un botón de Probar, que es la única forma de saber si el volumen
+ * alcanza; y si el navegador no deja activar el audio, lo dice en lugar de quedarse
+ * mudo.
  */
 function Timbre() {
   const [encendido, setEncendido] = useState(true)
+  const [bloqueado, setBloqueado] = useState(false)
 
   useEffect(() => {
     queueMicrotask(() => setEncendido(timbreEncendido()))
   }, [])
 
+  async function probar() {
+    setBloqueado(!(await probarTimbre()))
+  }
+
   function alternar() {
     const siguiente = !encendido
     guardarTimbre(siguiente)
     setEncendido(siguiente)
-    if (siguiente) tocarTimbre()
+    if (siguiente) void probar()
+    else setBloqueado(false)
   }
 
   const Icono = encendido ? Volume2 : VolumeX
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
-      <p className="flex items-center gap-2 text-base">
-        <Icono className="size-4 text-muted-foreground" />
-        Timbre: <span className="font-medium">{encendido ? 'activado' : 'apagado'}</span>
-      </p>
-      <button
-        type="button"
-        onClick={alternar}
-        className="text-base text-blue-600 underline underline-offset-4 transition-colors hover:text-blue-700 dark:text-blue-400"
-      >
-        {encendido ? 'Apagar' : 'Encender'}
-      </button>
+    <div className="space-y-2 border-b px-5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="flex items-center gap-2 text-base">
+          <Icono className="size-4 text-muted-foreground" />
+          Timbre: <span className="font-medium">{encendido ? 'activado' : 'apagado'}</span>
+        </p>
+        <div className="flex items-center gap-3">
+          {encendido && (
+            <button
+              type="button"
+              onClick={() => void probar()}
+              className="text-base text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+            >
+              Probar
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={alternar}
+            className="text-base text-blue-600 underline underline-offset-4 transition-colors hover:text-blue-700 dark:text-blue-400"
+          >
+            {encendido ? 'Apagar' : 'Encender'}
+          </button>
+        </div>
+      </div>
+      {/* Un timbre que no suena y no dice nada es peor que no tener timbre. */}
+      {bloqueado && (
+        <p className="text-sm text-amber-700 dark:text-amber-400">
+          El navegador no dejó sonar el timbre todavía. Haz clic en cualquier parte de la página y
+          vuelve a probar.
+        </p>
+      )}
     </div>
   )
 }

@@ -148,9 +148,13 @@ describe('timbre', () => {
     expect(TIMBRE).toContain('contexto ??= new Constructor()')
   })
 
-  it('reanuda el contexto suspendido por la política de reproducción automática', () => {
-    expect(TIMBRE).toContain("ctx.state === 'suspended'")
-    expect(TIMBRE).toContain('ctx.resume()')
+  it('espera a que el contexto esté corriendo antes de programar las notas', () => {
+    // Con el contexto suspendido el reloj de audio está congelado: programar antes de
+    // que reanude deja las rampas de ganancia en el pasado y el oscilador suena en
+    // silencio. Es el defecto que enmudeció el timbre el 17/8/2026.
+    expect(TIMBRE).toContain('await ctx.resume()')
+    expect(TIMBRE).toMatch(/return \(ctx\.state as AudioContextState\) === 'running'/)
+    expect(TIMBRE).toMatch(/asegurarActivo\(ctx\)\.then\(\(activo\) => \{\s*\n\s*if \(activo\) programarNotas\(ctx\)/)
   })
 
   it('respeta el interruptor antes de sonar', () => {
@@ -191,6 +195,12 @@ describe('timbre', () => {
   })
 
   it('suena al encenderlo, que es la única forma de saber si el volumen alcanza', () => {
-    expect(AJUSTE).toContain('if (siguiente) tocarTimbre()')
+    expect(AJUSTE).toContain('if (siguiente) void probar()')
+  })
+
+  it('si el navegador no deja sonar, el panel lo dice en lugar de quedarse mudo', () => {
+    expect(TIMBRE).toContain('export async function probarTimbre(): Promise<boolean>')
+    expect(AJUSTE).toContain('setBloqueado(!(await probarTimbre()))')
+    expect(AJUSTE).toMatch(/no dejó sonar el timbre/)
   })
 })
