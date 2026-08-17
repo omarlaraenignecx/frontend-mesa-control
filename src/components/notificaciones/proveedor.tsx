@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { Notificacion, Sondeo } from '@/lib/notificaciones/tipos'
+import { EmisorEscritorio } from './emisor-escritorio'
+import { avisosEncendidos } from './escritorio'
 
 /**
  * Un solo sondeo por página.
@@ -10,9 +12,13 @@ import type { Notificacion, Sondeo } from '@/lib/notificaciones/tipos'
  * mismo —la campanita, las insignias de la tabla y el aviso del chat— y no tiene
  * sentido que cada una interrogue al servidor por su cuenta.
  *
- * Se detiene con la pestaña oculta: el sondeo existe para quien está mirando, y
- * una pestaña olvidada toda la noche son 960 peticiones que nadie lee. Al volver a
- * ella se consulta de inmediato, así que el costo de la pausa es cero.
+ * Con la pestaña oculta se detiene, **salvo** que el usuario tenga encendidos los
+ * avisos del escritorio. La pausa se puso porque una pestaña olvidada toda la noche
+ * son 960 peticiones que nadie lee, y mientras el único consumidor era la pantalla,
+ * el costo de pausar era cero. Los avisos del escritorio cambian eso: existen justo
+ * para el momento en que el usuario está en otra pestaña o en otra aplicación, y con
+ * la pausa nunca llegarían —se enteraría al volver, cuando ya está viendo la app y
+ * el aviso sobra—. Oculta y con avisos encendidos se sondea a la mitad del ritmo.
  */
 const INTERVALO_MS = 30_000
 
@@ -40,6 +46,7 @@ export function ProveedorNotificaciones({ children }: { children: React.ReactNod
   const escuchas = useRef<Set<(nuevas: Notificacion[]) => void>>(new Set())
   const primeraVez = useRef(true)
   const detenido = useRef(false)
+  const tics = useRef(0)
 
   const recargar = useCallback(async () => {
     if (detenido.current) return
@@ -80,7 +87,15 @@ export function ProveedorNotificaciones({ children }: { children: React.ReactNod
     queueMicrotask(() => void recargar())
 
     const reloj = setInterval(() => {
-      if (!document.hidden) void recargar()
+      tics.current += 1
+      if (!document.hidden) {
+        void recargar()
+        return
+      }
+      // Oculta: solo se sigue sondeando para alimentar los avisos del escritorio, y
+      // uno de cada dos tics, o sea cada minuto. Se pregunta en cada vuelta porque
+      // el permiso pudo concederse o apagarse después de montar la página.
+      if (avisosEncendidos() && tics.current % 2 === 0) void recargar()
     }, INTERVALO_MS)
     const alVolver = () => {
       if (!document.hidden) void recargar()
@@ -121,6 +136,9 @@ export function ProveedorNotificaciones({ children }: { children: React.ReactNod
         marcarLeidasDeFila: (fila) => marcar({ fila }),
       }}
     >
+      {/* Va aquí y no en cada página: donde haya notificaciones, hay avisos de
+          escritorio. Es el mismo evento y no dibuja nada. */}
+      <EmisorEscritorio />
       {children}
     </ctx.Provider>
   )

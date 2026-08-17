@@ -14,9 +14,16 @@ describe('proveedor de notificaciones', () => {
     expect(FUENTE).toContain('const INTERVALO_MS = 30_000')
   })
 
-  it('no sondea con la pestaña oculta, y consulta al volver a ella', () => {
+  it('consulta al volver a la pestaña', () => {
     expect(FUENTE).toContain('document.hidden')
     expect(FUENTE).toContain('visibilitychange')
+  })
+
+  it('con la pestaña oculta solo sigue sondeando si hay avisos de escritorio', () => {
+    // Si se pausara siempre, los avisos del escritorio no llegarían nunca en el
+    // único momento para el que existen: cuando el usuario está en otra ventana.
+    expect(FUENTE).toContain('avisosEncendidos()')
+    expect(FUENTE).toContain('tics.current % 2 === 0')
   })
 
   it('deja de insistir cuando la sesión ya no vale', () => {

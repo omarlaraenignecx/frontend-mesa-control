@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { partesDeLaMesa } from '@/lib/reloj'
 import type { Notificacion } from '@/lib/notificaciones/tipos'
+import { AjusteEscritorio } from './ajuste-escritorio'
 import { useNotificaciones } from './proveedor'
 
 /**
@@ -84,6 +85,8 @@ export function PanelNotificaciones({ cerrar }: { cerrar: () => void }) {
             <X className="size-5" />
           </button>
         </header>
+
+        <AjusteEscritorio />
 
         {noLeidas.length > 0 && (
           <div className="border-b px-5 py-2.5">
