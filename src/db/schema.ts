@@ -1,8 +1,10 @@
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp,
@@ -110,6 +112,47 @@ export const ajustesApp = pgTable('ajustes_app', {
   clave: text('clave').primaryKey(),
   valor: text('valor').notNull(),
 })
+
+/**
+ * Avisos para la mesa: una petición nueva en la hoja o una respuesta de correo en
+ * un caso. Los produce la app cuando n8n la despierta; el navegador los sondea.
+ *
+ * `clave` es la idempotencia (ver `lib/notificaciones/claves.ts`) y `sheet_id`
+ * separa la copia de la hoja real, que comparten esta base.
+ */
+export const notificaciones = pgTable(
+  'notificaciones',
+  {
+    id: serial('id').primaryKey(),
+    sheetId: text('sheet_id').notNull(),
+    tipo: text('tipo', { enum: ['caso_nuevo', 'correo_recibido'] }).notNull(),
+    fila: integer('fila').notNull(),
+    folio: text('folio'),
+    titulo: text('titulo').notNull(),
+    detalle: text('detalle'),
+    clave: text('clave').notNull(),
+    creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('notificaciones_clave_idx').on(t.clave),
+    index('notificaciones_hoja_idx').on(t.sheetId, t.id),
+  ],
+)
+
+/**
+ * Lo leído es por usuario, no por equipo: que Keynor lea un aviso no se lo quita
+ * a Paty. Se guarda la marca de lectura y no un booleano en `notificaciones`
+ * porque cada aviso tiene tantos estados como personas en la mesa.
+ */
+export const notificacionesLeidas = pgTable(
+  'notificaciones_leidas',
+  {
+    notificacionId: integer('notificacion_id').notNull(),
+    correoUsuario: text('correo_usuario').notNull(),
+    leidoEn: timestamp('leido_en', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.notificacionId, t.correoUsuario] })],
+)
 
 export const eventosBi = pgTable('eventos_bi', {
   id: serial('id').primaryKey(),

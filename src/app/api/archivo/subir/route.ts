@@ -8,10 +8,10 @@ const MB = 1024 * 1024
 /**
  * Recibe los archivos que la mesa adjunta a un caso.
  *
- * Es una ruta y no una Server Action porque el cuerpo de una acción está limitado
- * a 1 MB y esto mueve archivos de varios megas. Subir el límite global de las
- * acciones expondría todos los formularios de la aplicación a cuerpos grandes;
- * una ruta acota el permiso a este único camino.
+ * Es una ruta y no una Server Action porque mueve archivos de varios megas y así
+ * no depende del tope del cuerpo de las acciones, que la aplicación tuvo que
+ * subir a 25 MB para poder adjuntar al correo (ver `lib/correo/limites.ts`). Aquí
+ * el límite es el de esta ruta y nada más.
  *
  * No se restringe el tipo de archivo a propósito: la mesa adjunta capturas, PDF,
  * correos exportados y lo que haga falta, y nada de eso se ejecuta —se guarda en
