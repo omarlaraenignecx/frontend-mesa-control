@@ -10,6 +10,8 @@ import {
   Paperclip,
 } from 'lucide-react'
 import { GenerarFolios } from '@/components/generar-folios'
+import { Campanita } from '@/components/notificaciones/campanita'
+import { ProveedorNotificaciones } from '@/components/notificaciones/proveedor'
 import { EtiquetaSemaforo } from '@/components/semaforo'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -131,6 +133,7 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
     .map(([etiqueta, valor]) => ({ etiqueta, valor }))
 
   return (
+    <ProveedorNotificaciones>
     <div className="min-h-full bg-background">
       {/* Encabezado del caso, pegado arriba para no perder la referencia al bajar */}
       <header className="sticky top-0 z-10 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
@@ -162,11 +165,14 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
               </p>
             </div>
 
-            <Atender
-              fila={fila}
-              quienAtiende={caso.quienAtendio}
-              nombreUsuario={usuario.nombreEnHoja}
-            />
+            <div className="flex items-center gap-3">
+              <Campanita />
+              <Atender
+                fila={fila}
+                quienAtiende={caso.quienAtendio}
+                nombreUsuario={usuario.nombreEnHoja}
+              />
+            </div>
           </div>
         </div>
       </header>
@@ -401,5 +407,6 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
         </div>
       </main>
     </div>
+    </ProveedorNotificaciones>
   )
 }

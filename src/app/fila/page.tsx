@@ -14,6 +14,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { GenerarFolios } from '@/components/generar-folios'
+import { Campanita } from '@/components/notificaciones/campanita'
+import { ProveedorNotificaciones } from '@/components/notificaciones/proveedor'
 import { requerirUsuario } from '@/lib/auth/guard'
 import { sinFolio } from '@/lib/casos/caso'
 import {
@@ -144,6 +146,7 @@ export default async function PaginaDeLaFila({
   const faltanFolio = resultado.casos.filter(sinFolio).length
 
   return (
+    <ProveedorNotificaciones>
     <div className="min-h-full">
       <header className="border-b bg-card">
         <div className="mx-auto max-w-7xl px-6 py-5">
@@ -167,6 +170,7 @@ export default async function PaginaDeLaFila({
                   Ajustes
                 </Link>
               )}
+              <Campanita />
               <BotonActualizar accion={actualizar} />
             </div>
           </div>
@@ -307,5 +311,6 @@ export default async function PaginaDeLaFila({
         </p>
       </main>
     </div>
+    </ProveedorNotificaciones>
   )
 }
