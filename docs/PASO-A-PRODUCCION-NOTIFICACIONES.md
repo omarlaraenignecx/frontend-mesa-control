@@ -1,8 +1,10 @@
 # Paso a producción de las notificaciones
 
-Todo lo de este documento está **probado contra la copia de pruebas**
-(`1rimFXIxaM4HrBHC9YQfwYfkh0l-RBJdbe7SLM0CGxEQ`) y **nada de esto se ha ejecutado
-todavía contra la hoja productiva** (`1OfK8ve8twu5WCx-Yy3iJoiKJhs34klChq7dIqx4dfr0`).
+Todo lo de este documento se probó primero contra la copia de pruebas
+(`1rimFXIxaM4HrBHC9YQfwYfkh0l-RBJdbe7SLM0CGxEQ`) y **se ejecutó contra la hoja
+productiva el 17 de agosto de 2026** (`1OfK8ve8twu5WCx-Yy3iJoiKJhs34klChq7dIqx4dfr0`),
+en el orden que sigue. Queda como registro de lo hecho y como guía si hubiera que
+repetirlo en otro entorno.
 
 Los pasos van en orden. El 4 es el delicado.
 
@@ -180,11 +182,11 @@ y el folio se genera con el botón, como hasta ahora.
   (`Datos → Proteger hojas y rangos`). Conviene devolverlas cuando ya no se necesiten,
   para que la copia siga pareciéndose a la hoja real. **Las de la hoja productiva
   nunca se tocaron.**
-- **Fila de prueba en la copia.** Queda una petición simulada
-  (`PRUEBA DE NOTIFICACIONES`, folio 9005). Se quita con
-  `pnpm dotenv -e .env.local -- pnpm tsx scripts/simular-peticion.ts borrar <fila>`,
-  recordando limpiar después sus avisos en la base (ver el comentario del script:
-  borrar una fila corre las de abajo y los avisos guardan el número de fila).
+- ~~**Filas de prueba en la copia.**~~ Hecho el 17/8/2026: se borraron las nueve
+  peticiones simuladas (`PRUEBA DE NOTIFICACIONES`, filas 7184–7192, folios 9005–9013)
+  y sus nueve avisos en la base. Se borran de la fila más alta a la más baja y **sus
+  avisos se limpian después**: borrar una fila corre hacia arriba las de abajo, y un
+  aviso que sobreviva a su fila apunta a un caso que ya es otro.
 - **Que n8n alcance producción.** Es lo único del circuito sin comprobar; se ve en el
   primer ciclo del paso 5.
 - **La verificación en el navegador**: campanita, panel, la tabla que se mueve sola y
@@ -236,3 +238,27 @@ no vuelve a aparecer —así funciona el permiso del navegador—.
   service worker, claves VAPID, tabla de suscripciones por dispositivo y un emisor en
   el servidor. Se dejó fuera a propósito por ser mucha maquinaria para el caso de uso
   actual.
+
+### El timbre
+
+Cada aviso suena, con un "din-don" de dos notas sintetizado en la propia página
+(`src/components/notificaciones/timbre.ts`). No hay archivo de audio: la opción `sound`
+de la API `Notification` está deprecada y ningún navegador la implementa, así que el
+sonido tenía que salir de la página de todos modos.
+
+- **Volumen 0.95**, subido en tres pasos a pedido del área durante la prueba del
+  17/8/2026. Es el techo útil: 1.0 empieza a recortar, que se oye peor y no más fuerte.
+  Si algún día piden más presencia, la palanca es el patrón —repetir el din-don, u onda
+  triangular en vez de seno—, no el número.
+- **Un timbre por tanda**, no uno por aviso.
+- **Interruptor propio** en el panel, aparte de los globos, con un botón **Probar**.
+- **Lo que hay que explicarle al área:** el navegador solo permite audio en una página
+  que ya recibió un clic o una tecla. Eso significa que **el primer aviso después de
+  recargar puede llegar mudo** si nadie tocó la pantalla; a partir del primer clic
+  suena todo el día. No es evitable —ni con Web Push, porque el sonido saldría igual de
+  la pestaña— y por eso el cartel de la fila lo dice cuando pasa, en lugar de dejar al
+  usuario creyendo que el timbre está roto.
+- El defecto que más costó ver: Chrome **no rechaza** `resume()` sin gesto del usuario,
+  deja la promesa pendiente. Sin límite de espera, el timbre de un aviso de las 15:28
+  sonaba al primer clic siete minutos después. Hay un tope de 2 segundos: pasado eso se
+  descarta el timbre, porque uno fuera de tiempo enseña a desconfiar.
