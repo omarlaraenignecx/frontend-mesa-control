@@ -30,6 +30,25 @@ describe('panel', () => {
     expect(PANEL).toContain('h-full')
   })
 
+  it('se dibuja en un portal a document.body', () => {
+    // La cabecera de la vista del caso lleva `backdrop-blur`, y un elemento con
+    // `backdrop-filter` se vuelve el bloque contenedor de sus descendientes
+    // `position: fixed`. Sin portal, `inset-0` mide contra esa barra y el panel
+    // sale recortado a su altura: pasó el 17/8/2026.
+    expect(PANEL).toContain('createPortal')
+    expect(PANEL).toContain('document.body')
+  })
+
+  it('la cabecera del caso sigue teniendo el desenfoque que obliga al portal', () => {
+    // Si algún día se le quita, el portal deja de ser necesario; mientras esté,
+    // quitar el portal vuelve a romper el panel.
+    const caso = readFileSync(
+      join(import.meta.dirname, '..', '..', 'app', 'caso', '[fila]', 'page.tsx'),
+      'utf8',
+    )
+    expect(caso).toContain('backdrop-blur')
+  })
+
   it('cierra con Escape y con el fondo', () => {
     expect(PANEL).toContain("e.key === 'Escape'")
     expect(PANEL).toMatch(/onClick=\{cerrar\}/)

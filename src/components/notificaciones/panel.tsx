@@ -3,6 +3,7 @@
 import { FilePlus2, Mail, X } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { partesDeLaMesa } from '@/lib/reloj'
 import type { Notificacion } from '@/lib/notificaciones/tipos'
 import { useNotificaciones } from './proveedor'
@@ -33,6 +34,13 @@ function Icono({ tipo }: { tipo: Notificacion['tipo'] }) {
  * Barra lateral sobrepuesta, no un desplegable: los avisos traen dos líneas de
  * texto cada uno y en un menú angosto no se leen.
  *
+ * Va en un portal a `document.body` y no donde está la campanita. La razón es
+ * concreta: la cabecera de la vista del caso lleva `backdrop-blur`, y un elemento
+ * con `backdrop-filter` se vuelve el bloque contenedor de sus descendientes
+ * `position: fixed`. Sin el portal, `inset-0` mide contra la cabecera y el panel
+ * sale recortado a la altura de esa barra —tal como se vio el 17/8/2026—. Lo mismo
+ * pasaría con cualquier ancestro que use `transform`, `filter` o `contain`.
+ *
  * Al entrar a un caso desde aquí, ese aviso se marca leído. No se marcan todos: el
  * resto sigue pendiente porque nadie los ha visto.
  */
@@ -47,7 +55,7 @@ export function PanelNotificaciones({ cerrar }: { cerrar: () => void }) {
     return () => document.removeEventListener('keydown', escape)
   }, [cerrar])
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex justify-end">
       {/* El fondo cierra al hacer clic; queda tras el panel, nunca encima. */}
       <button
@@ -126,6 +134,7 @@ export function PanelNotificaciones({ cerrar }: { cerrar: () => void }) {
           </ul>
         </div>
       </aside>
-    </div>
+    </div>,
+    document.body,
   )
 }
