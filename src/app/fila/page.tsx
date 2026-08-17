@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { PuntoDeCarga } from '@/components/punto-de-carga'
 import { Inbox, Search, Settings, Timer } from 'lucide-react'
-import { updateTag } from 'next/cache'
 import { PuntoSemaforo } from '@/components/semaforo'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -15,6 +14,7 @@ import {
 } from '@/components/ui/table'
 import { GenerarFolios } from '@/components/generar-folios'
 import { Campanita } from '@/components/notificaciones/campanita'
+import { InsigniaCorreo } from '@/components/notificaciones/insignia-correo'
 import { ProveedorNotificaciones } from '@/components/notificaciones/proveedor'
 import { requerirUsuario } from '@/lib/auth/guard'
 import { sinFolio } from '@/lib/casos/caso'
@@ -29,7 +29,9 @@ import { cargarCola } from '@/lib/casos/consulta'
 import { fechaCorta } from '@/lib/fecha'
 import { diasDeEspera } from '@/lib/casos/semaforo'
 import { CredencialMesaRevocadaError, SinCredencialMesaError } from '@/lib/google/auth-mesa'
+import { actualizar } from './acciones'
 import { BotonActualizar } from './actualizar'
+import { AutoActualizarFila } from './auto-actualizar'
 import { Filtros } from './filtros'
 
 const ICONO_VISTA = { fila: Inbox, rezago: Timer, todos: Search } as const
@@ -70,13 +72,6 @@ export default async function PaginaDeLaFila({
 }) {
   const usuario = await requerirUsuario()
   const params = await searchParams
-
-  async function actualizar() {
-    'use server'
-    // updateTag y no revalidateTag: el usuario pidió los datos frescos ahora,
-    // no en la siguiente visita. Es la semántica del botón Actualizar.
-    updateTag('casos')
-  }
 
   let resultado: Awaited<ReturnType<typeof cargarCola>>
   try {
@@ -209,6 +204,7 @@ export default async function PaginaDeLaFila({
       </header>
 
       <main className="mx-auto max-w-7xl space-y-4 px-6 py-6">
+        <AutoActualizarFila />
         <GenerarFolios faltantes={faltanFolio} />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -232,7 +228,7 @@ export default async function PaginaDeLaFila({
         <Table>
           <TableHeader className="bg-secondary/60">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-10" />
+              <TableHead className="w-20" />
               <TableHead className="text-base">Estatus final</TableHead>
               <TableHead className="text-base">Atiende</TableHead>
               <TableHead className="text-base">Folio</TableHead>
@@ -249,7 +245,8 @@ export default async function PaginaDeLaFila({
               const dias = diasDeEspera(caso, hoy)
               return (
                 <TableRow key={caso.fila} className="text-base transition-colors hover:bg-secondary/60">
-                  <TableCell>
+                  <TableCell className="relative pl-10">
+                    <InsigniaCorreo fila={caso.fila} />
                     <PuntoSemaforo estatusFinal={caso.estatusFinal} />
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
