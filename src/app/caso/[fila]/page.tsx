@@ -23,6 +23,7 @@ import { estaVivo } from '@/lib/casos/caso'
 import { leerBitacora } from '@/lib/casos/bitacora'
 import { listarArchivos } from '@/lib/casos/archivos'
 import { agruparCamposExtra } from '@/lib/casos/campos-extra'
+import { AvisoMensajesNuevos } from './aviso-mensajes'
 import { Conversacion } from './conversacion'
 import { cargarCaso } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
@@ -347,6 +348,7 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
                 <CardTitle className="flex items-center gap-2.5 text-xl">
                   <Mail className="size-5 text-primary" />
                   Conversación
+                  <AvisoMensajesNuevos fila={fila} />
                 </CardTitle>
               </CardHeader>
               <CardContent>
