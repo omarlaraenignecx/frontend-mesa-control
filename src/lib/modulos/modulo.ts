@@ -31,15 +31,32 @@ export type Clasificacion = {
   todos: string
 }
 
+/**
+ * Campos de texto del caso que un módulo puede mostrar como columna propia del
+ * listado. La unión es cerrada a propósito: una columna se declara, no se calcula.
+ */
+export type CampoColumna = 'numeroSiniestro' | 'tipoAtencion' | 'nombreCliente'
+
 export type ConfigModulo = {
   clave: Modulo
   titulo: string
   rutaLista: string
   rutaCaso: (fila: number) => string
-  rutaAjustes: string
+  /** Pantalla de ajustes propia, o `null` si el módulo todavía no tiene una. */
+  ajustes: { ruta: string; soloAdmin: boolean } | null
   /** Qué casos de la hoja le tocan a este módulo. */
   incluye: (caso: Caso) => boolean
   clasificacion: Clasificacion
+  /** Columnas del listado propias del módulo, además de las comunes. */
+  columnasExtra: { encabezado: string; campo: CampoColumna }[]
+  /**
+   * Si este módulo ofrece generar los folios que falten.
+   *
+   * Solo la mesa. El folio es una serie única para toda la hoja y el arrastre llena
+   * la columna entera, así que el botón actúa igual desde donde se aprete: tenerlo
+   * en dos pantallas sería el mismo botón dos veces.
+   */
+  generaFolios: boolean
 }
 
 export const MESA: ConfigModulo = {
@@ -47,7 +64,7 @@ export const MESA: ConfigModulo = {
   titulo: 'Mesa de Control',
   rutaLista: '/fila',
   rutaCaso: (fila) => `/caso/${fila}`,
-  rutaAjustes: '/ajustes',
+  ajustes: { ruta: '/ajustes', soloAdmin: true },
   /**
    * Todo, siniestros incluidos. Es decisión del área: la fila de la mesa siguió
    * mostrándolos al abrirse el módulo del ramo, porque quitarlos de ahí sería una
@@ -62,6 +79,8 @@ export const MESA: ConfigModulo = {
     filtro: 'Filtrar por trámite',
     todos: 'Todos los trámites',
   },
+  columnasExtra: [],
+  generaFolios: true,
 }
 
 export const SINIESTROS: ConfigModulo = {
@@ -69,7 +88,9 @@ export const SINIESTROS: ConfigModulo = {
   titulo: 'Atención a Siniestros',
   rutaLista: '/siniestros',
   rutaCaso: (fila) => `/siniestros/caso/${fila}`,
-  rutaAjustes: '/siniestros/ajustes',
+  // Se enciende al existir la pantalla, en la etapa de la cuenta de Gmail. Un
+  // enlace a una ruta que todavía no existe es un 404 con nuestro nombre.
+  ajustes: null,
   incluye: esSiniestro,
   clasificacion: {
     campo: 'tipoSiniestro',
@@ -78,9 +99,22 @@ export const SINIESTROS: ConfigModulo = {
     filtro: 'Filtrar por tipo de siniestro',
     todos: 'Todos los siniestros',
   },
+  columnasExtra: [{ encabezado: 'Número de siniestro', campo: 'numeroSiniestro' }],
+  generaFolios: false,
 }
 
-export const MODULOS = [MESA, SINIESTROS] as const
+export const MODULOS: ConfigModulo[] = [MESA, SINIESTROS]
+
+/**
+ * El módulo con esa clave. Es la puerta por la que un componente de cliente
+ * recupera su configuración: las funciones de `ConfigModulo` no se pueden mandar
+ * del servidor al cliente, así que lo que viaja es la clave.
+ */
+export function moduloPorClave(clave: Modulo): ConfigModulo {
+  const encontrado = MODULOS.find((m) => m.clave === clave)
+  if (!encontrado) throw new Error(`No existe el módulo "${clave}".`)
+  return encontrado
+}
 
 /**
  * A qué módulo pertenece un caso. No es lo mismo que `incluye`: un caso de

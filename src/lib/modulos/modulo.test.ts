@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { casoDePrueba, siniestroDePrueba } from '@/lib/casos/__fixtures__/caso'
-import { MESA, MODULOS, SINIESTROS, moduloDelCaso } from './modulo'
+import { MESA, MODULOS, SINIESTROS, moduloDelCaso, moduloPorClave } from './modulo'
 
 describe('moduloDelCaso', () => {
   it('un caso del ramo pertenece a siniestros', () => {
@@ -31,10 +31,23 @@ describe('rutas de cada módulo', () => {
     expect(SINIESTROS.rutaCaso(7250)).toBe('/siniestros/caso/7250')
   })
 
-  it('cada módulo tiene su listado y sus ajustes', () => {
+  it('cada módulo tiene su listado', () => {
     expect(MESA.rutaLista).toBe('/fila')
     expect(SINIESTROS.rutaLista).toBe('/siniestros')
-    expect(SINIESTROS.rutaAjustes).toBe('/siniestros/ajustes')
+  })
+
+  it('los ajustes de la mesa son del administrador', () => {
+    expect(MESA.ajustes).toEqual({ ruta: '/ajustes', soloAdmin: true })
+  })
+
+  it('siniestros todavía no tiene pantalla de ajustes, así que no la enlaza', () => {
+    // Se enciende al crearla, en la etapa de la cuenta de Gmail.
+    expect(SINIESTROS.ajustes).toBeNull()
+  })
+
+  it('moduloPorClave recupera la configuración desde el cliente', () => {
+    expect(moduloPorClave('siniestros')).toBe(SINIESTROS)
+    expect(moduloPorClave('mesa')).toBe(MESA)
   })
 
   it('ningún par de módulos comparte ruta ni clave', () => {
@@ -46,6 +59,16 @@ describe('rutas de cada módulo', () => {
 })
 
 describe('clasificación de cada módulo', () => {
+  it('solo la mesa ofrece generar folios: la serie es una para toda la hoja', () => {
+    expect(MESA.generaFolios).toBe(true)
+    expect(SINIESTROS.generaFolios).toBe(false)
+  })
+
+  it('siniestros agrega su columna de número de siniestro y la mesa ninguna', () => {
+    expect(MESA.columnasExtra).toEqual([])
+    expect(SINIESTROS.columnasExtra.map((c) => c.campo)).toEqual(['numeroSiniestro'])
+  })
+
   it('la mesa clasifica por trámite y siniestros por tipo de siniestro', () => {
     // Ninguna petición de siniestros trae tipo de trámite: ese selector saldría
     // siempre vacío en su listado.

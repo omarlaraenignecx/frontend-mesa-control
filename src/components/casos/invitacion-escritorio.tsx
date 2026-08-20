@@ -10,8 +10,8 @@ import {
 } from '@/components/notificaciones/preferencias'
 
 /**
- * Ofrece los avisos del escritorio en la pantalla que el área tiene abierta todo el
- * día.
+ * Ofrece los avisos del escritorio en el listado, que es la pantalla que el área
+ * tiene abierta todo el día.
  *
  * El panel de la campanita también los ofrece, pero hay que abrirlo para verlo, y
  * quien nunca lo abre nunca los activaría. Aparece solo mientras el permiso está sin

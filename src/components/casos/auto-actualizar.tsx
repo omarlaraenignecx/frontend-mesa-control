@@ -4,10 +4,10 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 import { useNotificaciones } from '@/components/notificaciones/proveedor'
 import { audioBloqueado } from '@/components/notificaciones/timbre'
-import { actualizar } from './acciones'
+import { actualizar } from '@/app/acciones-casos'
 
 /**
- * Trae a la tabla las peticiones que acaban de llegar, sin que nadie toque
+ * Trae al listado las peticiones que acaban de llegar, sin que nadie toque
  * Actualizar. Los folios ya vienen escritos: la ruta que crea el aviso los genera
  * antes de insertarlo.
  *
@@ -15,7 +15,7 @@ import { actualizar } from './acciones'
  * renglón tiene derecho a saber por qué se movió; sin aviso, un salto de la lista
  * se siente como un error de la herramienta.
  */
-export function AutoActualizarFila() {
+export function AutoActualizarCasos() {
   const { alLlegar } = useNotificaciones()
   const router = useRouter()
   const [, iniciar] = useTransition()

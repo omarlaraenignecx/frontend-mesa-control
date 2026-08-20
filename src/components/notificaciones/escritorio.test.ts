@@ -204,9 +204,9 @@ describe('timbre', () => {
     expect(TIMBRE).toContain('Promise.race')
   })
 
-  it('cuando llega un aviso sin sonido, la fila lo dice', () => {
+  it('cuando llega un aviso sin sonido, el listado lo dice', () => {
     const auto = readFileSync(
-      join(import.meta.dirname, '..', '..', 'app', 'fila', 'auto-actualizar.tsx'),
+      join(import.meta.dirname, '..', 'casos', 'auto-actualizar.tsx'),
       'utf8',
     )
     expect(auto).toContain('if (audioBloqueado()) setSinTimbre(true)')
