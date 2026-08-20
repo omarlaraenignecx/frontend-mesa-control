@@ -57,3 +57,19 @@ describe('columnas de la tabla del listado', () => {
     expect(pantalla).toContain(`const COLUMNAS_COMUNES = ${escritos - 1}`)
   })
 })
+
+describe('paso al otro módulo', () => {
+  it('cada listado ofrece el otro, y con aspecto de botón', () => {
+    // No es un enlace discreto a propósito: es la única puerta al otro módulo, y
+    // quien no sabe que existe no la va a buscar entre los enlaces del encabezado.
+    expect(pantalla).toContain('otrosModulos.map')
+    expect(pantalla).toContain('bg-blue-600')
+    expect(pantalla).toContain('font-bold')
+  })
+
+  it('sale de la lista de módulos, no está escrito para uno', () => {
+    // Así la mesa ofrece siniestros y siniestros ofrece la mesa con el mismo código.
+    expect(pantalla).toContain("MODULOS.filter((m) => m.clave !== modulo.clave)")
+    expect(pantalla).toContain('{otro.titulo}')
+  })
+})

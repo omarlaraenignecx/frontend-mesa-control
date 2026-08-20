@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Inbox, Search, Settings, Timer } from 'lucide-react'
+import { ArrowLeftRight, Inbox, Search, Settings, Timer } from 'lucide-react'
 import { PuntoDeCarga } from '@/components/punto-de-carga'
 import { PuntoSemaforo } from '@/components/semaforo'
 import { Badge } from '@/components/ui/badge'
@@ -200,14 +200,17 @@ export async function PantallaDeCasos({
                 <span className="text-base text-muted-foreground">
                   {usuario.nombreEnHoja ?? usuario.correo}
                 </span>
-                {/* Sin esto el otro módulo solo se alcanza escribiendo la URL. */}
+                {/* Sin esto el otro módulo solo se alcanza escribiendo la URL, así que
+                    tiene aspecto de botón y no de enlace discreto: es la puerta al
+                    otro módulo y quien no sepa que existe no la va a buscar. */}
                 {otrosModulos.map((otro) => (
                   <Link
                     key={otro.clave}
                     href={otro.rutaLista}
                     prefetch={false}
-                    className="inline-flex items-center gap-1.5 text-base text-muted-foreground transition-colors hover:text-foreground"
+                    className="inline-flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-base font-bold text-white shadow-sm transition-colors hover:bg-blue-700"
                   >
+                    <ArrowLeftRight aria-hidden className="size-4" />
                     {otro.titulo}
                     <PuntoDeCarga />
                   </Link>
