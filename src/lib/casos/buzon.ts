@@ -30,8 +30,8 @@ export type BuzonDelCaso = {
 
 /** Cómo firma un caso de siniestros: la ficha del ejecutivo designado. */
 function marcaDeSiniestros(
-  correo: string,
-  ficha: { nombre: string; puesto: string; telefono: string } | null,
+  correoBuzon: string,
+  ficha: { correo: string; nombre: string; puesto: string; telefono: string } | null,
 ): MarcaCorreo {
   return {
     titulo: 'Atención a Siniestros',
@@ -42,7 +42,14 @@ function marcaDeSiniestros(
       nombre: ficha?.nombre?.trim() || 'Atención a Siniestros — Gplus Seguros',
       puesto: ficha?.puesto?.trim() || null,
       telefono: ficha?.telefono?.trim() || null,
-      correo,
+      /**
+       * El correo de la **ficha**, no el del buzón. Normalmente son el mismo; con el
+       * buzón provisional encendido no lo son, y ahí lo correcto es el de la ficha:
+       * el área pidió que el correo cierre con los datos de contacto del ejecutivo
+       * que atiende el caso, y ése es su correo. Que el sobre venga de otro buzón es
+       * exactamente lo que la banda de aviso está denunciando en pantalla.
+       */
+      correo: ficha?.correo?.trim() || correoBuzon,
     },
     // La mesa firma como equipo y dice quién tomó el caso. Siniestros firma con la
     // persona que lo lleva, así que decir «Atiende:» además sería repetirlo —o peor,
@@ -59,7 +66,7 @@ export async function buzonDelCaso(caso: Pick<Caso, 'area'>): Promise<BuzonDelCa
         accessToken: await accessTokenDeLaMesa(),
         correoBuzon: CORREO_MESA,
       },
-      remitente: remitenteDe(MARCA_MESA),
+      remitente: remitenteDe(MARCA_MESA, CORREO_MESA),
       marca: MARCA_MESA,
       provisional: false,
     }
@@ -77,7 +84,7 @@ export async function buzonDelCaso(caso: Pick<Caso, 'area'>): Promise<BuzonDelCa
       accessToken: buzon.accessToken,
       correoBuzon: buzon.correo,
     },
-    remitente: remitenteDe(marca),
+    remitente: remitenteDe(marca, buzon.correo),
     marca,
     provisional: buzon.provisional,
   }

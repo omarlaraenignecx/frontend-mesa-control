@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   MARCA_MESA,
+  remitenteDe,
   avisoDeRespuesta,
   renderCorreo,
   sustituirVariables,
@@ -256,3 +257,26 @@ const CASO_VACIO = {
   tipoSiniestro: null,
   poliza: null,
 }
+
+describe('remitenteDe', () => {
+  it('el sobre lleva la cuenta autenticada, no la de la firma', () => {
+    // Gmail reescribe en silencio un From que no sea de la cuenta autenticada, así
+    // que ponerlo distinto no lo cambia: solo hace creer que se cambió.
+    const marca = {
+      titulo: 'Atención a Siniestros',
+      color: '#0f3d5c',
+      firma: {
+        nombre: 'Jose Juan Mendoza Diaz',
+        puesto: 'Ejecutivo de siniestros',
+        telefono: '55 4884 2862',
+        correo: 'jose.mendoza@gplusseguros.mx',
+      },
+      muestraQuienAtiende: false,
+    }
+    expect(remitenteDe(marca, 'mesadecontrol@gplusseguros.mx')).toBe(
+      'Atención a Siniestros | Gplus Seguros <mesadecontrol@gplusseguros.mx>',
+    )
+    // Y la firma del pie sigue siendo la del ejecutivo: son datos de contacto.
+    expect(renderCorreo('x', V, marca).html).toContain('jose.mendoza@gplusseguros.mx')
+  })
+})

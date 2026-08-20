@@ -60,9 +60,17 @@ export const MARCA_MESA: MarcaCorreo = {
   muestraQuienAtiende: true,
 }
 
-/** Cómo se anuncia el remitente en la cabecera del mensaje. */
-export function remitenteDe(marca: MarcaCorreo): string {
-  return `${marca.titulo} | Gplus Seguros <${marca.firma.correo}>`
+/**
+ * Cómo se anuncia el remitente en la cabecera del mensaje.
+ *
+ * El correo va aparte y no sale de `marca.firma`: el `From` **tiene que ser la cuenta
+ * autenticada** con la que se está llamando a Gmail. Cuando no lo es, Gmail no falla
+ * —lo reescribe en silencio, salvo que sea un alias verificado—, así que confiar en
+ * el `From` que uno puso es engañarse. La firma del pie es otra cosa: son los datos de
+ * contacto de la persona, y con el buzón provisional encendido no coinciden.
+ */
+export function remitenteDe(marca: MarcaCorreo, correoBuzon: string): string {
+  return `${marca.titulo} | Gplus Seguros <${correoBuzon}>`
 }
 
 /**
