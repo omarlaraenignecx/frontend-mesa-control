@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { LIMITE_GMAIL_BYTES, aBase64Url, componerMime, pesoCodificado } from './mime'
+import {
+  LIMITE_GMAIL_BYTES,
+  aBase64Url,
+  codificarRemitente,
+  componerMime,
+  pesoCodificado,
+} from './mime'
 
 const BASE = {
   de: 'Mesa de Control | Gplus Seguros <mesadecontrol@gplusseguros.mx>',
@@ -130,5 +136,75 @@ describe('aBase64Url', () => {
     const original = 'Seguimiento de Caso | Gplus Seguros | 7000'
     const ida = aBase64Url(original)
     expect(Buffer.from(ida, 'base64url').toString('utf8')).toBe(original)
+  })
+})
+
+describe('acentos en las cabeceras', () => {
+  it('codifica el nombre del remitente y deja intacta la dirección', () => {
+    // El defecto del 20/8/2026: «Atención a Siniestros» llegó como «AtenciÃƒÂ³n».
+    // Las cabeceras son ASCII de siete bits; el nombre va en base64 de la RFC 2047 y
+    // la dirección **no**, o el correo se queda sin remitente válido.
+    const de = 'Atención a Siniestros | Gplus Seguros <mesadecontrol@gplusseguros.mx>'
+    const codificado = codificarRemitente(de)
+    expect(codificado).toMatch(/^=\?UTF-8\?B\?[A-Za-z0-9+/=]+\?= <mesadecontrol@gplusseguros\.mx>$/)
+    const [, base64] = codificado.match(/=\?UTF-8\?B\?([^?]+)\?=/)!
+    expect(Buffer.from(base64, 'base64').toString('utf8')).toBe(
+      'Atención a Siniestros | Gplus Seguros',
+    )
+  })
+
+  it('deja tal cual un remitente que ya es ASCII', () => {
+    // Los correos de la mesa salen así todos los días: no se toca ni un byte.
+    const de = 'Mesa de Control | Gplus Seguros <mesadecontrol@gplusseguros.mx>'
+    expect(codificarRemitente(de)).toBe(de)
+  })
+
+  it('una dirección sin nombre visible se queda sola', () => {
+    expect(codificarRemitente('<a@b.mx>')).toBe('<a@b.mx>')
+  })
+
+  it('el From del MIME va codificado', () => {
+    const mime = componerMime({
+      de: 'Atención a Siniestros | Gplus Seguros <buzon@gplusseguros.mx>',
+      para: 'cliente@x.mx',
+      cc: [],
+      asunto: 'Seguimiento de Caso | Gplus Seguros | 9004',
+      html: '<p>hola</p>',
+      texto: 'hola',
+      adjuntos: [],
+    })
+    expect(mime).toContain('From: =?UTF-8?B?')
+    expect(mime).toContain('<buzon@gplusseguros.mx>')
+    // Y el acento no viaja crudo en ninguna cabecera.
+    const cabeceras = mime.slice(0, mime.indexOf('\r\n\r\n'))
+    expect(cabeceras).not.toContain('Atención')
+  })
+
+  it('un adjunto con acentos lleva el nombre en las dos formas', () => {
+    const mime = componerMime({
+      de: 'Mesa de Control <m@x.mx>',
+      para: 'a@b.mx',
+      cc: [],
+      asunto: 'x',
+      html: '<p>x</p>',
+      texto: 'x',
+      adjuntos: [{ nombre: 'póliza.pdf', tipo: 'application/pdf', contenido: new Uint8Array([1]) }],
+    })
+    expect(mime).toContain('filename="póliza.pdf"')
+    expect(mime).toContain("filename*=UTF-8''p%C3%B3liza.pdf")
+  })
+
+  it('un adjunto sin acentos no cambia', () => {
+    const mime = componerMime({
+      de: 'Mesa de Control <m@x.mx>',
+      para: 'a@b.mx',
+      cc: [],
+      asunto: 'x',
+      html: '<p>x</p>',
+      texto: 'x',
+      adjuntos: [{ nombre: 'poliza.pdf', tipo: 'application/pdf', contenido: new Uint8Array([1]) }],
+    })
+    expect(mime).toContain('filename="poliza.pdf"')
+    expect(mime).not.toContain('filename*=')
   })
 })
