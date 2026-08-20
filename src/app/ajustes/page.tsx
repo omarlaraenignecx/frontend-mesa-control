@@ -5,6 +5,7 @@ import { AdminPlantillas } from './plantillas'
 import { accessTokenDeLaMesa, scopesFaltantes } from '@/lib/google/auth-mesa'
 import { leerCredencial } from '@/lib/google/credencial'
 import { leerTituloHoja } from '@/lib/google/sheet-ping'
+import { SINIESTROS } from '@/lib/modulos/modulo'
 
 /** El scope completo no le dice nada a nadie; esto sí. */
 function nombreDelPermiso(scope: string): string {
@@ -111,6 +112,23 @@ export default async function Ajustes() {
       <section className="space-y-4 rounded-xl border bg-card p-7 shadow-sm">
         <h2 className="text-xl font-medium">Plantillas de correo</h2>
         <AdminPlantillas plantillas={plantillas} />
+      </section>
+
+      {/* El módulo de siniestros tiene su propio acceso a Google y sus propios
+          ajustes, porque su correo sale de otro buzón. Aquí queda el puente para
+          que el administrador no tenga que saberse la ruta. */}
+      <section className="space-y-3 rounded-xl border bg-card p-7 shadow-sm">
+        <h2 className="text-xl font-medium">Atención a Siniestros</h2>
+        <p className="text-base text-muted-foreground">
+          Los permisos de Gmail del módulo, la ficha del ejecutivo que firma sus correos y el
+          buzón desde el que salen se administran en su propia pantalla.
+        </p>
+        <Link
+          href={SINIESTROS.ajustes!.ruta}
+          className="inline-block text-base text-primary underline underline-offset-4"
+        >
+          Ir a los ajustes de Atención a Siniestros
+        </Link>
       </section>
 
       <Link href="/fila" className="inline-block text-base text-primary underline underline-offset-4">

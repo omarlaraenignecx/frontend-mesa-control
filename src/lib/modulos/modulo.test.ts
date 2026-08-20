@@ -40,9 +40,10 @@ describe('rutas de cada módulo', () => {
     expect(MESA.ajustes).toEqual({ ruta: '/ajustes', soloAdmin: true })
   })
 
-  it('siniestros todavía no tiene pantalla de ajustes, así que no la enlaza', () => {
-    // Se enciende al crearla, en la etapa de la cuenta de Gmail.
-    expect(SINIESTROS.ajustes).toBeNull()
+  it('los ajustes de siniestros los abre cualquier usuario autorizado', () => {
+    // Ahí cada quien autoriza su propia cuenta de correo; pedir ser administrador
+    // de la mesa para eso daría permisos que no tienen que ver.
+    expect(SINIESTROS.ajustes).toEqual({ ruta: '/siniestros/ajustes', soloAdmin: false })
   })
 
   it('moduloPorClave recupera la configuración desde el cliente', () => {

@@ -107,6 +107,41 @@ export const archivosCaso = pgTable('archivos_caso', {
   creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
 })
 
+/**
+ * Los buzones autorizados para el módulo de Atención a Siniestros.
+ *
+ * Tabla aparte de `credencial_mesa` y no una fila más ahí porque son cosas
+ * distintas: la mesa tiene **una** credencial y el módulo tiene **varias**, una por
+ * ejecutivo, de las cuales una está designada para enviar. La llave es el correo del
+ * buzón que Google reporta al autorizar, no el del usuario en sesión.
+ */
+export const credencialesSiniestros = pgTable('credenciales_siniestros', {
+  correo: text('correo').primaryKey(),
+  refreshTokenCifrado: text('refresh_token_cifrado').notNull(),
+  scopes: jsonb('scopes').$type<string[]>().notNull(),
+  /** Quién estaba en sesión al dar el consentimiento. Puede no ser el dueño del buzón. */
+  autorizadoPor: text('autorizado_por').notNull(),
+  autorizadoEn: timestamp('autorizado_en', { withTimezone: true }).notNull().defaultNow(),
+  ultimoUso: timestamp('ultimo_uso', { withTimezone: true }),
+  ultimoError: text('ultimo_error'),
+})
+
+/**
+ * La ficha con la que firma un ejecutivo de siniestros.
+ *
+ * Separada de la credencial a propósito: la ficha tiene que poder existir **antes**
+ * de que su dueño autorice el buzón. Si vivieran juntas, la prueba del módulo sin la
+ * persona disponible saldría sin firma o con una escrita en el código.
+ */
+export const ejecutivosSiniestros = pgTable('ejecutivos_siniestros', {
+  correo: text('correo').primaryKey(),
+  nombre: text('nombre').notNull(),
+  puesto: text('puesto').notNull(),
+  telefono: text('telefono').notNull(),
+  actualizadoPor: text('actualizado_por'),
+  actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
+})
+
 /** Configuración interna en pares clave-valor, como el id de la carpeta de Drive. */
 export const ajustesApp = pgTable('ajustes_app', {
   clave: text('clave').primaryKey(),

@@ -98,9 +98,10 @@ export const SINIESTROS: ConfigModulo = {
   titulo: 'Atención a Siniestros',
   rutaLista: '/siniestros',
   rutaCaso: (fila) => `/siniestros/caso/${fila}`,
-  // Se enciende al existir la pantalla, en la etapa de la cuenta de Gmail. Un
-  // enlace a una ruta que todavía no existe es un 404 con nuestro nombre.
-  ajustes: null,
+  // Sin `soloAdmin`, a diferencia de la mesa: aquí cada quien autoriza su propia
+  // cuenta de correo, y exigir ser administrador de la mesa entera para eso daría
+  // además la reautorización de su Google y la edición de sus plantillas.
+  ajustes: { ruta: '/siniestros/ajustes', soloAdmin: false },
   incluye: esSiniestro,
   clasificacion: {
     campo: 'tipoSiniestro',

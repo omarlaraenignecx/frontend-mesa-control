@@ -7,7 +7,7 @@
  * Esa mecánica importa: es la que hace inútil detectar filas nuevas por conteo.
  *
  * Uso:
- *   pnpm dotenv -e .env.local -- pnpm tsx scripts/simular-peticion.ts crear
+ *   pnpm dotenv -e .env.local -- pnpm tsx scripts/simular-peticion.ts crear [mesa|siniestro]
  *   pnpm dotenv -e .env.local -- pnpm tsx scripts/simular-peticion.ts borrar <fila>
  *
  * Cuidado al borrar: quitar una fila corre hacia arriba todas las de abajo, y los
@@ -32,13 +32,42 @@ const HOJA_PRODUCTIVA = '1OfK8ve8twu5WCx-Yy3iJoiKJhs34klChq7dIqx4dfr0'
 const SHEET_ID = process.env.SHEET_ID
 const PESTANA = process.env.SHEET_PESTANA ?? 'Respuestas de formulario 1'
 
-/** Columnas que llena una respuesta del formulario, según el mapeo del esquema. */
-const CAMPOS: Record<string, string> = {
-  N: 'Emisión', // tipo de trámite
-  AB: 'PRUEBA DE NOTIFICACIONES', // nombre del solicitante
-  AD: 'prueba.notificaciones@garantiplus.mx', // correo de origen
-  BC: 'AGENCIA DE PRUEBA', // agencia externa
-  BD: 'EXTERNA',
+/**
+ * Nombre con el que se marca al solicitante en toda petición simulada. Es la firma
+ * que `borrar` comprueba antes de eliminar una fila: sin ella no se borra nada.
+ */
+const MARCA_DE_PRUEBA = 'PRUEBA DE NOTIFICACIONES'
+
+/**
+ * Columnas que llena una respuesta del formulario, según el mapeo del esquema.
+ *
+ * Dos variantes porque las dos ramas del formulario llenan columnas distintas y es
+ * justo lo que distingue los módulos. La de siniestros deja `N` **vacía** a
+ * propósito: ninguna de las 268 peticiones del ramo trae tipo de trámite, y una
+ * simulación que sí lo trajera probaría un caso que no existe.
+ */
+const CAMPOS: Record<'mesa' | 'siniestro', Record<string, string>> = {
+  mesa: {
+    N: 'Emisión', // tipo de trámite
+    AB: MARCA_DE_PRUEBA, // nombre del solicitante
+    AD: 'prueba.notificaciones@garantiplus.mx', // correo de origen
+    BC: 'AGENCIA DE PRUEBA', // agencia externa
+    BD: 'EXTERNA',
+    BE: 'Mesa de control', // área a la que va dirigida
+  },
+  siniestro: {
+    C: 'Daño parcial', // tipo de siniestro
+    D: 'QUÁLITAS', // aseguradora declarada
+    K: 'PRUEBA-POLIZA-001', // número de póliza
+    AB: MARCA_DE_PRUEBA,
+    AD: 'prueba.notificaciones@garantiplus.mx',
+    BC: 'AGENCIA DE PRUEBA',
+    BD: 'EXTERNA',
+    BE: 'Siniestros', // el área es lo que manda el caso al módulo del ramo
+    BH: 'PRUEBA-SIN-001', // número de siniestro
+    BK: 'CLIENTE DE PRUEBA', // nombre del cliente
+    BM: 'Seguimiento a siniestro', // tipo de atención
+  },
 }
 
 function token(): string {
@@ -99,7 +128,8 @@ function marcaDeAhora(): string {
   return `${ahora.getUTCDate()}/${ahora.getUTCMonth() + 1}/${ahora.getUTCFullYear()} ${ahora.getUTCHours()}:${p(ahora.getUTCMinutes())}:${p(ahora.getUTCSeconds())}`
 }
 
-async function crear(): Promise<void> {
+async function crear(tipo: 'mesa' | 'siniestro'): Promise<void> {
+  const campos = CAMPOS[tipo]
   const hoja = await gid()
   const fila = (await ultimaRespuesta()) + 1
 
@@ -125,7 +155,7 @@ async function crear(): Promise<void> {
       valueInputOption: 'USER_ENTERED',
       data: [
         { range: `${PESTANA}!A${fila}`, values: [[marcaDeAhora()]] },
-        ...Object.entries(CAMPOS).map(([col, valor]) => ({
+        ...Object.entries(campos).map(([col, valor]) => ({
           range: `${PESTANA}!${col}${fila}`,
           values: [[valor]],
         })),
@@ -133,7 +163,7 @@ async function crear(): Promise<void> {
     }),
   })
 
-  console.log(`Petición simulada en la fila ${fila}, sin folio.`)
+  console.log(`Petición de ${tipo} simulada en la fila ${fila}, sin folio.`)
   console.log(`Para deshacerla: pnpm dotenv -e .env.local -- pnpm tsx scripts/simular-peticion.ts borrar ${fila}`)
 }
 
@@ -141,7 +171,7 @@ async function borrar(fila: number): Promise<void> {
   const hoja = await gid()
   const { values } = (await pedir(`/values/${rango(`AB${fila}`)}`)) as { values?: string[][] }
   const nombre = values?.[0]?.[0] ?? ''
-  if (nombre !== CAMPOS.AB) {
+  if (nombre !== MARCA_DE_PRUEBA) {
     throw new Error(
       `La fila ${fila} no es una petición simulada (AB dice "${nombre}"). No se borra nada.`,
     )
@@ -171,10 +201,11 @@ async function main(): Promise<void> {
   }
 
   const [orden, arg] = process.argv.slice(2)
-  if (orden === 'crear') await crear()
+  if (orden === 'crear' && (arg === undefined || arg === 'mesa')) await crear('mesa')
+  else if (orden === 'crear' && arg === 'siniestro') await crear('siniestro')
   else if (orden === 'borrar' && arg) await borrar(Number(arg))
   else {
-    console.log('Uso: crear | borrar <fila>')
+    console.log('Uso: crear [mesa|siniestro] | borrar <fila>')
     process.exitCode = 1
   }
 }

@@ -27,9 +27,10 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | 4 · Producción y cierre | En curso: hoja productiva en uso; falta la jornada real y el cierre documental | `docs/superpowers/plans/2026-08-13-etapa-4-produccion-y-cierre.md` |
 | Atención a Siniestros · 1 cimientos y 2 listado | **Completas en la rama `siniestros`**, verificadas contra la copia de la hoja; sin desplegar | `docs/superpowers/plans/2026-08-20-siniestros-cimientos-y-listado.md` · diseño: `docs/superpowers/specs/2026-08-20-modulo-siniestros-design.md` |
 | Atención a Siniestros · 5 avisos (parte) | **Hecha en la rama `siniestros`**: columna `notificaciones.modulo` aplicada a la base, sondeo y avisos de escritorio separados por módulo. Falta la ruta de correos del buzón de siniestros, que depende de la etapa 3 | mismo diseño, sección 9 |
-| Atención a Siniestros · 3, 4 y 6 | Pendientes: cuenta de Gmail de José, vista del caso y su correo, prueba y despliegue | mismo diseño, sección 10 |
+| Atención a Siniestros · 3 cuenta de Gmail | **Hecha en la rama `siniestros`**: tablas `credenciales_siniestros` y `ejecutivos_siniestros` creadas en la base, rutas OAuth, `/siniestros/ajustes`. Falta que José dé el consentimiento con su cuenta | `docs/superpowers/plans/2026-08-20-siniestros-cuenta-de-gmail.md` |
+| Atención a Siniestros · 4 y 6 | Pendientes: vista del caso y su correo con marca y firma, prueba y despliegue | mismo diseño, sección 10 |
 
-Suite: **583 pruebas** en 57 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
+Suite: **604 pruebas** en 59 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
 
 ## Infraestructura
 
@@ -107,6 +108,8 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 | Clasificación del listado | Configurable por módulo: la mesa por tipo de trámite, siniestros por tipo de siniestro. Ninguna de las 268 peticiones del ramo trae tipo de trámite, así que ese selector saldría siempre vacío |
 | Estatus por omisión del listado | También por módulo: la mesa muestra solo los pendientes —"Tramite" ahí significa que un compañero ya lo tomó—; siniestros muestra pendientes y en trámite, porque los atiende una sola persona y esconderlos dejaba su pantalla vacía teniendo dos casos abiertos |
 | Navegación entre módulos | Un botón azul en el encabezado de cada listado al otro módulo. Sin él, el segundo módulo solo se alcanza escribiendo la URL; como enlace discreto no se veía |
+| Buzón del módulo de siniestros | Una cuenta designada, guardada con el correo que **Google** reporta al autorizar y no con el de la sesión: la pantalla de consentimiento deja cambiar de cuenta. Solo permisos de Gmail —enviar, leer, organizar—; la hoja y Drive siguen por la cuenta de la mesa. La ficha de la firma vive en tabla aparte para poder existir antes de que su dueño autorice |
+| Buzón provisional | Interruptor de administrador, apagado por omisión: con él encendido los correos del ramo salen de `mesadecontrol@` y la interfaz lo dice en cada pantalla. Existe para poder probar el módulo sin su ejecutivo disponible. Sin cuenta y sin interruptor, el envío **falla con mensaje** en lugar de caer al buzón de la mesa en silencio |
 | Avisos por módulo | Separación estricta: cada campanita solo lo de su módulo. La columna `notificaciones.modulo` se sella al crear el aviso, por el área declarada en el formulario; deducirla al leer obligaría a releer la hoja treinta veces por minuto y por persona. Marcar leído sí ignora el módulo: abrir un caso lee todos sus avisos |
 | Aviso de respuesta | Todos los correos que salen de la mesa llevan un bloque ámbar antes de la firma pidiendo **responder a ese mismo mensaje** y explicando que un correo nuevo separa la respuesta del expediente. Va en el armado del correo (`avisoDeRespuesta`), no en las plantillas que edita el área: en las plantillas se podría borrar al corregir un texto, y responder en el hilo es lo que conserva el `threadId` de la fila. **No** se agregó al reenvío de la conversación, que sale como correo aparte y cuyas respuestas no entran al chat del caso |
 | Caso cerrado con respuesta nueva | Se muestra con aviso y se puede contestar; la app no reabre el caso ni toca su estatus |
