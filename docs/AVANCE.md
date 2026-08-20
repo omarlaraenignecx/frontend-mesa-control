@@ -8,7 +8,7 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Diseño técnico | `docs/superpowers/specs/2026-08-05-frontend-mesa-control-design.md` |
 | Repositorio | https://github.com/omarlaraenignecx/frontend-mesa-control |
 | Producción | https://frontend-mesa-control.vercel.app |
-| Última actualización | 17 de agosto de 2026 (avisos de escritorio con timbre: las notificaciones salen además como globos del sistema operativo) |
+| Última actualización | 20 de agosto de 2026 (módulo de Atención a Siniestros: etapas 1 y 2 de 6, en rama `siniestros`) |
 
 ## Estado por etapas
 
@@ -25,8 +25,10 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Notificaciones en vivo | **Completa y en producción** desde el 17/8/2026, con los dos flujos de n8n activos | `docs/superpowers/plans/2026-08-14-notificaciones.md` · salida: `docs/PASO-A-PRODUCCION-NOTIFICACIONES.md` |
 | Avisos de escritorio | **Completa y en producción**, probada en local contra la copia con ocho peticiones simuladas y un correo real | `docs/superpowers/plans/2026-08-17-avisos-escritorio.md` · salida: punto 11 de `docs/PASO-A-PRODUCCION-NOTIFICACIONES.md` |
 | 4 · Producción y cierre | En curso: hoja productiva en uso; falta la jornada real y el cierre documental | `docs/superpowers/plans/2026-08-13-etapa-4-produccion-y-cierre.md` |
+| Atención a Siniestros · 1 cimientos y 2 listado | **Completas en la rama `siniestros`**, verificadas contra la copia de la hoja; sin desplegar | `docs/superpowers/plans/2026-08-20-siniestros-cimientos-y-listado.md` · diseño: `docs/superpowers/specs/2026-08-20-modulo-siniestros-design.md` |
+| Atención a Siniestros · 3 a 6 | Pendientes: cuenta de Gmail de José, vista del caso y su correo, avisos del módulo, prueba y despliegue | mismo diseño, sección 10 |
 
-Suite: **532 pruebas** en 53 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
+Suite: **573 pruebas** en 57 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
 
 ## Infraestructura
 
@@ -98,6 +100,12 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 | Tipografía | Geist con nombres literales en `@theme inline`, base de 17px y controles de 44px |
 | Destinatarios del correo | `Para` = solicitante, fijo. `CC` = ejecutivo comercial solo si difiere. El usuario puede agregar copias, nunca cambiar el principal; las copias quedan en bitácora |
 | Firma del correo | `Mesa de Control — Gplus Seguros`, `Atiende: <nombre>` y el buzón de la mesa |
+| Qué caso es de siniestros | El área declarada en el formulario ("Áreas de GPLUS SEGUROS" / "Gplus Seguros", columnas `BE`, `CK`, `CU`, `FD`, `HM`) y nada más. Medido el 20/8/2026: 268 filas dicen `Siniestros` y ninguna trae la rama de preguntas del ramo sin decirlo |
+| Separación de los dos módulos | La fila de la mesa sigue listando los siniestros —lo pidió el área—, pero abrir uno redirige a `/siniestros/caso/[fila]`: si se atendiera desde la mesa, la respuesta saldría de `mesadecontrol@` con la plantilla equivocada |
+| Acceso al módulo de siniestros | Cualquier usuario autorizado del sistema. El apartado de permisos de Ajustes es solo para la autorización de Gmail, no para controlar quién entra |
+| Clasificación del listado | Configurable por módulo: la mesa por tipo de trámite, siniestros por tipo de siniestro. Ninguna de las 268 peticiones del ramo trae tipo de trámite, así que ese selector saldría siempre vacío |
+| Estatus por omisión del listado | También por módulo: la mesa muestra solo los pendientes —"Tramite" ahí significa que un compañero ya lo tomó—; siniestros muestra pendientes y en trámite, porque los atiende una sola persona y esconderlos dejaba su pantalla vacía teniendo dos casos abiertos |
+| Navegación entre módulos | Un enlace en el encabezado de cada listado al otro módulo. Sin él, el segundo módulo solo se alcanza escribiendo la URL |
 | Aviso de respuesta | Todos los correos que salen de la mesa llevan un bloque ámbar antes de la firma pidiendo **responder a ese mismo mensaje** y explicando que un correo nuevo separa la respuesta del expediente. Va en el armado del correo (`avisoDeRespuesta`), no en las plantillas que edita el área: en las plantillas se podría borrar al corregir un texto, y responder en el hilo es lo que conserva el `threadId` de la fila. **No** se agregó al reenvío de la conversación, que sale como correo aparte y cuyas respuestas no entran al chat del caso |
 | Caso cerrado con respuesta nueva | Se muestra con aviso y se puede contestar; la app no reabre el caso ni toca su estatus |
 | Archivos del caso | Tres orígenes en un solo panel: el formulario (Drive), la conversación (Gmail) y **los que sube la mesa**. Sin restricción de tipo: capturas, PDF, lo que haga falta. Van a una carpeta `Mesa de Control · Archivos` del Drive de `mesadecontrol@`, **una por hoja**, para que probar contra la copia no deje archivos en la que ve el área, con el registro en `archivos_caso`; el enlace **no puede** ir a la hoja porque sus columnas de adjuntos están protegidas sin editores. El registro se identifica por **hoja más fila**, no por fila sola |
