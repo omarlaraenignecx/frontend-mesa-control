@@ -77,7 +77,7 @@ que la vista del caso y su escritura se reusan sin cambios.
 | Cuenta que envía | Una sola cuenta activa del módulo | El remitente y la firma nunca se contradicen, y todas las respuestas de un caso caen en el mismo buzón, así que el chat del caso muestra la conversación completa. |
 | Firma del correo | Ficha por ejecutivo, con los datos de José cargados | Cuando Norma autorice, se llena su ficha desde la aplicación sin tocar código. |
 | Plantillas | Una sola, `Siniestros` | Con 8 casos al año, cuatro plantillas serían cuatro textos que mantener sin ganancia. Se agregan desde Ajustes si hacen falta. |
-| Avisos | Cada campanita lo suyo, la de la mesa sigue mostrando todo | Coherente con que la mesa siga viendo los casos. José no recibe un timbre por cada una de las ~1,400 peticiones al año de la mesa. |
+| Avisos | Separación estricta: cada campanita solo lo de su módulo | Corregido el 20/8/2026 al verlo funcionando. Primero se acordó que la de la mesa siguiera mostrando todo, por coherencia con que su fila siga listando los siniestros; al probarlo, ver avisos de siniestros estando en la Mesa de Control resultó confuso. José no recibe un timbre por cada una de las ~1,400 peticiones al año de la mesa, y la mesa no recibe los del ramo. |
 
 ## 4. Cómo se reconoce un siniestro
 
@@ -311,13 +311,19 @@ quedan como `mesa`, que es lo que son.
   que revisa el buzón de la cuenta activa igual que la actual revisa el de la mesa, mapea
   mensaje a caso por el folio del hilo y guarda los avisos con `modulo = 'siniestros'`. La
   ruta existente restringe su consulta a los hilos de la mesa.
-- **Sondeo del navegador**: `/api/notificaciones` acepta el módulo y filtra. Sin módulo
-  devuelve todo, que es lo que necesita la campanita de la mesa; con
-  `?modulo=siniestros` devuelve solo lo del ramo.
-- **Interfaz**: `ProveedorNotificaciones` recibe el módulo y la ruta del caso; la
-  campanita, el panel, los avisos de escritorio y la insignia por renglón se reusan sin
-  cambios de comportamiento. El destino de un aviso de escritorio se arma con la ruta del
-  módulo, así que un aviso de siniestros abre el caso en su módulo.
+- **Sondeo del navegador**: `/api/notificaciones` recibe el módulo en la URL y filtra
+  por él. Una clave desconocida o ausente cae en `mesa`, que es lo que pedía el
+  navegador antes de que existieran los módulos: una pestaña vieja abierta sigue
+  viendo lo que veía en lugar de quedarse sin avisos. El módulo puede viajar en la URL
+  porque no es un permiso —cualquier usuario autorizado entra a los dos módulos—, es
+  qué pantalla está preguntando.
+- **Interfaz**: `ProveedorNotificaciones` recibe el módulo; la campanita, el panel, los
+  avisos de escritorio y la insignia por renglón se reusan sin cambios de
+  comportamiento. El destino y el `tag` de un aviso de escritorio se arman con la ruta y
+  la clave del módulo, así que un aviso de siniestros abre el caso en su módulo y dos
+  pestañas en módulos distintos no se colapsan un globo entre sí.
+- **Marcar leído** no filtra por módulo: abrir un caso lee todos sus avisos, vengan de
+  donde vengan. Partirlo dejaría avisos colgados de un caso que alguien ya vio.
 - **n8n**: un flujo nuevo que despierte la ruta de correos de siniestros cada minuto, con
   el mismo secreto `NOTIFICACIONES_SECRET` y la misma forma que los dos que ya existen. No
   hay variables de entorno nuevas.

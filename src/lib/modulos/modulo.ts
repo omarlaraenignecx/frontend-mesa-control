@@ -128,6 +128,17 @@ export function moduloPorClave(clave: Modulo): ConfigModulo {
 }
 
 /**
+ * La clave que llega de fuera —un parámetro de la URL— convertida en módulo.
+ *
+ * Lo desconocido cae en la mesa a propósito: es lo que pedía el navegador antes de
+ * que existieran los módulos, así que una pestaña vieja abierta sigue viendo lo que
+ * veía en lugar de quedarse sin avisos.
+ */
+export function moduloValido(valor: string | null | undefined): Modulo {
+  return MODULOS.some((m) => m.clave === valor) ? (valor as Modulo) : 'mesa'
+}
+
+/**
  * A qué módulo pertenece un caso. No es lo mismo que `incluye`: un caso de
  * siniestros aparece en la fila de la mesa, pero pertenece a siniestros, y es este
  * quien decide desde qué buzón se le escribe.

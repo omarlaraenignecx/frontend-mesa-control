@@ -26,9 +26,10 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Avisos de escritorio | **Completa y en producción**, probada en local contra la copia con ocho peticiones simuladas y un correo real | `docs/superpowers/plans/2026-08-17-avisos-escritorio.md` · salida: punto 11 de `docs/PASO-A-PRODUCCION-NOTIFICACIONES.md` |
 | 4 · Producción y cierre | En curso: hoja productiva en uso; falta la jornada real y el cierre documental | `docs/superpowers/plans/2026-08-13-etapa-4-produccion-y-cierre.md` |
 | Atención a Siniestros · 1 cimientos y 2 listado | **Completas en la rama `siniestros`**, verificadas contra la copia de la hoja; sin desplegar | `docs/superpowers/plans/2026-08-20-siniestros-cimientos-y-listado.md` · diseño: `docs/superpowers/specs/2026-08-20-modulo-siniestros-design.md` |
-| Atención a Siniestros · 3 a 6 | Pendientes: cuenta de Gmail de José, vista del caso y su correo, avisos del módulo, prueba y despliegue | mismo diseño, sección 10 |
+| Atención a Siniestros · 5 avisos (parte) | **Hecha en la rama `siniestros`**: columna `notificaciones.modulo` aplicada a la base, sondeo y avisos de escritorio separados por módulo. Falta la ruta de correos del buzón de siniestros, que depende de la etapa 3 | mismo diseño, sección 9 |
+| Atención a Siniestros · 3, 4 y 6 | Pendientes: cuenta de Gmail de José, vista del caso y su correo, prueba y despliegue | mismo diseño, sección 10 |
 
-Suite: **573 pruebas** en 57 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
+Suite: **583 pruebas** en 57 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
 
 ## Infraestructura
 
@@ -105,7 +106,8 @@ Catálogos leídos de la **validación de datos** de las celdas, nunca codificad
 | Acceso al módulo de siniestros | Cualquier usuario autorizado del sistema. El apartado de permisos de Ajustes es solo para la autorización de Gmail, no para controlar quién entra |
 | Clasificación del listado | Configurable por módulo: la mesa por tipo de trámite, siniestros por tipo de siniestro. Ninguna de las 268 peticiones del ramo trae tipo de trámite, así que ese selector saldría siempre vacío |
 | Estatus por omisión del listado | También por módulo: la mesa muestra solo los pendientes —"Tramite" ahí significa que un compañero ya lo tomó—; siniestros muestra pendientes y en trámite, porque los atiende una sola persona y esconderlos dejaba su pantalla vacía teniendo dos casos abiertos |
-| Navegación entre módulos | Un enlace en el encabezado de cada listado al otro módulo. Sin él, el segundo módulo solo se alcanza escribiendo la URL |
+| Navegación entre módulos | Un botón azul en el encabezado de cada listado al otro módulo. Sin él, el segundo módulo solo se alcanza escribiendo la URL; como enlace discreto no se veía |
+| Avisos por módulo | Separación estricta: cada campanita solo lo de su módulo. La columna `notificaciones.modulo` se sella al crear el aviso, por el área declarada en el formulario; deducirla al leer obligaría a releer la hoja treinta veces por minuto y por persona. Marcar leído sí ignora el módulo: abrir un caso lee todos sus avisos |
 | Aviso de respuesta | Todos los correos que salen de la mesa llevan un bloque ámbar antes de la firma pidiendo **responder a ese mismo mensaje** y explicando que un correo nuevo separa la respuesta del expediente. Va en el armado del correo (`avisoDeRespuesta`), no en las plantillas que edita el área: en las plantillas se podría borrar al corregir un texto, y responder en el hilo es lo que conserva el `threadId` de la fila. **No** se agregó al reenvío de la conversación, que sale como correo aparte y cuyas respuestas no entran al chat del caso |
 | Caso cerrado con respuesta nueva | Se muestra con aviso y se puede contestar; la app no reabre el caso ni toca su estatus |
 | Archivos del caso | Tres orígenes en un solo panel: el formulario (Drive), la conversación (Gmail) y **los que sube la mesa**. Sin restricción de tipo: capturas, PDF, lo que haga falta. Van a una carpeta `Mesa de Control · Archivos` del Drive de `mesadecontrol@`, **una por hoja**, para que probar contra la copia no deje archivos en la que ve el área, con el registro en `archivos_caso`; el enlace **no puede** ir a la hoja porque sus columnas de adjuntos están protegidas sin editores. El registro se identifica por **hoja más fila**, no por fila sola |

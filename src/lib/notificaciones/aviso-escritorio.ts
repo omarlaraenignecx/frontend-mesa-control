@@ -1,3 +1,4 @@
+import type { ConfigModulo } from '@/lib/modulos/modulo'
 import type { Notificacion } from './tipos'
 
 /**
@@ -48,29 +49,35 @@ function cuerpoDe(n: Notificacion): string {
 /**
  * Qué se le muestra al usuario en el escritorio por lo que acaba de llegar.
  *
- * El `tag` se arma con el id de la notificación, que es único y estable: si el
- * mismo usuario tiene la fila abierta en dos pestañas, ambas emiten y el navegador
- * deja una sola.
+ * El `tag` se arma con la clave del módulo y el id de la notificación, que es único
+ * y estable: si el mismo usuario tiene el listado abierto en dos pestañas, ambas
+ * emiten y el navegador deja una sola.
+ *
+ * El destino sale del módulo. Es lo que evita que el globo de un siniestro abra la
+ * vista de la mesa, donde la respuesta saldría del buzón equivocado.
  */
-export function avisosDeEscritorio(nuevas: Notificacion[]): AvisoEscritorio[] {
+export function avisosDeEscritorio(
+  nuevas: Notificacion[],
+  modulo: ConfigModulo,
+): AvisoEscritorio[] {
   if (nuevas.length === 0) return []
 
   if (nuevas.length > TOPE_AVISOS) {
-    // El resumen lleva a la fila y no a un caso: no hay un caso al que llevar.
+    // El resumen lleva al listado y no a un caso: no hay un caso al que llevar.
     return [
       {
-        tag: 'mesa-resumen',
+        tag: `${modulo.clave}-resumen`,
         titulo: `Llegaron ${nuevas.length} avisos nuevos`,
-        cuerpo: 'Ábrelos desde la campanita de la mesa de control.',
-        destino: '/fila',
+        cuerpo: `Ábrelos desde la campanita de ${modulo.titulo}.`,
+        destino: modulo.rutaLista,
       },
     ]
   }
 
   return nuevas.map((n) => ({
-    tag: `mesa-${n.id}`,
+    tag: `${modulo.clave}-${n.id}`,
     titulo: n.titulo,
     cuerpo: cuerpoDe(n),
-    destino: `/caso/${n.fila}`,
+    destino: modulo.rutaCaso(n.fila),
   }))
 }

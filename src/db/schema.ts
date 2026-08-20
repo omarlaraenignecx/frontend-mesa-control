@@ -125,6 +125,18 @@ export const notificaciones = pgTable(
   {
     id: serial('id').primaryKey(),
     sheetId: text('sheet_id').notNull(),
+    /**
+     * A qué módulo pertenece el aviso: la Mesa de Control o Atención a Siniestros.
+     *
+     * Con omisión `mesa` porque es lo que eran todos los avisos existentes cuando se
+     * agregó la columna, el 20 de agosto de 2026, y porque así la aplicación
+     * desplegada —que no conoce esta columna— sigue insertando avisos válidos.
+     *
+     * Se sella al crearlo y no se deduce al leerlo: deducirlo obligaría a releer la
+     * hoja en cada sondeo del navegador para saber el área de cada fila, treinta
+     * veces por minuto y por persona.
+     */
+    modulo: text('modulo').notNull().default('mesa'),
     tipo: text('tipo', { enum: ['caso_nuevo', 'correo_recibido'] }).notNull(),
     fila: integer('fila').notNull(),
     folio: text('folio'),

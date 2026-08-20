@@ -185,7 +185,7 @@ export async function PantallaDeCasos({
   const totalColumnas = COLUMNAS_COMUNES + modulo.columnasExtra.length
 
   return (
-    <ProveedorNotificaciones>
+    <ProveedorNotificaciones modulo={modulo.clave}>
       <div className="min-h-full">
         <header className="border-b bg-card">
           <div className="mx-auto max-w-7xl px-6 py-5">

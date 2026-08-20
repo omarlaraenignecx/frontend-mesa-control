@@ -26,8 +26,14 @@ describe('ruta de correos recibidos', () => {
     // `casos_hilo` no lleva la hoja: su fila 7181 puede ser de la copia o de la
     // productiva. El folio sí identifica el caso dentro de la hoja que se sirve.
     expect(CUERPO).toContain('folioUsado')
-    expect(CUERPO).toContain('filaPorFolio')
+    expect(CUERPO).toContain('casoPorFolio')
     expect(CUERPO).not.toMatch(/vinculo\.fila|v\.fila/)
+  })
+
+  it('sella el módulo por el área del caso, no por el buzón donde se leyó', () => {
+    // La conversación de un siniestro puede vivir en el buzón de la mesa; el aviso
+    // igual tiene que llegar a la campanita del ramo.
+    expect(CUERPO).toContain('moduloDelCaso(caso).clave')
   })
 
   it('descarta las claves que ya existen antes de pedir metadatos a Gmail', () => {

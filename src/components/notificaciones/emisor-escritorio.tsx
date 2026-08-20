@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import { moduloPorClave } from '@/lib/modulos/modulo'
 import { avisosDeEscritorio } from '@/lib/notificaciones/aviso-escritorio'
 import { avisosEncendidos, emitirAviso } from './escritorio'
 import { useNotificaciones } from './proveedor'
@@ -18,7 +19,7 @@ import { prepararTimbre, tocarTimbre } from './timbre'
  * Nada se marca leído por mostrar el aviso. Leer sigue siendo abrir el caso.
  */
 export function EmisorEscritorio() {
-  const { alLlegar } = useNotificaciones()
+  const { alLlegar, modulo } = useNotificaciones()
   const router = useRouter()
 
   useEffect(() => prepararTimbre(), [])
@@ -32,11 +33,11 @@ export function EmisorEscritorio() {
         // Un solo timbre por tanda, antes de los globos: tres avisos juntos no son
         // tres campanadas encimadas.
         tocarTimbre()
-        for (const aviso of avisosDeEscritorio(nuevas)) {
+        for (const aviso of avisosDeEscritorio(nuevas, moduloPorClave(modulo))) {
           emitirAviso(aviso, (destino) => router.push(destino))
         }
       }),
-    [alLlegar, router],
+    [alLlegar, modulo, router],
   )
 
   return null

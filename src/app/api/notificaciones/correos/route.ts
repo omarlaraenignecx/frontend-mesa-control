@@ -6,14 +6,15 @@ import { depsDeGoogle } from '@/lib/casos/consulta'
 import { depsGmail } from '@/lib/casos/hilo'
 import { mensajesRecientes, metadatosDeMensaje } from '@/lib/google/gmail-buzon'
 import { leerCasos } from '@/lib/google/sheet-reader'
+import { moduloDelCaso } from '@/lib/modulos/modulo'
 import { clavesExistentes, guardarNotificaciones, hojaActual } from '@/lib/notificaciones/almacen'
 import { claveDeCorreo } from '@/lib/notificaciones/claves'
 import { secretoValido } from '@/lib/notificaciones/secreto'
 import type { NotificacionNueva } from '@/lib/notificaciones/tipos'
 
-/** La fila que le toca a un folio en la hoja que este despliegue atiende. */
-function filaPorFolio(casos: Caso[], folio: string): number | null {
-  return casos.find((c) => c.folio?.trim() === folio.trim())?.fila ?? null
+/** El caso al que pertenece un folio, en la hoja que este despliegue atiende. */
+function casoPorFolio(casos: Caso[], folio: string): Caso | null {
+  return casos.find((c) => c.folio?.trim() === folio.trim()) ?? null
 }
 
 /**
@@ -58,10 +59,15 @@ export async function POST(request: Request) {
   for (const m of pendientes) {
     const folio = folioDeHilo.get(m.threadId)
     if (!folio) continue
-    const fila = filaPorFolio(casos, folio)
-    if (fila === null) continue // el folio no vive en esta hoja: no es nuestro caso
+    const caso = casoPorFolio(casos, folio)
+    if (caso === null) continue // el folio no vive en esta hoja: no es nuestro caso
+    const fila = caso.fila
     const { autor } = await metadatosDeMensaje(deps, m.id)
     nuevas.push({
+      // Por el área del caso y no por el buzón donde se leyó el mensaje: así el
+      // aviso llega a la campanita correcta aunque la conversación siga viviendo en
+      // el buzón de la mesa.
+      modulo: moduloDelCaso(caso).clave,
       tipo: 'correo_recibido',
       fila,
       folio,

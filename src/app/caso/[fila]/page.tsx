@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requerirUsuario } from '@/lib/auth/guard'
 import { esSiniestro } from '@/lib/casos/area'
-import { SINIESTROS } from '@/lib/modulos/modulo'
+import { MESA, SINIESTROS } from '@/lib/modulos/modulo'
 import { cargarHilo } from '@/lib/casos/hilo'
 import { leerPlantilla } from '@/lib/correo/plantillas'
 import { sustituirVariables } from '@/lib/correo/render-correo'
@@ -144,7 +144,7 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
     .map(([etiqueta, valor]) => ({ etiqueta, valor }))
 
   return (
-    <ProveedorNotificaciones>
+    <ProveedorNotificaciones modulo={MESA.clave}>
     <div className="min-h-full bg-background">
       {/* Encabezado del caso, pegado arriba para no perder la referencia al bajar */}
       <header className="sticky top-0 z-10 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
