@@ -1,6 +1,10 @@
 import { esSiniestro } from '@/lib/casos/area'
 import type { Caso } from '@/lib/casos/caso'
-import type { CampoClasificacion } from '@/lib/casos/cola'
+import {
+  ESTATUS_ABIERTOS,
+  ESTATUS_POR_OMISION,
+  type CampoClasificacion,
+} from '@/lib/casos/cola'
 
 /**
  * Los dos módulos de la herramienta. La Mesa de Control y la Atención a Siniestros
@@ -47,6 +51,11 @@ export type ConfigModulo = {
   /** Qué casos de la hoja le tocan a este módulo. */
   incluye: (caso: Caso) => boolean
   clasificacion: Clasificacion
+  /**
+   * Qué estatus muestra el listado cuando nadie ha tocado el filtro, y cómo se
+   * llama eso en pantalla.
+   */
+  estatusPorOmision: { valores: string[]; etiqueta: string }
   /** Columnas del listado propias del módulo, además de las comunes. */
   columnasExtra: { encabezado: string; campo: CampoColumna }[]
   /**
@@ -79,6 +88,7 @@ export const MESA: ConfigModulo = {
     filtro: 'Filtrar por trámite',
     todos: 'Todos los trámites',
   },
+  estatusPorOmision: { valores: ESTATUS_POR_OMISION, etiqueta: 'Pendientes' },
   columnasExtra: [],
   generaFolios: true,
 }
@@ -99,6 +109,7 @@ export const SINIESTROS: ConfigModulo = {
     filtro: 'Filtrar por tipo de siniestro',
     todos: 'Todos los siniestros',
   },
+  estatusPorOmision: { valores: ESTATUS_ABIERTOS, etiqueta: 'Abiertos' },
   columnasExtra: [{ encabezado: 'Número de siniestro', campo: 'numeroSiniestro' }],
   generaFolios: false,
 }

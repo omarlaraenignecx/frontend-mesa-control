@@ -32,10 +32,13 @@ const selectClase =
 function FiltroEstatus({
   valores,
   seleccion,
+  omision,
   onCambio,
 }: {
   valores: string[]
   seleccion: string[]
+  /** Cómo se llama la selección por omisión del módulo: "Pendientes", "Abiertos". */
+  omision: string
   onCambio: (nueva: string[]) => void
 }) {
   const [abierto, setAbierto] = useState(false)
@@ -65,7 +68,7 @@ function FiltroEstatus({
   const resumen = completo
     ? 'Todos'
     : seleccion.length === 0
-      ? 'Pendientes'
+      ? omision
       : seleccion.length <= 2
         ? seleccion.map(etiquetaDe).join(', ')
         : `${seleccion.length} seleccionados`
@@ -119,7 +122,7 @@ function FiltroEstatus({
               className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-base text-muted-foreground hover:bg-secondary hover:text-foreground"
             >
               <Check className="size-4" />
-              Volver a solo los pendientes
+              Volver a {omision.toLocaleLowerCase('es')}
             </button>
           )}
         </div>
@@ -133,7 +136,7 @@ function FiltroEstatus({
  * `ConfigModulo` no viajan del servidor al cliente.
  */
 export function Filtros({ modulo, opciones }: { modulo: Modulo; opciones: Opciones }) {
-  const { rutaLista, clasificacion } = moduloPorClave(modulo)
+  const { rutaLista, clasificacion, estatusPorOmision } = moduloPorClave(modulo)
   const router = useRouter()
   // Cambiar de filtro no cambia de ruta, solo los parámetros, y en ese caso
   // `loading.tsx` no se vuelve a mostrar: el aviso de aquí es la única señal de
@@ -177,6 +180,7 @@ export function Filtros({ modulo, opciones }: { modulo: Modulo; opciones: Opcion
       <FiltroEstatus
         valores={opciones.estatus}
         seleccion={estatusElegidos}
+        omision={estatusPorOmision.etiqueta}
         onCambio={(nueva) => aplicar({ estatus: nueva.join(',') })}
       />
 

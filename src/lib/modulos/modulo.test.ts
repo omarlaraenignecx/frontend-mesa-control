@@ -69,6 +69,15 @@ describe('clasificación de cada módulo', () => {
     expect(SINIESTROS.columnasExtra.map((c) => c.campo)).toEqual(['numeroSiniestro'])
   })
 
+  it('siniestros muestra por omisión también los de trámite', () => {
+    // Con 8 casos al año y una sola persona atendiéndolos, esconder los de trámite
+    // deja la pantalla en blanco teniendo casos abiertos encima.
+    expect(MESA.estatusPorOmision.valores).not.toContain('Tramite')
+    expect(SINIESTROS.estatusPorOmision.valores).toContain('Tramite')
+    expect(MESA.estatusPorOmision.etiqueta).toBe('Pendientes')
+    expect(SINIESTROS.estatusPorOmision.etiqueta).toBe('Abiertos')
+  })
+
   it('la mesa clasifica por trámite y siniestros por tipo de siniestro', () => {
     // Ninguna petición de siniestros trae tipo de trámite: ese selector saldría
     // siempre vacío en su listado.

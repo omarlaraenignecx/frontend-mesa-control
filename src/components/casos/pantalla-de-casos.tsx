@@ -57,23 +57,30 @@ function Pendiente() {
   return <span className="text-muted-foreground">Pendiente</span>
 }
 
-const VISTAS: { clave: Vista; etiqueta: string; ayuda: string }[] = [
-  {
-    clave: 'fila',
-    etiqueta: 'Fila de trabajo',
-    ayuda: `Casos sin estatus final de los últimos ${VENTANA_COLA_DIAS} días, del más reciente al más antiguo`,
-  },
-  {
-    clave: 'rezago',
-    etiqueta: 'Rezago',
-    ayuda: `Casos sin estatus final con más de ${VENTANA_COLA_DIAS} días encima`,
-  },
-  {
-    clave: 'todos',
-    etiqueta: 'Todos los pendientes',
-    ayuda: 'Todos los casos sin estatus final, sin corte por fecha',
-  },
-]
+/**
+ * Las tres vistas, nombradas con lo que cada módulo considera un caso vivo: la mesa
+ * dice "pendientes" y siniestros dice "abiertos", porque no ocultan lo mismo.
+ */
+function vistasDe(queMuestra: string): { clave: Vista; etiqueta: string; ayuda: string }[] {
+  const enMinuscula = queMuestra.toLocaleLowerCase('es')
+  return [
+    {
+      clave: 'fila',
+      etiqueta: 'Fila de trabajo',
+      ayuda: `Casos ${enMinuscula} de los últimos ${VENTANA_COLA_DIAS} días, del más reciente al más antiguo`,
+    },
+    {
+      clave: 'rezago',
+      etiqueta: 'Rezago',
+      ayuda: `Casos ${enMinuscula} con más de ${VENTANA_COLA_DIAS} días encima`,
+    },
+    {
+      clave: 'todos',
+      etiqueta: `Todos los ${enMinuscula}`,
+      ayuda: `Todos los casos ${enMinuscula}, sin corte por fecha`,
+    },
+  ]
+}
 
 /**
  * Columnas comunes a los dos módulos: semáforo, estatus, atiende, folio, recibido,
@@ -126,6 +133,7 @@ export async function PantallaDeCasos({
   }
 
   const hoy = new Date()
+  const VISTAS = vistasDe(modulo.estatusPorOmision.etiqueta)
   const vista: Vista = VISTAS.some((v) => v.clave === params.vista)
     ? (params.vista as Vista)
     : 'fila'
@@ -147,11 +155,19 @@ export async function PantallaDeCasos({
     campoClasificacion: modulo.clasificacion.campo,
     responsable: params.responsable,
     estatusFinal: estatusElegidos,
+    estatusPorOmision: modulo.estatusPorOmision.valores,
   }
 
   const filtrados = ordenarRecientes(filtrar(delModulo, { ...filtrosBase, vista }, hoy))
   const conteos = Object.fromEntries(
-    VISTAS.map((v) => [v.clave, filtrar(delModulo, { vista: v.clave }, hoy).length]),
+    VISTAS.map((v) => [
+      v.clave,
+      filtrar(
+        delModulo,
+        { vista: v.clave, estatusPorOmision: modulo.estatusPorOmision.valores },
+        hoy,
+      ).length,
+    ]),
   ) as Record<Vista, number>
 
   const opciones = opcionesDeFiltro(delModulo, modulo.clasificacion.campo)

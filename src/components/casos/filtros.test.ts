@@ -20,7 +20,14 @@ describe('panel de estatus final', () => {
     expect(FUENTE).toContain('alternarTodos(seleccion, todos)')
   })
 
-  it('conserva la vuelta a los pendientes como salida del filtro', () => {
-    expect(FUENTE).toContain('Volver a solo los pendientes')
+  it('conserva la salida del filtro, nombrada como la omisión del módulo', () => {
+    // La mesa vuelve a "pendientes" y siniestros a "abiertos": no esconden lo mismo,
+    // así que el botón no puede llevar el texto escrito a mano.
+    expect(FUENTE).toContain('Volver a {omision.toLocaleLowerCase')
+  })
+
+  it('el resumen del filtro sin tocar también sale del módulo', () => {
+    expect(FUENTE).toContain('? omision')
+    expect(FUENTE).not.toContain("'Pendientes'")
   })
 })

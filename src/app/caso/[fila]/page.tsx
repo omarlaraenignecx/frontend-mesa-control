@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import {
   ArrowLeft,
   ClipboardList,
@@ -16,6 +17,8 @@ import { EtiquetaSemaforo } from '@/components/semaforo'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requerirUsuario } from '@/lib/auth/guard'
+import { esSiniestro } from '@/lib/casos/area'
+import { SINIESTROS } from '@/lib/modulos/modulo'
 import { cargarHilo } from '@/lib/casos/hilo'
 import { leerPlantilla } from '@/lib/correo/plantillas'
 import { sustituirVariables } from '@/lib/correo/render-correo'
@@ -73,6 +76,13 @@ export default async function CasoPage({ params }: { params: Promise<{ fila: str
   }
 
   const { caso, catalogos, sinFolioTotal } = cargado
+
+  // La fila de la mesa sigue listando los casos de siniestros —lo pidió el área—,
+  // pero atenderlos aquí haría que la respuesta saliera de mesadecontrol@ en lugar
+  // del buzón del ramo, y con la plantilla equivocada. Se ven desde la mesa; se
+  // atienden en su módulo. La comprobación va aquí y no en un proxy porque el caso
+  // ya está leído: decidirlo ahora no cuesta una lectura más de la hoja.
+  if (esSiniestro(caso)) redirect(SINIESTROS.rutaCaso(fila))
 
   await emitirEvento({
     tipo: 'caso_visualizado',

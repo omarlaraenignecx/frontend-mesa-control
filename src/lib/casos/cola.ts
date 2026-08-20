@@ -40,6 +40,18 @@ export const SIN_ESTATUS = 'sin'
 export const ESTATUS_POR_OMISION = [SIN_ESTATUS]
 
 /**
+ * Lo que ve un módulo con pocos casos, como Atención a Siniestros: los pendientes
+ * **y** los que están en trámite.
+ *
+ * La omisión de la mesa esconde los de trámite porque ahí "Tramite" significa que
+ * un compañero ya lo tomó, y con 1,400 peticiones al año estorban a quien busca lo
+ * que nadie ha visto. En siniestros no hay compañero de quien distinguirse —los 8
+ * casos de 2026 los atendió la misma persona— y esconderlos deja la pantalla en
+ * blanco con dos casos abiertos encima.
+ */
+export const ESTATUS_ABIERTOS = [SIN_ESTATUS, 'Tramite']
+
+/**
  * Con qué campo del caso clasifica sus casos un módulo.
  *
  * La mesa clasifica por tipo de trámite. Siniestros no puede: **ninguna** de sus
@@ -60,6 +72,8 @@ export type Filtros = {
   campoClasificacion?: CampoClasificacion
   /** Valores de Estatus Final aceptados; SIN_ESTATUS representa la celda vacía. */
   estatusFinal?: string[]
+  /** Qué estatus se aceptan cuando el usuario no ha elegido ninguno. */
+  estatusPorOmision?: string[]
   responsable?: string
   agencia?: string
   vista?: Vista
@@ -111,7 +125,9 @@ export function filtrar(casos: Caso[], filtros: Filtros, hoy: Date = new Date())
 
   // Una selección vacía se trata como si no hubiera filtro: desmarcar todas las
   // casillas no debe dejar la pantalla en blanco sin explicación.
-  const seleccion = filtros.estatusFinal?.length ? filtros.estatusFinal : ESTATUS_POR_OMISION
+  const seleccion = filtros.estatusFinal?.length
+    ? filtros.estatusFinal
+    : (filtros.estatusPorOmision ?? ESTATUS_POR_OMISION)
   const estatusAceptados = new Set(seleccion.map(claveEstatus))
 
   // Buscar o filtrar explícitamente es pedir "encuéntramelo donde sea": en ese

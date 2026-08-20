@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Caso } from './caso'
 import { casoDePrueba } from './__fixtures__/caso'
 import {
+  ESTATUS_ABIERTOS,
   SIN_ESTATUS,
   VENTANA_COLA_DIAS,
   filtrar,
@@ -175,6 +176,23 @@ describe('filtrar', () => {
     expect(filtrar(casos, { clasificacion: 'Endoso', estatusFinal: ['Improcedente'] }).map(
       (x) => x.folio,
     )).toEqual(['7004'])
+  })
+
+  it('un módulo puede traer su propia omisión de estatus', () => {
+    // Siniestros muestra por omisión también los de trámite: con 8 casos al año y
+    // una sola persona atendiéndolos, esconderlos deja la pantalla en blanco.
+    const conTramite = filtrar(casos, { estatusPorOmision: ESTATUS_ABIERTOS })
+    expect(conTramite.map((x) => x.folio)).toEqual(['7001', '7003'])
+    // Y la omisión de la mesa sigue escondiéndolos.
+    expect(filtrar(casos, {}).map((x) => x.folio)).toEqual(['7001'])
+  })
+
+  it('la omisión del módulo no gana cuando el usuario ya eligió', () => {
+    const elegido = filtrar(casos, {
+      estatusPorOmision: ESTATUS_ABIERTOS,
+      estatusFinal: ['Concluida'],
+    })
+    expect(elegido.map((x) => x.folio)).toEqual(['7002'])
   })
 
   it('busca por número de siniestro, que es como la aseguradora nombra el caso', () => {
