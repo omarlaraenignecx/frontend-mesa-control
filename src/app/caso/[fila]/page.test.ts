@@ -9,26 +9,39 @@ const PAGINA = ARCHIVO.split('\n')
   .filter((linea) => !/^\s*(\/\/|\*|\/\*)/.test(linea))
   .join('\n')
 
-describe('un caso de siniestros se atiende en su módulo', () => {
-  it('redirige en lugar de abrirlo aquí', () => {
-    // Es lo que evita que una respuesta salga de mesadecontrol@ con la plantilla
-    // de la mesa: la fila de la mesa sigue listando estos casos.
-    expect(PAGINA).toContain('esSiniestro(caso)')
+const SINIESTRO = readFileSync(
+  join(import.meta.dirname, '..', '..', 'siniestros', 'caso', '[fila]', 'page.tsx'),
+  'utf8',
+)
+
+describe('cada caso se atiende en su módulo', () => {
+  it('la vista de la mesa manda los siniestros a la suya', () => {
+    // Es lo que evita que una respuesta salga con la marca y la plantilla de la mesa:
+    // su fila sigue listando estos casos.
+    expect(PAGINA).toContain('esSiniestro(cargado.caso)')
     expect(PAGINA).toContain('redirect(SINIESTROS.rutaCaso(fila))')
   })
 
-  it('decide antes de registrar la visita y de pedir el hilo', () => {
-    // Emitir `caso_visualizado` aquí contaría una visita que no ocurrió, y pedir
-    // el hilo iría al buzón equivocado. Las dos cosas cuestan y las dos sobran.
-    const corte = PAGINA.indexOf('redirect(SINIESTROS.rutaCaso(fila))')
-    expect(corte).toBeGreaterThan(0)
-    expect(PAGINA.indexOf("tipo: 'caso_visualizado'")).toBeGreaterThan(corte)
-    expect(PAGINA.indexOf('cargarHilo(')).toBeGreaterThan(corte)
+  it('y la del ramo devuelve a la mesa lo que no es del ramo', () => {
+    // El espejo: un caso de la mesa abierto aquí saldría firmado por el ejecutivo
+    // de siniestros.
+    expect(SINIESTRO).toContain('!esSiniestro(cargado.caso)')
+    expect(SINIESTRO).toContain('redirect(MESA.rutaCaso(fila))')
   })
 
-  it('decide con el caso ya leído, no con una lectura extra de la hoja', () => {
-    expect(PAGINA.indexOf('await cargarCaso(fila)')).toBeLessThan(
-      PAGINA.indexOf('esSiniestro(caso)'),
-    )
+  it('las dos páginas son envolturas de la misma pantalla', () => {
+    for (const fuente of [PAGINA, SINIESTRO]) {
+      expect(fuente).toContain('PantallaDeCaso')
+      expect(fuente).not.toContain('<Card')
+      expect(fuente).not.toContain('cargarHilo')
+    }
+  })
+
+  it('decide antes de renderizar, no después', () => {
+    // Renderizar y luego redirigir contaría una visita que no ocurrió y pediría el
+    // hilo al buzón equivocado. Las dos cosas cuestan y las dos sobran.
+    for (const fuente of [PAGINA, SINIESTRO]) {
+      expect(fuente.indexOf('redirect(')).toBeLessThan(fuente.indexOf('<PantallaDeCaso'))
+    }
   })
 })

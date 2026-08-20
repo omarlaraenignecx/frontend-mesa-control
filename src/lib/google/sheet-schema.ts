@@ -5,6 +5,7 @@ export type CampoLogico =
   | 'tipoSiniestro'
   | 'tipoAtencion'
   | 'numeroSiniestro'
+  | 'poliza'
   | 'tipoNegocio'
   | 'nombreSolicitante'
   | 'correoSolicitante'
@@ -71,6 +72,8 @@ const ALIAS: Record<CampoLogico, string[]> = {
   tipoSiniestro: ['tipo de siniestro'],
   tipoAtencion: ['tipo de atencion'],
   numeroSiniestro: ['numero de siniestro'],
+  /** La póliza del caso. La usan las plantillas del ramo y la vista del caso. */
+  poliza: ['numero de poliza'],
 
   tipoNegocio: ['tipo de negocio', 'favor de indicar tipo de negocio'],
   nombreSolicitante: [

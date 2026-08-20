@@ -119,6 +119,7 @@ export function construirCasos(
       tipoSiniestro: campo(fila, 'tipoSiniestro'),
       tipoAtencion: campo(fila, 'tipoAtencion'),
       numeroSiniestro: campo(fila, 'numeroSiniestro'),
+      poliza: campo(fila, 'poliza'),
       tipoNegocio: campo(fila, 'tipoNegocio'),
       nombreSolicitante: campo(fila, 'nombreSolicitante'),
       // Si el formulario solo trae el correo del ejecutivo, ese es el contacto.

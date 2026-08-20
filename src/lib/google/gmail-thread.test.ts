@@ -5,7 +5,7 @@ const CORREO_MESA = 'mesadecontrol@gplusseguros.mx'
 const DEPS = (fetchMock: typeof globalThis.fetch) => ({
   fetch: fetchMock,
   accessToken: 'ya29.token',
-  correoMesa: CORREO_MESA,
+  correoBuzon: CORREO_MESA,
 })
 
 function b64(texto: string) {

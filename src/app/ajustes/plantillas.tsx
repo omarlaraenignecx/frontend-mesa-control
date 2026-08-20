@@ -9,12 +9,33 @@ import { guardarPlantillaAccion, type ResultadoPlantilla } from './acciones-plan
 
 const VARIABLES = ['solicitante', 'folio', 'agencia', 'tramite', 'atiende'] as const
 
+/**
+ * Las del ramo de siniestros. Se ofrecen aparte porque en un caso de la mesa no
+ * existen: usarlas ahí dejaría el `{{marcador}}` tal cual en el correo.
+ */
+const VARIABLES_SINIESTROS = [
+  'solicitante',
+  'folio',
+  'cliente',
+  'aseguradora',
+  'numeroSiniestro',
+  'poliza',
+  'tipoSiniestro',
+] as const
+
+export { VARIABLES_SINIESTROS }
+
 const EJEMPLO = {
   solicitante: 'Ricardo Hernandez',
   folio: '7000',
   agencia: 'CHEVROLET CAMPESTRE',
   tramite: 'Emisión',
   atiende: 'Keynor Rivas',
+  cliente: 'MARTHA LOPEZ LARA',
+  aseguradora: 'EL POTOSÍ',
+  numeroSiniestro: '07-AUIN-205/2026',
+  poliza: 'AUIN-020215-07',
+  tipoSiniestro: 'Daño parcial',
 }
 
 function conEjemplo(texto: string): string {
@@ -24,7 +45,14 @@ function conEjemplo(texto: string): string {
   })
 }
 
-export function AdminPlantillas({ plantillas }: { plantillas: Plantilla[] }) {
+export function AdminPlantillas({
+  plantillas,
+  variables = VARIABLES,
+}: {
+  plantillas: Plantilla[]
+  /** Qué marcadores ofrece el editor. El ramo tiene los suyos. */
+  variables?: readonly string[]
+}) {
   const [activa, setActiva] = useState(plantillas[0]?.tipoTramite ?? '')
   const [cuerpos, setCuerpos] = useState<Record<string, string>>(
     Object.fromEntries(plantillas.map((p) => [p.tipoTramite, p.cuerpo])),
@@ -43,7 +71,7 @@ export function AdminPlantillas({ plantillas }: { plantillas: Plantilla[] }) {
       <p className="text-base text-muted-foreground">
         El texto que la mesa envía al abrir un caso, según su tipo de trámite. Se puede editar aquí
         sin esperar un despliegue. Variables disponibles:{' '}
-        {VARIABLES.map((v) => (
+        {variables.map((v) => (
           <code key={v} className="mx-0.5 rounded bg-secondary px-1.5 py-0.5 text-sm">
             {`{{${v}}}`}
           </code>

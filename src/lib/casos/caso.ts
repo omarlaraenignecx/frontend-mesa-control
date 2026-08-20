@@ -24,6 +24,7 @@ export type Caso = {
   tipoSiniestro: string | null
   tipoAtencion: string | null
   numeroSiniestro: string | null
+  poliza: string | null
   tipoNegocio: string | null
   nombreSolicitante: string | null
   correoSolicitante: string | null

@@ -11,6 +11,12 @@ import {
   listarEjecutivos,
   sembrarEjecutivos,
 } from '@/lib/siniestros/ejecutivos'
+import { AdminPlantillas, VARIABLES_SINIESTROS } from '@/app/ajustes/plantillas'
+import {
+  PLANTILLA_SINIESTROS,
+  listarPlantillas,
+  sembrarPlantillas,
+} from '@/lib/correo/plantillas'
 import { BotonDesignar, BotonQuitar, FormularioFicha, InterruptorProvisional } from './controles'
 
 /** El scope completo no le dice nada a nadie; esto sí. */
@@ -45,6 +51,11 @@ export default async function AjustesDeSiniestros({
   const params = await searchParams
 
   await sembrarEjecutivos()
+  // La siembra es idempotente: si alguien ya editó la plantilla, no se toca.
+  await sembrarPlantillas()
+  const plantillas = (await listarPlantillas()).filter(
+    (p) => p.tipoTramite === PLANTILLA_SINIESTROS,
+  )
   const [estado, credenciales, fichas, activa, provisional] = await Promise.all([
     estadoDelBuzon(),
     listarCredencialesSiniestros(),
@@ -203,6 +214,18 @@ export default async function AjustesDeSiniestros({
         )}
 
         <InterruptorProvisional encendido={provisional} puede={esAdmin} />
+      </section>
+
+      {/* ---------- Plantilla ---------- */}
+      <section className="space-y-4 rounded-xl border bg-card p-7 shadow-sm">
+        <div className="space-y-1">
+          <h2 className="text-xl font-medium">Plantilla de correo del ramo</h2>
+          <p className="text-base text-muted-foreground">
+            El texto con el que arranca cada mensaje. Se puede ajustar libremente antes de
+            enviarlo; esto es solo el punto de partida.
+          </p>
+        </div>
+        <AdminPlantillas plantillas={plantillas} variables={VARIABLES_SINIESTROS} />
       </section>
 
       {/* ---------- Fichas ---------- */}

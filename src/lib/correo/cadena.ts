@@ -1,5 +1,5 @@
 import type { Hilo } from '@/lib/google/gmail-thread'
-import { CORREO_MESA } from './render-correo'
+import { MARCA_MESA, type MarcaCorreo } from './render-correo'
 
 /**
  * Un adjunto de la conversación, identificado por la posición que ocupa en su
@@ -65,12 +65,13 @@ const SIN_TEXTO = '(sin texto)'
 export function renderCadena(
   hilo: Hilo,
   v: VariablesCadena,
+  marca: MarcaCorreo = MARCA_MESA,
 ): { html: string; texto: string } {
   const mensajes = [...hilo.mensajes].sort((a, b) => a.fechaIso.localeCompare(b.fechaIso))
 
   const bloquesHtml = mensajes
     .map((m) => {
-      const quien = m.deLaMesa ? 'Mesa de Control | Gplus Seguros' : m.autor
+      const quien = m.deLaMesa ? `${marca.titulo} | Gplus Seguros` : m.autor
       const cuerpo = m.texto.trim()
         ? escapar(m.texto.trim()).replace(/\n/g, '<br>')
         : `<em style="color:#8a94a1">${SIN_TEXTO}</em>`
@@ -109,7 +110,7 @@ export function renderCadena(
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;background:#ffffff;border:1px solid #e3e8ee;border-radius:12px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#1f2933">
         <tr>
-          <td style="background:#005ba9;padding:18px 24px;color:#ffffff">
+          <td style="background:${marca.color};padding:18px 24px;color:#ffffff">
             <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Gplus Seguros</div>
             <div style="font-size:19px;font-weight:bold;margin-top:2px">Conversación del caso ${escapar(v.folio)}</div>
           </td>
@@ -121,9 +122,9 @@ export function renderCadena(
         ${bloquesHtml}
         <tr>
           <td style="border-top:1px solid #e3e8ee;padding:18px 24px;font-size:14px;color:#5a6572">
-            <div style="font-weight:bold;color:#1f2933">Mesa de Control — Gplus Seguros</div>
+            <div style="font-weight:bold;color:#1f2933">${escapar(marca.firma.nombre)}</div>
             <div style="margin-top:4px">Compartido por: ${escapar(v.atiende)}</div>
-            <div style="margin-top:2px"><a href="mailto:${CORREO_MESA}" style="color:#005ba9;text-decoration:none">${CORREO_MESA}</a></div>
+            <div style="margin-top:2px"><a href="mailto:${marca.firma.correo}" style="color:${marca.color};text-decoration:none">${escapar(marca.firma.correo)}</a></div>
             <div style="margin-top:10px;font-size:12px;color:#8a94a1">${referencia}</div>
           </td>
         </tr>
@@ -134,7 +135,7 @@ export function renderCadena(
 </html>`
 
   const bloquesTexto = mensajes.map((m) => {
-    const quien = m.deLaMesa ? 'Mesa de Control | Gplus Seguros' : m.autor
+    const quien = m.deLaMesa ? `${marca.titulo} | Gplus Seguros` : m.autor
     const archivos = m.adjuntos.length
       ? `\nArchivos: ${m.adjuntos.map((a) => a.nombre).join(' · ')}`
       : ''
@@ -150,9 +151,9 @@ export function renderCadena(
     bloquesTexto.join('\n\n----------\n\n'),
     '',
     '---',
-    'Mesa de Control — Gplus Seguros',
+    marca.firma.nombre,
     `Compartido por: ${v.atiende}`,
-    CORREO_MESA,
+    marca.firma.correo,
     `Caso ${v.folio}${v.tramite ? ` · ${v.tramite}` : ''}`,
   ].join('\n')
 

@@ -4,10 +4,102 @@ export type Variables = {
   agencia: string
   tramite: string
   atiende: string
+  /**
+   * Variables propias de un caso de siniestros. Opcionales porque en la mesa no
+   * existen: una plantilla que las use en un caso de la mesa deja el `{{marcador}}`
+   * tal cual, que es lo que hace `sustituirVariables` con lo que no conoce, y así se
+   * ve el error en lugar de mandar una frase a medias.
+   */
+  cliente?: string
+  aseguradora?: string
+  numeroSiniestro?: string
+  poliza?: string
+  tipoSiniestro?: string
 }
 
 export const CORREO_MESA = 'mesadecontrol@gplusseguros.mx'
-export const REMITENTE = `Mesa de Control | Gplus Seguros <${CORREO_MESA}>`
+
+/**
+ * La identidad con la que sale un correo: qué dice la banda, de qué color es y con
+ * qué firma cierra.
+ *
+ * Existe porque hay dos áreas escribiendo desde la misma herramienta y no se parecen:
+ * la Mesa de Control firma como equipo —«Atiende: quien lo tomó»— y Atención a
+ * Siniestros firma como la persona que lleva el caso, con su puesto y su teléfono,
+ * porque del otro lado hay un cliente con un siniestro encima y quiere saber a quién
+ * le está hablando.
+ */
+export type MarcaCorreo = {
+  /** Rótulo de la banda superior, bajo «Gplus Seguros». */
+  titulo: string
+  /** Color de la banda. */
+  color: string
+  firma: {
+    nombre: string
+    puesto: string | null
+    telefono: string | null
+    correo: string
+  }
+  /** Si el pie dice además quién del equipo está atendiendo. */
+  muestraQuienAtiende: boolean
+}
+
+/**
+ * La marca de la Mesa de Control, tal como salían sus correos antes de que hubiera
+ * dos áreas. No se toca: son los correos que salen a diario a las agencias.
+ */
+export const MARCA_MESA: MarcaCorreo = {
+  titulo: 'Mesa de Control',
+  color: '#005ba9',
+  firma: {
+    nombre: 'Mesa de Control — Gplus Seguros',
+    puesto: null,
+    telefono: null,
+    correo: CORREO_MESA,
+  },
+  muestraQuienAtiende: true,
+}
+
+/** Cómo se anuncia el remitente en la cabecera del mensaje. */
+export function remitenteDe(marca: MarcaCorreo): string {
+  return `${marca.titulo} | Gplus Seguros <${marca.firma.correo}>`
+}
+
+/**
+ * Las variables de un caso, listas para la plantilla.
+ *
+ * La aseguradora sale primero de la que registró el área en el seguimiento y solo
+ * después de la que declaró el solicitante: la primera es la que de verdad está
+ * atendiendo el siniestro, y es la que el cliente espera leer.
+ */
+export function variablesDelCaso(
+  caso: {
+    nombreSolicitante: string | null
+    agencia: string | null
+    tipoTramite: string | null
+    nombreCliente: string | null
+    aseguradoraSeguimiento: string | null
+    aseguradoraDeclarada: string | null
+    numeroSiniestro: string | null
+    tipoSiniestro: string | null
+    poliza: string | null
+  },
+  folio: string,
+  usuario: { nombreEnHoja: string | null; correo: string },
+): Variables {
+  return {
+    solicitante: caso.nombreSolicitante ?? 'buen día',
+    folio,
+    agencia: caso.agencia ?? '',
+    tramite: caso.tipoTramite ?? '',
+    atiende: usuario.nombreEnHoja ?? usuario.correo,
+    cliente: caso.nombreCliente ?? '',
+    aseguradora: caso.aseguradoraSeguimiento ?? caso.aseguradoraDeclarada ?? '',
+    numeroSiniestro: caso.numeroSiniestro ?? '',
+    poliza: caso.poliza ?? '',
+    tipoSiniestro: caso.tipoSiniestro ?? '',
+  }
+}
 
 export function sustituirVariables(plantilla: string, v: Variables): string {
   return plantilla.replace(/\{\{\s*(\w+)\s*\}\}/g, (todo, nombre: string) => {
@@ -52,7 +144,11 @@ export function avisoDeRespuesta(folio: string): { titulo: string; detalle: stri
  * El cuerpo lo escribe la mesa, no la aplicación: se escapa antes de insertarlo
  * para que un signo de menor que no rompa el correo de la agencia.
  */
-export function renderCorreo(cuerpoTexto: string, v: Variables): { html: string; texto: string } {
+export function renderCorreo(
+  cuerpoTexto: string,
+  v: Variables,
+  marca: MarcaCorreo = MARCA_MESA,
+): { html: string; texto: string } {
   const parrafos = cuerpoTexto
     .split(/\n{2,}/)
     .map((p) => p.trim())
@@ -65,6 +161,19 @@ export function renderCorreo(cuerpoTexto: string, v: Variables): { html: string;
 
   const referencia = `Caso ${escapar(v.folio)}${v.tramite ? ` · ${escapar(v.tramite)}` : ''}`
   const aviso = avisoDeRespuesta(v.folio)
+  const { firma } = marca
+
+  // Cada línea del pie solo aparece si trae dato: una firma con «TEL` vacío se lee
+  // como un correo a medio hacer.
+  const lineasFirma = [
+    firma.puesto ? `<div style="margin-top:4px">${escapar(firma.puesto)}</div>` : '',
+    marca.muestraQuienAtiende
+      ? `<div style="margin-top:4px">Atiende: ${escapar(v.atiende)}</div>`
+      : '',
+    firma.telefono ? `<div style="margin-top:2px">TEL ${escapar(firma.telefono)}</div>` : '',
+  ]
+    .filter(Boolean)
+    .join('\n            ')
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -73,9 +182,9 @@ export function renderCorreo(cuerpoTexto: string, v: Variables): { html: string;
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background:#ffffff;border:1px solid #e3e8ee;border-radius:12px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#1f2933">
         <tr>
-          <td style="background:#005ba9;padding:18px 24px;color:#ffffff">
+          <td style="background:${marca.color};padding:18px 24px;color:#ffffff">
             <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Gplus Seguros</div>
-            <div style="font-size:19px;font-weight:bold;margin-top:2px">Mesa de Control</div>
+            <div style="font-size:19px;font-weight:bold;margin-top:2px">${escapar(marca.titulo)}</div>
           </td>
         </tr>
         <tr>
@@ -95,9 +204,9 @@ export function renderCorreo(cuerpoTexto: string, v: Variables): { html: string;
         </tr>
         <tr>
           <td style="border-top:1px solid #e3e8ee;padding:18px 24px;font-size:14px;color:#5a6572">
-            <div style="font-weight:bold;color:#1f2933">Mesa de Control — Gplus Seguros</div>
-            <div style="margin-top:4px">Atiende: ${escapar(v.atiende)}</div>
-            <div style="margin-top:2px"><a href="mailto:${CORREO_MESA}" style="color:#005ba9;text-decoration:none">${CORREO_MESA}</a></div>
+            <div style="font-weight:bold;color:#1f2933">${escapar(firma.nombre)}</div>
+            ${lineasFirma}
+            <div style="margin-top:2px"><a href="mailto:${firma.correo}" style="color:${marca.color};text-decoration:none">${escapar(firma.correo)}</a></div>
             <div style="margin-top:10px;font-size:12px;color:#8a94a1">${referencia}</div>
           </td>
         </tr>
@@ -114,11 +223,15 @@ export function renderCorreo(cuerpoTexto: string, v: Variables): { html: string;
     aviso.detalle,
     '',
     '---',
-    'Mesa de Control — Gplus Seguros',
-    `Atiende: ${v.atiende}`,
-    CORREO_MESA,
+    firma.nombre,
+    firma.puesto,
+    marca.muestraQuienAtiende ? `Atiende: ${v.atiende}` : null,
+    firma.telefono ? `TEL ${firma.telefono}` : null,
+    firma.correo,
     `Caso ${v.folio}${v.tramite ? ` · ${v.tramite}` : ''}`,
-  ].join('\n')
+  ]
+    .filter((l): l is string => Boolean(l))
+    .join('\n')
 
   return { html, texto }
 }

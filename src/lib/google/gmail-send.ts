@@ -5,7 +5,6 @@ import {
   pesoCodificado,
   type AdjuntoSalida,
 } from '@/lib/correo/mime'
-import { REMITENTE } from '@/lib/correo/render-correo'
 import type { DepsGmail } from './gmail-thread'
 
 const BASE = 'https://gmail.googleapis.com/gmail/v1/users/me'
@@ -24,6 +23,8 @@ export class CorreoDemasiadoGrandeError extends Error {
 }
 
 export type MensajeSalida = {
+  /** Remitente completo, con nombre visible. Lo arma `remitenteDe(marca)`. */
+  de: string
   para: string
   cc: string[]
   asunto: string
@@ -34,8 +35,13 @@ export type MensajeSalida = {
 }
 
 /**
- * Envía desde el buzón de la mesa. El remitente es fijo: la herramienta nunca
- * escribe en nombre de una persona.
+ * Envía por el buzón que traiga el token de `deps`.
+ *
+ * El remitente viaja en el mensaje y no es una constante: desde que existe el módulo
+ * de siniestros hay dos buzones, y el `de` tiene que corresponder al token con el que
+ * se está llamando a Gmail. Google rechaza un `From` que no sea de la cuenta
+ * autenticada, así que una constante aquí sería un envío fallido o, peor, un correo
+ * saliendo del área equivocada.
  *
  * Cuando se pasa `threadId`, Gmail agrupa el mensaje en la conversación
  * existente; las cabeceras In-Reply-To y References hacen que también lo agrupen
@@ -49,7 +55,7 @@ export async function enviarCorreo(
   const peso = pesoCodificado(mensaje.adjuntos)
   if (peso > LIMITE_GMAIL_BYTES) throw new CorreoDemasiadoGrandeError(peso)
 
-  const mime = componerMime({ ...mensaje, de: REMITENTE })
+  const mime = componerMime(mensaje)
 
   const respuesta = await deps.fetch(`${BASE}/messages/send`, {
     method: 'POST',
@@ -61,7 +67,7 @@ export async function enviarCorreo(
   })
 
   if (respuesta.status === 403) {
-    throw new Error('La cuenta de la mesa no tiene permiso para enviar correo.')
+    throw new Error('La cuenta de correo autorizada no tiene permiso para enviar.')
   }
   if (respuesta.status === 429) {
     throw new Error('Google aplicó un límite de envío. Intenta de nuevo en un momento.')

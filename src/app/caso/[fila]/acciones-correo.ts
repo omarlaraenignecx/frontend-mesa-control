@@ -5,12 +5,14 @@ import { requerirUsuario } from '@/lib/auth/guard'
 import { registrarAccion } from '@/lib/casos/bitacora'
 import { cargarCaso, depsDeGoogle } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
-import { cargarHilo, depsGmail, guardarVinculo, leerVinculo } from '@/lib/casos/hilo'
+import { buzonDelCaso } from '@/lib/casos/buzon'
+import { cargarHilo, guardarVinculo, leerVinculo } from '@/lib/casos/hilo'
+import { moduloDelCaso } from '@/lib/modulos/modulo'
 import { asuntoDeReenvio, componerAsunto } from '@/lib/correo/asunto'
 import { renderCadena } from '@/lib/correo/cadena'
 import { esCorreoValido, resolverDestinos } from '@/lib/correo/destinatarios'
 import type { AdjuntoSalida } from '@/lib/correo/mime'
-import { renderCorreo } from '@/lib/correo/render-correo'
+import { renderCorreo, variablesDelCaso } from '@/lib/correo/render-correo'
 import { formatearFechaHoja } from '@/lib/fecha'
 import { enviarCorreo } from '@/lib/google/gmail-send'
 import { buscarHilo, leerAdjunto, leerHilo, ubicarAdjunto } from '@/lib/google/gmail-thread'
@@ -63,15 +65,13 @@ export async function enviarMensaje(fila: number, datos: FormData): Promise<Resu
     return { ok: false, error: e instanceof Error ? e.message : 'Destinatario inválido.' }
   }
 
-  const { html, texto } = renderCorreo(cuerpo, {
-    solicitante: caso.nombreSolicitante ?? 'buen día',
-    folio,
-    agencia: caso.agencia ?? '',
-    tramite: caso.tipoTramite ?? '',
-    atiende: usuario.nombreEnHoja ?? usuario.correo,
-  })
+  // El buzón, la marca y la firma salen del área del caso, no de la pantalla desde la
+  // que se pulsó Enviar: así una respuesta no puede salir del área equivocada por
+  // haber entrado por la URL de al lado.
+  const buzon = await buzonDelCaso(caso)
+  const { html, texto } = renderCorreo(cuerpo, variablesDelCaso(caso, folio, usuario), buzon.marca)
 
-  const deps = await depsGmail()
+  const deps = buzon.deps
   const vinculo = await leerVinculo(fila)
   const esPrimero = !vinculo
 
@@ -94,6 +94,7 @@ export async function enviarMensaje(fila: number, datos: FormData): Promise<Resu
     enviado = await enviarCorreo(
       deps,
       {
+        de: buzon.remitente,
         para: destinos.para,
         cc: destinos.cc,
         asunto: componerAsunto(folio),
@@ -108,7 +109,7 @@ export async function enviarMensaje(fila: number, datos: FormData): Promise<Resu
     return { ok: false, error: e instanceof Error ? e.message : 'No se pudo enviar el correo.' }
   }
 
-  await guardarVinculo(fila, enviado.threadId, folio)
+  await guardarVinculo(fila, enviado.threadId, folio, moduloDelCaso(caso).clave)
 
   // El primer correo sella la fecha de respuesta que la mesa llenaba a mano.
   if (esPrimero && !caso.fechaRespuestaCorreo?.trim()) {
@@ -147,13 +148,15 @@ export async function enviarMensaje(fila: number, datos: FormData): Promise<Resu
     correoUsuario: usuario.correo,
   })
 
-  revalidatePath(`/caso/${fila}`)
+  revalidatePath(moduloDelCaso(caso).rutaCaso(fila))
   return { ok: true, threadId: enviado.threadId }
 }
 
-export async function refrescarConversacion(fila: number): Promise<void> {
+export async function refrescarConversacion(fila: number, ruta?: string): Promise<void> {
   await requerirUsuario()
-  revalidatePath(`/caso/${fila}`)
+  // La ruta llega del componente: el chat vive en dos módulos y cada uno tiene la
+  // suya. Sin esto, refrescar desde siniestros revalidaría la página de la mesa.
+  revalidatePath(ruta ?? `/caso/${fila}`)
 }
 
 export type ResultadoReenvio =
@@ -205,7 +208,7 @@ export async function reenviarCadena(fila: number, datos: FormData): Promise<Res
   const para = unicos(candidatos)
   const cc = unicos(correosDe(datos, 'copias'))
 
-  const estado = await cargarHilo(fila, folio)
+  const estado = await cargarHilo(fila, folio, caso)
   if (estado.estado === 'error') return { ok: false, error: estado.mensaje }
   if (estado.estado === 'sin-conversacion') {
     return { ok: false, error: 'Este caso todavía no tiene conversación que compartir.' }
@@ -221,7 +224,8 @@ export async function reenviarCadena(fila: number, datos: FormData): Promise<Res
       return { mensajeId, indice: Number(indice) }
     })
 
-  const deps = await depsGmail()
+  const buzon = await buzonDelCaso(caso)
+  const deps = buzon.deps
   const adjuntos: AdjuntoSalida[] = []
   for (const { mensajeId, indice } of elegidos) {
     const ubicado = ubicarAdjunto(hilo, mensajeId, indice)
@@ -245,15 +249,20 @@ export async function reenviarCadena(fila: number, datos: FormData): Promise<Res
     }
   }
 
-  const { html, texto } = renderCadena(hilo, {
-    folio,
-    tramite: caso.tipoTramite ?? '',
-    nota: String(datos.get('nota') ?? ''),
-    atiende: usuario.nombreEnHoja ?? usuario.correo,
-  })
+  const { html, texto } = renderCadena(
+    hilo,
+    {
+      folio,
+      tramite: caso.tipoTramite ?? '',
+      nota: String(datos.get('nota') ?? ''),
+      atiende: usuario.nombreEnHoja ?? usuario.correo,
+    },
+    buzon.marca,
+  )
 
   try {
     await enviarCorreo(deps, {
+      de: buzon.remitente,
       para: para.join(', '),
       cc,
       asunto: asuntoDeReenvio(folio),

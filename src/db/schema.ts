@@ -49,6 +49,15 @@ export const bloqueos = pgTable('bloqueos', {
 export const casosHilo = pgTable('casos_hilo', {
   fila: integer('fila').primaryKey(),
   threadId: text('thread_id').notNull(),
+  /**
+   * En qué buzón vive esta conversación. Con omisión `mesa`, que es lo que eran todas
+   * al agregarse la columna el 20 de agosto de 2026.
+   *
+   * Un `threadId` solo existe dentro del buzón que lo emitió: sin esta columna, la
+   * ruta que revisa la bandeja de siniestros buscaría ahí hilos de la mesa y no
+   * encontraría ninguno, o al revés.
+   */
+  modulo: text('modulo').notNull().default('mesa'),
   asuntoNormalizado: text('asunto_normalizado').notNull(),
   folioUsado: text('folio_usado').notNull(),
   creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
