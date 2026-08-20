@@ -1,37 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { partesDeLaMesa } from '@/lib/reloj'
-import { estaVivo, parsearFechaHoja, sinFolio, type Caso } from './caso'
-
-function caso(parcial: Partial<Caso> = {}): Caso {
-  return {
-    fila: 7176,
-    folio: '7000',
-    marcaTemporalIso: new Date(2026, 7, 5, 15, 14, 58).toISOString(),
-    marcaTemporalTexto: '5/8/2026 15:14:58',
-    tipoTramite: 'Emisión',
-    tipoNegocio: 'EXTERNA',
-    nombreSolicitante: 'Ricardo Hernandez',
-    correoSolicitante: 'comercial28@garantiplus.mx',
-    correoEjecutivo: null,
-    agencia: 'CHEVROLET CAMPESTRE',
-    motivo: 'aplicar el pago a la póliza',
-    aseguradoraDeclarada: null,
-    nombreCliente: null,
-    estatusInicial: 'Atendida/en trámite',
-    estatusFinal: 'Tramite',
-    quienAtendio: 'Keynor',
-    folioInterno: null,
-    aseguradoraSeguimiento: 'LA LATINO',
-    teniaPermisos: 'No',
-    causaSeguimiento: 'Función de GPLUS',
-    observaciones: 'SE ENVIAN DATOS DE APLICACION DE PAGO',
-    fechaRespuestaCorreo: null,
-    fechaAtencionFinal: null,
-    adjuntos: [],
-    camposExtra: [],
-    ...parcial,
-  }
-}
+import { estaVivo, parsearFechaHoja, sinFolio } from './caso'
+import { casoDePrueba as caso } from './__fixtures__/caso'
 
 describe('parsearFechaHoja', () => {
   // La hoja escribe hora de pared de la Ciudad de México y lo que se guarda es

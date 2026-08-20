@@ -14,7 +14,16 @@ export type Caso = {
   folio: string | null
   marcaTemporalIso: string | null
   marcaTemporalTexto: string
+  /**
+   * A qué área de Gplus va dirigida la petición. Es lo que separa la Mesa de Control
+   * del módulo de Atención a Siniestros; ver `lib/casos/area.ts`.
+   */
+  area: string | null
   tipoTramite: string | null
+  /** Campos del ramo de siniestros. Nulos en las peticiones de la mesa. */
+  tipoSiniestro: string | null
+  tipoAtencion: string | null
+  numeroSiniestro: string | null
   tipoNegocio: string | null
   nombreSolicitante: string | null
   correoSolicitante: string | null

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Caso } from './caso'
+import { casoDePrueba } from './__fixtures__/caso'
 import {
   SIN_ESTATUS,
   VENTANA_COLA_DIAS,
@@ -8,34 +9,29 @@ import {
   ordenarRecientes,
 } from './cola'
 
+/**
+ * Un caso pendiente y recién llegado, que es el punto de partida de casi toda
+ * prueba de la fila. Sin estatus final —así cae en la selección por omisión— y con
+ * el folio derivado de la fila, para poder identificarlo en los resultados.
+ */
 function c(parcial: Partial<Caso> & { fila: number }): Caso {
-  return {
+  return casoDePrueba({
     folio: String(7000 + parcial.fila),
     marcaTemporalIso: new Date(2026, 7, 1).toISOString(),
     marcaTemporalTexto: '',
-    tipoTramite: 'Emisión',
     tipoNegocio: null,
     nombreSolicitante: 'Solicitante',
     correoSolicitante: 'a@b.mx',
-    correoEjecutivo: null,
     agencia: 'AGENCIA UNO',
     motivo: null,
-    aseguradoraDeclarada: null,
-    nombreCliente: null,
     estatusInicial: null,
     estatusFinal: null,
-    quienAtendio: 'Keynor',
-    folioInterno: null,
     aseguradoraSeguimiento: null,
     teniaPermisos: null,
     causaSeguimiento: null,
     observaciones: null,
-    fechaRespuestaCorreo: null,
-    fechaAtencionFinal: null,
-    adjuntos: [],
-    camposExtra: [],
     ...parcial,
-  }
+  })
 }
 
 describe('ordenarRecientes', () => {

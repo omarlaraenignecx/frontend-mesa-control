@@ -48,6 +48,39 @@ describe('construirCasos', () => {
     expect(caso.marcaTemporalIso).toContain('2026-08-05')
   })
 
+  it('lee el área y los campos del ramo de una petición de siniestros', () => {
+    // Reproduce la petición real del folio 6426: la rama de siniestros del
+    // formulario, con el área en CK y sin tipo de trámite en ninguna columna.
+    const f = fila({
+      1: '24/3/2026 10:52:50',
+      3: 'Daño parcial',
+      4: 'EL POTOSÍ',
+      11: 'AUIN-020215-07',
+      28: 'JESUS PIMENTEL',
+      30: 'jesus.pimentel@autocom.mx',
+      60: '07-AUIN-205/2026',
+      63: 'MARTHA LOPEZ LARA',
+      65: 'Seguimiento a siniestro',
+      89: 'Siniestros',
+      285: '6426',
+      291: 'José Juan',
+    })
+    const [caso] = construirCasos([f], MAPA, ENCABEZADOS, 2026)
+    expect(caso.area).toBe('Siniestros')
+    expect(caso.tipoSiniestro).toBe('Daño parcial')
+    expect(caso.tipoAtencion).toBe('Seguimiento a siniestro')
+    expect(caso.numeroSiniestro).toBe('07-AUIN-205/2026')
+    expect(caso.nombreCliente).toBe('MARTHA LOPEZ LARA')
+    // Ninguna petición de siniestros trae tipo de trámite: medido, 0 de 268.
+    expect(caso.tipoTramite).toBeNull()
+  })
+
+  it('una petición de la mesa deja los campos del ramo en nulo', () => {
+    const [caso] = construirCasos([FILA_7176], MAPA, ENCABEZADOS, 2026)
+    expect(caso.tipoSiniestro).toBeNull()
+    expect(caso.numeroSiniestro).toBeNull()
+  })
+
   it('expone el correo del ejecutivo comercial por separado, para la copia', () => {
     const [caso] = construirCasos([FILA_7176], MAPA, ENCABEZADOS, 2026)
     expect(caso.correoSolicitante).toBe('comercial28@garantiplus.mx')

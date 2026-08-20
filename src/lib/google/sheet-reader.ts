@@ -114,7 +114,11 @@ export function construirCasos(
       folio: campo(fila, 'folio'),
       marcaTemporalIso: marcaTemporal.toISOString(),
       marcaTemporalTexto,
+      area: campo(fila, 'area'),
       tipoTramite: campo(fila, 'tipoTramite'),
+      tipoSiniestro: campo(fila, 'tipoSiniestro'),
+      tipoAtencion: campo(fila, 'tipoAtencion'),
+      numeroSiniestro: campo(fila, 'numeroSiniestro'),
       tipoNegocio: campo(fila, 'tipoNegocio'),
       nombreSolicitante: campo(fila, 'nombreSolicitante'),
       // Si el formulario solo trae el correo del ejecutivo, ese es el contacto.

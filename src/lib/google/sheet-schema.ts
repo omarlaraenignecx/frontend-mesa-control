@@ -1,6 +1,10 @@
 export type CampoLogico =
   | 'marcaTemporal'
+  | 'area'
   | 'tipoTramite'
+  | 'tipoSiniestro'
+  | 'tipoAtencion'
+  | 'numeroSiniestro'
   | 'tipoNegocio'
   | 'nombreSolicitante'
   | 'correoSolicitante'
@@ -37,12 +41,37 @@ export type MapaEsquema = {
  */
 const ALIAS: Record<CampoLogico, string[]> = {
   marcaTemporal: ['marca temporal'],
+
+  /**
+   * A qué área de Gplus va dirigida la petición: `Mesa de control`, `Siniestros` o
+   * `Ingresos y Egresos`. Es lo que separa los dos módulos de la aplicación.
+   *
+   * Dos encabezados para lo mismo: el formulario pregunta "Áreas de GPLUS SEGUROS:"
+   * en unos bloques y "Gplus Seguros" en otros. Medido el 20/8/2026 sobre la hoja,
+   * 268 filas dicen Siniestros y **ninguna** trae la rama de preguntas del ramo sin
+   * decirlo, así que esta columna es la regla completa: no hace falta adivinar por el
+   * contenido de las demás.
+   */
+  area: ['areas de gplus seguros', 'gplus seguros'],
+
   tipoTramite: [
     'tipo de tramite',
     'tramite',
     'indicar tipo de tramite solicitado',
     'indicar el tipo de solicitud',
   ],
+
+  /**
+   * Los tres campos del ramo de siniestros. Las peticiones de siniestros **no traen
+   * tipo de trámite** —0 de las 268 medidas el 20/8/2026—, así que estos son los que
+   * clasifican y describen un caso en ese módulo. Antes caían en los campos
+   * adicionales, donde estaban visibles pero no se podían filtrar ni usar en el
+   * correo.
+   */
+  tipoSiniestro: ['tipo de siniestro'],
+  tipoAtencion: ['tipo de atencion'],
+  numeroSiniestro: ['numero de siniestro'],
+
   tipoNegocio: ['tipo de negocio', 'favor de indicar tipo de negocio'],
   nombreSolicitante: [
     'nombre del solicitante',
