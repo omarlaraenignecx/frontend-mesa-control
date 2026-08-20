@@ -39,9 +39,25 @@ export const SIN_ESTATUS = 'sin'
  */
 export const ESTATUS_POR_OMISION = [SIN_ESTATUS]
 
+/**
+ * Con qué campo del caso clasifica sus casos un módulo.
+ *
+ * La mesa clasifica por tipo de trámite. Siniestros no puede: **ninguna** de sus
+ * peticiones trae ese dato —0 de 268 medidas el 20/8/2026—, así que su selector
+ * saldría siempre vacío. El ramo clasifica por tipo de siniestro.
+ */
+export type CampoClasificacion = 'tipoTramite' | 'tipoSiniestro'
+
+export const CLASIFICACION_POR_OMISION: CampoClasificacion = 'tipoTramite'
+
 export type Filtros = {
   texto?: string
-  tipoTramite?: string
+  /**
+   * Valor del campo de clasificación que se acepta. No se llama `tipoTramite`
+   * porque cada módulo clasifica con el suyo; ver `CampoClasificacion`.
+   */
+  clasificacion?: string
+  campoClasificacion?: CampoClasificacion
   /** Valores de Estatus Final aceptados; SIN_ESTATUS representa la celda vacía. */
   estatusFinal?: string[]
   responsable?: string
@@ -76,6 +92,11 @@ function coincideTexto(caso: Caso, aguja: string): boolean {
     caso.nombreCliente,
     caso.folioInterno,
     caso.tipoTramite,
+    // Nulos en las peticiones de la mesa, así que no cambian su búsqueda. En
+    // siniestros el número es lo que la aseguradora usa para referirse al caso, y
+    // es por donde José lo va a buscar.
+    caso.tipoSiniestro,
+    caso.numeroSiniestro,
   ]
   return campos.some((c) => c && normalizar(c).includes(aguja))
 }
@@ -97,7 +118,7 @@ export function filtrar(casos: Caso[], filtros: Filtros, hoy: Date = new Date())
   // caso el corte por antigüedad estorba, así que se desactiva.
   const busquedaExplicita = Boolean(
     aguja ||
-      filtros.tipoTramite ||
+      filtros.clasificacion ||
       filtros.estatusFinal?.length ||
       filtros.responsable ||
       filtros.agencia,
@@ -116,7 +137,8 @@ export function filtrar(casos: Caso[], filtros: Filtros, hoy: Date = new Date())
       if (vista === 'rezago' && enVentana) return false
     }
 
-    if (filtros.tipoTramite && caso.tipoTramite !== filtros.tipoTramite) return false
+    const campo = filtros.campoClasificacion ?? CLASIFICACION_POR_OMISION
+    if (filtros.clasificacion && caso[campo] !== filtros.clasificacion) return false
     if (filtros.responsable && caso.quienAtendio !== filtros.responsable) return false
     if (filtros.agencia && caso.agencia !== filtros.agencia) return false
     if (aguja && !coincideTexto(caso, aguja)) return false
@@ -124,14 +146,22 @@ export function filtrar(casos: Caso[], filtros: Filtros, hoy: Date = new Date())
   })
 }
 
-export function opcionesDeFiltro(casos: Caso[]) {
+/**
+ * Los valores que de verdad existen en los casos que se están mirando, para llenar
+ * los selectores. Salen de los datos y no de un catálogo fijo: la hoja tiene
+ * variantes que ningún catálogo escrito a mano tendría.
+ */
+export function opcionesDeFiltro(
+  casos: Caso[],
+  campoClasificacion: CampoClasificacion = CLASIFICACION_POR_OMISION,
+) {
   const unicos = (valores: (string | null)[]) =>
     [...new Set(valores.filter((v): v is string => Boolean(v?.trim())))].sort((a, b) =>
       a.localeCompare(b, 'es'),
     )
 
   return {
-    tiposTramite: unicos(casos.map((c) => c.tipoTramite)),
+    clases: unicos(casos.map((c) => c[campoClasificacion])),
     estatus: unicos(casos.map((c) => c.estatusFinal)),
     responsables: unicos(casos.map((c) => c.quienAtendio)),
     agencias: unicos(casos.map((c) => c.agencia)),

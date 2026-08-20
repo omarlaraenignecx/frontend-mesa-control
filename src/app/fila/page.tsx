@@ -119,7 +119,7 @@ export default async function PaginaDeLaFila({
 
   const filtrosBase = {
     texto: params.q,
-    tipoTramite: params.tramite,
+    clasificacion: params.tramite,
     responsable: params.responsable,
     estatusFinal: estatusElegidos,
   }

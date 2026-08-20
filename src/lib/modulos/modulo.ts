@@ -1,5 +1,6 @@
 import { esSiniestro } from '@/lib/casos/area'
 import type { Caso } from '@/lib/casos/caso'
+import type { CampoClasificacion } from '@/lib/casos/cola'
 
 /**
  * Los dos módulos de la herramienta. La Mesa de Control y la Atención a Siniestros
@@ -14,15 +15,10 @@ import type { Caso } from '@/lib/casos/caso'
 export type Modulo = 'mesa' | 'siniestros'
 
 /**
- * Con qué campo clasifica sus casos cada módulo.
- *
- * Existe porque las peticiones de siniestros **no traen tipo de trámite** —0 de las
- * 268 medidas—, así que ese selector saldría siempre vacío en su listado. El ramo
- * clasifica por tipo de siniestro: Daño parcial, Pérdida total, Asistencia vial,
- * Asistencia legal.
+ * Con qué campo clasifica sus casos cada módulo, y cómo se llama eso en la
+ * pantalla. El ramo clasifica por tipo de siniestro: Daño parcial, Pérdida total,
+ * Asistencia vial, Asistencia legal.
  */
-export type CampoClasificacion = 'tipoTramite' | 'tipoSiniestro'
-
 export type Clasificacion = {
   campo: CampoClasificacion
   /** Nombre del parámetro en la URL. */

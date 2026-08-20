@@ -13,7 +13,7 @@ import {
 } from '@/lib/casos/seleccion-estatus'
 
 type Opciones = {
-  tiposTramite: string[]
+  clases: string[]
   responsables: string[]
   estatus: string[]
 }
@@ -181,7 +181,7 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
         onChange={(e) => aplicar({ tramite: e.target.value })}
       >
         <option value="">Todos los trámites</option>
-        {opciones.tiposTramite.map((t) => (
+        {opciones.clases.map((t) => (
           <option key={t} value={t}>
             {t}
           </option>
