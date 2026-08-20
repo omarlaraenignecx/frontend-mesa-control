@@ -1,3 +1,4 @@
+import { normalizarTexto as normalizar } from '@/lib/texto'
 import { fechaDe, type Caso } from './caso'
 import { diasDeEspera } from './semaforo'
 
@@ -46,14 +47,6 @@ export type Filtros = {
   responsable?: string
   agencia?: string
   vista?: Vista
-}
-
-function normalizar(texto: string): string {
-  return texto
-    .normalize('NFD')
-    .replace(/\p{Mn}/gu, '')
-    .toLowerCase()
-    .trim()
 }
 
 /**
