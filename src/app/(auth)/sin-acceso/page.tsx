@@ -1,7 +1,11 @@
 import Link from 'next/link'
 
 const MENSAJES: Record<string, string> = {
-  'dominio-ajeno': 'Esa cuenta no pertenece al dominio gplusseguros.mx.',
+  // Ya no es el dominio lo que cierra la puerta, sino no estar en la lista. El
+  // mensaje distingue los dos casos porque ayudan a cosas distintas: a alguien de la
+  // empresa, saber que hay que agregarlo; a alguien de fuera, que se equivocó de cuenta.
+  'dominio-ajeno':
+    'Esa cuenta no está autorizada y tampoco es del dominio gplusseguros.mx. Revisa si entraste con la cuenta correcta.',
   'fuera-de-allowlist':
     'Tu cuenta no está en la lista de personas autorizadas de la Mesa de Control.',
   inactivo: 'Tu acceso a la herramienta está desactivado.',
