@@ -259,9 +259,24 @@ describe('timbre', () => {
     expect(AJUSTE).toContain('if (siguiente) void probar()')
   })
 
-  it('si el navegador no deja sonar, el panel lo dice en lugar de quedarse mudo', () => {
-    expect(TIMBRE).toContain('export async function probarTimbre(): Promise<boolean>')
-    expect(AJUSTE).toContain('setBloqueado(!(await probarTimbre()))')
+  it('Probar informa qué encontró, no solo si sí o no', () => {
+    // «No suena» tiene varias causas que se arreglan distinto y desde fuera del
+    // navegador no se distinguen. Un booleano obligaba a adivinar cuál era.
+    expect(TIMBRE).toContain('export async function probarTimbre(): Promise<DiagnosticoTimbre>')
+    expect(TIMBRE).toContain('estado: AudioContextState')
+    expect(AJUSTE).toContain('setDiagnostico(await probarTimbre())')
+  })
+
+  it('el panel distingue las tres causas de silencio', () => {
+    // Audio bloqueado por el navegador, audio cerrado, y audio corriendo pero sin
+    // que se oiga —volumen del sistema o salida equivocada—, que es la que más
+    // desconcierta porque desde la aplicación todo está bien.
     expect(AJUSTE).toMatch(/no dejó sonar el timbre/)
+    expect(AJUSTE).toMatch(/cerró el audio de la página/)
+    expect(AJUSTE).toMatch(/volumen del sistema/)
+  })
+
+  it('el panel muestra el estado del audio, para poder reportarlo', () => {
+    expect(AJUSTE).toContain('audio: {diagnostico.estado}')
   })
 })
