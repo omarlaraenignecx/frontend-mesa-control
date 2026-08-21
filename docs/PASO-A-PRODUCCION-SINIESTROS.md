@@ -55,21 +55,33 @@ La plantilla `Siniestros` sigue con el borrador y su marcador
 `/siniestros/ajustes`. Puede usar las variables del ramo, que el editor lista: número de
 siniestro, póliza, aseguradora, cliente, tipo de siniestro.
 
-## Paso 3 · Desplegar
+## Paso 3 · Desplegar — **hecho el 21 de agosto de 2026**
 
-1. Fusionar `siniestros` en `main` y empujar.
-2. Desplegar a Vercel. **No hay variables de entorno nuevas.**
-3. Comprobar en producción: `/login` responde, `/siniestros` lista los casos del ramo,
-   y `/api/notificaciones/siniestros-correos` responde **401 sin el secreto** y
-   `{"ok":true,…}` con él.
+Fusionado en `main` (`6ef090b`), empujado y desplegado. Sin variables de entorno nuevas.
 
-## Paso 4 · El flujo de n8n
+Comprobado en producción, en ese orden:
 
-`Atención a Siniestros · Correos recibidos` — `MXctPqIoE61JGvoR`. Está **desactivado**.
-Se activa aquí, cuando la ruta ya existe en producción y hay cuenta autorizada.
+| Comprobación | Resultado |
+| --- | --- |
+| Mapeo del área en la **hoja productiva** | `BE, CK, CT, CU, FC, FD, HL, HM`; 9 casos del ramo de 1,528 |
+| `/login` | 200 |
+| `/fila`, `/siniestros`, `/siniestros/ajustes` | 307 al login sin sesión, que es lo correcto |
+| Las tres rutas de n8n **sin** secreto | 401 |
+| `/api/notificaciones/siniestros-correos` con secreto | `{"ok":true,"buzon":"mesadecontrol@…","provisional":false,"mensajes":30,"avisos":0}` |
+| Las dos rutas de la mesa | siguen respondiendo igual |
 
-Antes de activarlo conviene una corrida a mano con el secreto: si responde
-`{"ok":true,"sinCuenta":true}`, es que nadie autorizó todavía y el paso 1 quedó a medias.
+El mapeo contra la hoja productiva se comprobó **antes** de desplegar y no después: si
+sus encabezados hubieran cambiado, el área no se resolvería y los siniestros no se
+separarían. Falla del lado seguro —todo se vería como de la mesa—, pero silenciosa.
+
+## Paso 4 · El flujo de n8n — **hecho el 21 de agosto de 2026**
+
+`Atención a Siniestros · Correos recibidos` — `MXctPqIoE61JGvoR`, **activo**. Cuatro
+ejecuciones en `success` al minuto de activarlo, respondiendo lo esperado.
+
+Se activó con la cuenta de la mesa designada, no con la de José. Es deliberado: sin el
+flujo activo, una respuesta a un caso del ramo no avisaría a nadie. Cuando José autorice
+la suya, el flujo no se toca —lee la cuenta designada en cada corrida—.
 
 ## Paso 5 · Limpiar la copia de pruebas
 

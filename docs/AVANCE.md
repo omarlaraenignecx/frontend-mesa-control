@@ -8,7 +8,7 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Diseño técnico | `docs/superpowers/specs/2026-08-05-frontend-mesa-control-design.md` |
 | Repositorio | https://github.com/omarlaraenignecx/frontend-mesa-control |
 | Producción | https://frontend-mesa-control.vercel.app |
-| Última actualización | 20 de agosto de 2026 (módulo de Atención a Siniestros: etapas 1 y 2 de 6, en rama `siniestros`) |
+| Última actualización | 21 de agosto de 2026 (módulo de Atención a Siniestros **en producción**; falta que José autorice su cuenta de correo y escriba su plantilla) |
 
 ## Estado por etapas
 
@@ -25,12 +25,9 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Notificaciones en vivo | **Completa y en producción** desde el 17/8/2026, con los dos flujos de n8n activos | `docs/superpowers/plans/2026-08-14-notificaciones.md` · salida: `docs/PASO-A-PRODUCCION-NOTIFICACIONES.md` |
 | Avisos de escritorio | **Completa y en producción**, probada en local contra la copia con ocho peticiones simuladas y un correo real | `docs/superpowers/plans/2026-08-17-avisos-escritorio.md` · salida: punto 11 de `docs/PASO-A-PRODUCCION-NOTIFICACIONES.md` |
 | 4 · Producción y cierre | En curso: hoja productiva en uso; falta la jornada real y el cierre documental | `docs/superpowers/plans/2026-08-13-etapa-4-produccion-y-cierre.md` |
-| Atención a Siniestros · 1 cimientos y 2 listado | **Completas en la rama `siniestros`**, verificadas contra la copia de la hoja; sin desplegar | `docs/superpowers/plans/2026-08-20-siniestros-cimientos-y-listado.md` · diseño: `docs/superpowers/specs/2026-08-20-modulo-siniestros-design.md` |
-| Atención a Siniestros · 5 avisos (parte) | **Hecha en la rama `siniestros`**: columna `notificaciones.modulo` aplicada a la base, sondeo y avisos de escritorio separados por módulo. Falta la ruta de correos del buzón de siniestros, que depende de la etapa 3 | mismo diseño, sección 9 |
-| Atención a Siniestros · 3 cuenta de Gmail | **Hecha en la rama `siniestros`**: tablas `credenciales_siniestros` y `ejecutivos_siniestros` creadas en la base, rutas OAuth, `/siniestros/ajustes`. Falta que José dé el consentimiento con su cuenta | `docs/superpowers/plans/2026-08-20-siniestros-cuenta-de-gmail.md` |
-| Atención a Siniestros · 4 y 6 | Pendientes: vista del caso y su correo con marca y firma, prueba y despliegue | mismo diseño, sección 10 |
+| Atención a Siniestros (etapas 1 a 6) | **Completa y en producción** desde el 21 de agosto de 2026, con su flujo de n8n activo. Pendiente de José: autorizar su cuenta de correo y escribir el texto de la plantilla del ramo | diseño: `docs/superpowers/specs/2026-08-20-modulo-siniestros-design.md` · salida: `docs/PASO-A-PRODUCCION-SINIESTROS.md` |
 
-Suite: **604 pruebas** en 59 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
+Suite: **633 pruebas** en 59 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
 
 ## Infraestructura
 
