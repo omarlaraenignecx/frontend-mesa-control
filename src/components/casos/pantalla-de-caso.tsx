@@ -22,7 +22,7 @@ import { leerPlantillaDeCaso } from '@/lib/correo/plantillas'
 import { sustituirVariables, variablesDelCaso } from '@/lib/correo/render-correo'
 import { buzonDelCaso } from '@/lib/casos/buzon'
 import type { ConfigModulo } from '@/lib/modulos/modulo'
-import { estaVivo } from '@/lib/casos/caso'
+import { claseDelCaso, estaVivo } from '@/lib/casos/caso'
 import { leerBitacora } from '@/lib/casos/bitacora'
 import { listarArchivos } from '@/lib/casos/archivos'
 import { agruparCamposExtra } from '@/lib/casos/campos-extra'
@@ -95,7 +95,7 @@ export async function PantallaDeCaso({
     tipo: 'caso_visualizado',
     fila,
     folio: caso.folio,
-    tipoTramite: caso.tipoTramite,
+    tipoTramite: claseDelCaso(caso),
     correoUsuario: usuario.correo,
   })
 

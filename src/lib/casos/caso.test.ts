@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { partesDeLaMesa } from '@/lib/reloj'
-import { estaVivo, parsearFechaHoja, sinFolio } from './caso'
+import { claseDelCaso, estaVivo, parsearFechaHoja, sinFolio } from './caso'
 import { casoDePrueba as caso } from './__fixtures__/caso'
 
 describe('parsearFechaHoja', () => {
@@ -68,5 +68,24 @@ describe('sinFolio', () => {
     expect(sinFolio(caso({ folio: null }))).toBe(true)
     expect(sinFolio(caso({ folio: '   ' }))).toBe(true)
     expect(sinFolio(caso({ folio: '7000' }))).toBe(false)
+  })
+})
+
+describe('claseDelCaso', () => {
+  it('en la mesa es el tipo de trámite', () => {
+    expect(claseDelCaso(caso())).toBe('Emisión')
+  })
+
+  it('en siniestros es el tipo de siniestro', () => {
+    // Los eventos de BI guardaban `tipoTramite` a secas, así que cada evento del ramo
+    // se anotaba sin clasificación y el reporteo no podía distinguir un daño parcial
+    // de una pérdida total.
+    expect(claseDelCaso({ tipoTramite: null, tipoSiniestro: 'Pérdida total' })).toBe(
+      'Pérdida total',
+    )
+  })
+
+  it('sin ninguno de los dos, nulo', () => {
+    expect(claseDelCaso({ tipoTramite: null, tipoSiniestro: null })).toBeNull()
   })
 })

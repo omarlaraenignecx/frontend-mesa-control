@@ -86,6 +86,19 @@ export function estaVivo(caso: Pick<Caso, 'estatusFinal'>): boolean {
   return !ESTATUS_TERMINALES.includes(estatus as (typeof ESTATUS_TERMINALES)[number])
 }
 
+/**
+ * Con qué se clasifica un caso, sea del módulo que sea.
+ *
+ * La mesa clasifica por tipo de trámite y siniestros por tipo de siniestro, y ningún
+ * caso trae los dos. Existe para que lo que guarda o muestra la clasificación no tenga
+ * que saber de módulos: los eventos de BI guardaban `tipoTramite` a secas, así que
+ * cada evento del ramo se anotaba sin clasificación —nulo— y el reporteo se quedaba
+ * sin poder distinguir un daño parcial de una pérdida total.
+ */
+export function claseDelCaso(caso: Pick<Caso, 'tipoTramite' | 'tipoSiniestro'>): string | null {
+  return caso.tipoTramite ?? caso.tipoSiniestro
+}
+
 export function sinFolio(caso: Pick<Caso, 'folio'>): boolean {
   return !caso.folio?.trim()
 }

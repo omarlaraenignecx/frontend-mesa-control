@@ -3,6 +3,7 @@
 import { revalidatePath, updateTag } from 'next/cache'
 import { requerirUsuario } from '@/lib/auth/guard'
 import { registrarAccion } from '@/lib/casos/bitacora'
+import { claseDelCaso } from '@/lib/casos/caso'
 import { cargarCaso, depsDeGoogle } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
 import { buzonDelCaso } from '@/lib/casos/buzon'
@@ -143,7 +144,7 @@ export async function enviarMensaje(fila: number, datos: FormData): Promise<Resu
     tipo: esPrimero ? 'conversacion_iniciada' : 'respuesta_enviada',
     fila,
     folio: caso.folio,
-    tipoTramite: caso.tipoTramite,
+    tipoTramite: claseDelCaso(caso),
     estatusResultante: caso.estatusFinal,
     correoUsuario: usuario.correo,
   })
@@ -286,7 +287,7 @@ export async function reenviarCadena(fila: number, datos: FormData): Promise<Res
     tipo: 'cadena_reenviada',
     fila,
     folio: caso.folio,
-    tipoTramite: caso.tipoTramite,
+    tipoTramite: claseDelCaso(caso),
     estatusResultante: caso.estatusFinal,
     correoUsuario: usuario.correo,
   })
