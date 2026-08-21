@@ -20,6 +20,8 @@ type Props = {
   destinatario: string | null
   copiaSugerida: string | null
   casoCerrado: boolean
+  /** La ruta de este caso en su módulo, para revalidar la que se está viendo. */
+  rutaDelCaso: string
 }
 
 const enMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(1)
@@ -41,6 +43,7 @@ export function Conversacion({
   destinatario,
   copiaSugerida,
   casoCerrado,
+  rutaDelCaso,
 }: Props) {
   const hayHilo = estado.estado === 'con-conversacion'
   const [cuerpo, setCuerpo] = useState(hayHilo ? '' : plantilla)
@@ -109,7 +112,7 @@ export function Conversacion({
           variant="outline"
           size="sm"
           disabled={pendiente}
-          onClick={() => iniciar(async () => { await refrescarConversacion(fila); router.refresh() })}
+          onClick={() => iniciar(async () => { await refrescarConversacion(fila, rutaDelCaso); router.refresh() })}
         >
           Reintentar
         </Button>
@@ -130,7 +133,7 @@ export function Conversacion({
             variant="ghost"
             size="sm"
             disabled={pendiente}
-            onClick={() => iniciar(async () => { await refrescarConversacion(fila); router.refresh() })}
+            onClick={() => iniciar(async () => { await refrescarConversacion(fila, rutaDelCaso); router.refresh() })}
           >
             <RefreshCw className="mr-1.5 size-4" />
             {pendiente ? 'Actualizando…' : 'Actualizar'}

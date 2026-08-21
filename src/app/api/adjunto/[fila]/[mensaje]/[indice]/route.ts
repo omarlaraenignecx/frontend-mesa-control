@@ -1,5 +1,7 @@
 import { requerirUsuario } from '@/lib/auth/guard'
-import { depsGmail, leerVinculo } from '@/lib/casos/hilo'
+import { buzonDelCaso } from '@/lib/casos/buzon'
+import { cargarCaso } from '@/lib/casos/consulta'
+import { leerVinculo } from '@/lib/casos/hilo'
 import { leerAdjunto, leerHilo, ubicarAdjunto } from '@/lib/google/gmail-thread'
 
 /**
@@ -28,8 +30,13 @@ export async function GET(
     return new Response('Ese caso no tiene conversación registrada.', { status: 404 })
   }
 
+  // El adjunto vive en el buzón donde vive la conversación, y eso lo decide el área
+  // del caso: pedirlo con el token de la mesa daría 404 en un caso del ramo.
+  const cargado = await cargarCaso(fila)
+  if (!cargado) return new Response('Ese caso ya no está en la hoja.', { status: 404 })
+
   try {
-    const deps = await depsGmail()
+    const { deps } = await buzonDelCaso(cargado.caso)
     const hilo = await leerHilo(deps, vinculo.threadId)
 
     const ubicado = ubicarAdjunto(hilo, mensajeId, indice)

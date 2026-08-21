@@ -3,7 +3,7 @@ import { mensajesRecientes, metadatosDeMensaje } from './gmail-buzon'
 
 const DEPS = {
   accessToken: 'ya29.token',
-  correoMesa: 'mesadecontrol@gplusseguros.mx',
+  correoBuzon: 'mesadecontrol@gplusseguros.mx',
 }
 
 function conRespuesta(cuerpo: unknown, status = 200) {

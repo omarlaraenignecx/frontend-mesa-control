@@ -14,7 +14,17 @@ export type Caso = {
   folio: string | null
   marcaTemporalIso: string | null
   marcaTemporalTexto: string
+  /**
+   * A qué área de Gplus va dirigida la petición. Es lo que separa la Mesa de Control
+   * del módulo de Atención a Siniestros; ver `lib/casos/area.ts`.
+   */
+  area: string | null
   tipoTramite: string | null
+  /** Campos del ramo de siniestros. Nulos en las peticiones de la mesa. */
+  tipoSiniestro: string | null
+  tipoAtencion: string | null
+  numeroSiniestro: string | null
+  poliza: string | null
   tipoNegocio: string | null
   nombreSolicitante: string | null
   correoSolicitante: string | null
@@ -74,6 +84,19 @@ export function estaVivo(caso: Pick<Caso, 'estatusFinal'>): boolean {
   const estatus = (caso.estatusFinal ?? '').trim().toLowerCase()
   if (!estatus) return true
   return !ESTATUS_TERMINALES.includes(estatus as (typeof ESTATUS_TERMINALES)[number])
+}
+
+/**
+ * Con qué se clasifica un caso, sea del módulo que sea.
+ *
+ * La mesa clasifica por tipo de trámite y siniestros por tipo de siniestro, y ningún
+ * caso trae los dos. Existe para que lo que guarda o muestra la clasificación no tenga
+ * que saber de módulos: los eventos de BI guardaban `tipoTramite` a secas, así que
+ * cada evento del ramo se anotaba sin clasificación —nulo— y el reporteo se quedaba
+ * sin poder distinguir un daño parcial de una pérdida total.
+ */
+export function claseDelCaso(caso: Pick<Caso, 'tipoTramite' | 'tipoSiniestro'>): string | null {
+  return caso.tipoTramite ?? caso.tipoSiniestro
 }
 
 export function sinFolio(caso: Pick<Caso, 'folio'>): boolean {

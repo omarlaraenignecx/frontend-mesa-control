@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { Input } from '@/components/ui/input'
 import { SIN_ESTATUS } from '@/lib/casos/cola'
+import { moduloPorClave, type Modulo } from '@/lib/modulos/modulo'
 import {
   alternarEstatus,
   alternarTodos,
@@ -13,7 +14,7 @@ import {
 } from '@/lib/casos/seleccion-estatus'
 
 type Opciones = {
-  tiposTramite: string[]
+  clases: string[]
   responsables: string[]
   estatus: string[]
 }
@@ -31,10 +32,13 @@ const selectClase =
 function FiltroEstatus({
   valores,
   seleccion,
+  omision,
   onCambio,
 }: {
   valores: string[]
   seleccion: string[]
+  /** Cómo se llama la selección por omisión del módulo: "Pendientes", "Abiertos". */
+  omision: string
   onCambio: (nueva: string[]) => void
 }) {
   const [abierto, setAbierto] = useState(false)
@@ -64,7 +68,7 @@ function FiltroEstatus({
   const resumen = completo
     ? 'Todos'
     : seleccion.length === 0
-      ? 'Pendientes'
+      ? omision
       : seleccion.length <= 2
         ? seleccion.map(etiquetaDe).join(', ')
         : `${seleccion.length} seleccionados`
@@ -118,7 +122,7 @@ function FiltroEstatus({
               className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-base text-muted-foreground hover:bg-secondary hover:text-foreground"
             >
               <Check className="size-4" />
-              Volver a solo los pendientes
+              Volver a {omision.toLocaleLowerCase('es')}
             </button>
           )}
         </div>
@@ -127,7 +131,12 @@ function FiltroEstatus({
   )
 }
 
-export function Filtros({ opciones }: { opciones: Opciones }) {
+/**
+ * Recibe la clave del módulo y no su configuración: las funciones de
+ * `ConfigModulo` no viajan del servidor al cliente.
+ */
+export function Filtros({ modulo, opciones }: { modulo: Modulo; opciones: Opciones }) {
+  const { rutaLista, clasificacion, estatusPorOmision } = moduloPorClave(modulo)
   const router = useRouter()
   // Cambiar de filtro no cambia de ruta, solo los parámetros, y en ese caso
   // `loading.tsx` no se vuelve a mostrar: el aviso de aquí es la única señal de
@@ -143,7 +152,7 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
       else nuevos.delete(k)
     }
     iniciarTransicion(() => {
-      router.push(`/fila?${nuevos.toString()}`)
+      router.push(`${rutaLista}?${nuevos.toString()}`)
     })
   }
 
@@ -171,17 +180,18 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
       <FiltroEstatus
         valores={opciones.estatus}
         seleccion={estatusElegidos}
+        omision={estatusPorOmision.etiqueta}
         onCambio={(nueva) => aplicar({ estatus: nueva.join(',') })}
       />
 
       <select
-        aria-label="Filtrar por trámite"
+        aria-label={clasificacion.filtro}
         className={selectClase}
-        value={params.get('tramite') ?? ''}
-        onChange={(e) => aplicar({ tramite: e.target.value })}
+        value={params.get(clasificacion.param) ?? ''}
+        onChange={(e) => aplicar({ [clasificacion.param]: e.target.value })}
       >
-        <option value="">Todos los trámites</option>
-        {opciones.tiposTramite.map((t) => (
+        <option value="">{clasificacion.todos}</option>
+        {opciones.clases.map((t) => (
           <option key={t} value={t}>
             {t}
           </option>
@@ -202,14 +212,14 @@ export function Filtros({ opciones }: { opciones: Opciones }) {
         ))}
       </select>
 
-      {['q', 'tramite', 'responsable', 'estatus'].some((k) => params.get(k)) && (
+      {['q', clasificacion.param, 'responsable', 'estatus'].some((k) => params.get(k)) && (
         <button
           type="button"
           onClick={() => {
             setTexto('')
             const vista = params.get('vista')
             iniciarTransicion(() => {
-              router.push(vista ? `/fila?vista=${vista}` : '/fila')
+              router.push(vista ? `${rutaLista}?vista=${vista}` : rutaLista)
             })
           }}
           className="text-base text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"

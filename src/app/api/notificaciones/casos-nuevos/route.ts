@@ -2,6 +2,7 @@ import { revalidateTag } from 'next/cache'
 import { depsDeGoogle } from '@/lib/casos/consulta'
 import { generarFoliosPendientes } from '@/lib/casos/generacion-folios'
 import { leerCasos } from '@/lib/google/sheet-reader'
+import { moduloDelCaso } from '@/lib/modulos/modulo'
 import {
   guardarMarca,
   guardarNotificaciones,
@@ -53,11 +54,15 @@ export async function POST(request: Request) {
 
   const avisos = await guardarNotificaciones(
     nuevos.map((c) => ({
+      // El área declarada en el formulario decide a qué campanita va el aviso. Se
+      // resuelve aquí, con la hoja ya leída, y queda escrito en el aviso.
+      modulo: moduloDelCaso(c).clave,
       tipo: 'caso_nuevo' as const,
       fila: c.fila,
       folio: folioDe(c.fila),
       titulo: `Petición nueva de ${c.nombreSolicitante ?? 'un solicitante'}`,
-      detalle: [c.tipoTramite, c.agencia].filter(Boolean).join(' · ') || null,
+      // Un siniestro no trae tipo de trámite; sí trae tipo de siniestro.
+      detalle: [c.tipoTramite ?? c.tipoSiniestro, c.agencia].filter(Boolean).join(' · ') || null,
       clave: claveDeCasoNuevo(hoja, c.fila),
     })),
   )

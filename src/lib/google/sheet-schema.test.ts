@@ -43,6 +43,30 @@ describe('construirMapa con los 307 encabezados reales', () => {
     )
   })
 
+  it('resuelve el área en sus dos encabezados distintos', () => {
+    // BE, CU, FD y HM dicen "Áreas de GPLUS SEGUROS:"; CK, CT y HL dicen
+    // "Gplus Seguros". Es la misma pregunta y decide a qué módulo va el caso.
+    expect(mapa.columnasPorCampo.area).toEqual([57, 89, 98, 99, 159, 160, 220, 221])
+  })
+
+  it('el área es del formulario, nunca de la franja de seguimiento', () => {
+    const frontera = mapa.columnasPorCampo.folio[0]
+    expect(mapa.columnasPorCampo.area.every((c) => c < frontera)).toBe(true)
+  })
+
+  it('los campos del ramo de siniestros dejan de quedar sin clasificar', () => {
+    expect(mapa.columnasPorCampo.tipoSiniestro).toEqual([3, 7, 144, 205, 266])
+    expect(mapa.columnasPorCampo.numeroSiniestro).toEqual([60, 147, 208, 269])
+    expect(mapa.columnasPorCampo.tipoAtencion).toEqual([65, 143, 204, 265, 279])
+    for (const c of [3, 60, 65]) expect(mapa.indicesSinResolver).not.toContain(c)
+  })
+
+  it('el número de siniestro no se traga la pregunta larga que lo menciona', () => {
+    // La columna 5 pide "número de póliza, número de siniestro, nombre del
+    // asegurado y contacto"; es otra pregunta y no es el número de siniestro.
+    expect(mapa.columnasPorCampo.numeroSiniestro).not.toContain(5)
+  })
+
   it('reúne en un solo campo las 41 columnas del motivo de la petición', () => {
     expect(mapa.columnasPorCampo.motivo.length).toBeGreaterThanOrEqual(41)
   })

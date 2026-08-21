@@ -49,6 +49,15 @@ export const bloqueos = pgTable('bloqueos', {
 export const casosHilo = pgTable('casos_hilo', {
   fila: integer('fila').primaryKey(),
   threadId: text('thread_id').notNull(),
+  /**
+   * En qué buzón vive esta conversación. Con omisión `mesa`, que es lo que eran todas
+   * al agregarse la columna el 20 de agosto de 2026.
+   *
+   * Un `threadId` solo existe dentro del buzón que lo emitió: sin esta columna, la
+   * ruta que revisa la bandeja de siniestros buscaría ahí hilos de la mesa y no
+   * encontraría ninguno, o al revés.
+   */
+  modulo: text('modulo').notNull().default('mesa'),
   asuntoNormalizado: text('asunto_normalizado').notNull(),
   folioUsado: text('folio_usado').notNull(),
   creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
@@ -107,6 +116,41 @@ export const archivosCaso = pgTable('archivos_caso', {
   creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
 })
 
+/**
+ * Los buzones autorizados para el módulo de Atención a Siniestros.
+ *
+ * Tabla aparte de `credencial_mesa` y no una fila más ahí porque son cosas
+ * distintas: la mesa tiene **una** credencial y el módulo tiene **varias**, una por
+ * ejecutivo, de las cuales una está designada para enviar. La llave es el correo del
+ * buzón que Google reporta al autorizar, no el del usuario en sesión.
+ */
+export const credencialesSiniestros = pgTable('credenciales_siniestros', {
+  correo: text('correo').primaryKey(),
+  refreshTokenCifrado: text('refresh_token_cifrado').notNull(),
+  scopes: jsonb('scopes').$type<string[]>().notNull(),
+  /** Quién estaba en sesión al dar el consentimiento. Puede no ser el dueño del buzón. */
+  autorizadoPor: text('autorizado_por').notNull(),
+  autorizadoEn: timestamp('autorizado_en', { withTimezone: true }).notNull().defaultNow(),
+  ultimoUso: timestamp('ultimo_uso', { withTimezone: true }),
+  ultimoError: text('ultimo_error'),
+})
+
+/**
+ * La ficha con la que firma un ejecutivo de siniestros.
+ *
+ * Separada de la credencial a propósito: la ficha tiene que poder existir **antes**
+ * de que su dueño autorice el buzón. Si vivieran juntas, la prueba del módulo sin la
+ * persona disponible saldría sin firma o con una escrita en el código.
+ */
+export const ejecutivosSiniestros = pgTable('ejecutivos_siniestros', {
+  correo: text('correo').primaryKey(),
+  nombre: text('nombre').notNull(),
+  puesto: text('puesto').notNull(),
+  telefono: text('telefono').notNull(),
+  actualizadoPor: text('actualizado_por'),
+  actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
+})
+
 /** Configuración interna en pares clave-valor, como el id de la carpeta de Drive. */
 export const ajustesApp = pgTable('ajustes_app', {
   clave: text('clave').primaryKey(),
@@ -125,6 +169,18 @@ export const notificaciones = pgTable(
   {
     id: serial('id').primaryKey(),
     sheetId: text('sheet_id').notNull(),
+    /**
+     * A qué módulo pertenece el aviso: la Mesa de Control o Atención a Siniestros.
+     *
+     * Con omisión `mesa` porque es lo que eran todos los avisos existentes cuando se
+     * agregó la columna, el 20 de agosto de 2026, y porque así la aplicación
+     * desplegada —que no conoce esta columna— sigue insertando avisos válidos.
+     *
+     * Se sella al crearlo y no se deduce al leerlo: deducirlo obligaría a releer la
+     * hoja en cada sondeo del navegador para saber el área de cada fila, treinta
+     * veces por minuto y por persona.
+     */
+    modulo: text('modulo').notNull().default('mesa'),
     tipo: text('tipo', { enum: ['caso_nuevo', 'correo_recibido'] }).notNull(),
     fila: integer('fila').notNull(),
     folio: text('folio'),

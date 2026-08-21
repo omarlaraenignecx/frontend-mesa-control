@@ -1,37 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Caso } from './caso'
 import { ETIQUETAS_SEGUIMIENTO, calcularDiff } from './seguimiento'
-
-function caso(parcial: Partial<Caso> = {}): Caso {
-  return {
-    fila: 7176,
-    folio: '7000',
-    marcaTemporalIso: new Date(2026, 7, 5).toISOString(),
-    marcaTemporalTexto: '5/8/2026 15:14:58',
-    tipoTramite: 'Emisión',
-    tipoNegocio: null,
-    nombreSolicitante: 'Ricardo Hernandez',
-    correoSolicitante: 'a@b.mx',
-    correoEjecutivo: null,
-    agencia: 'CHEVROLET CAMPESTRE',
-    motivo: null,
-    aseguradoraDeclarada: null,
-    nombreCliente: null,
-    estatusInicial: 'Atendida/en trámite',
-    estatusFinal: 'Tramite',
-    quienAtendio: 'Keynor',
-    folioInterno: null,
-    aseguradoraSeguimiento: 'LA LATINO',
-    teniaPermisos: 'No',
-    causaSeguimiento: 'Función de GPLUS',
-    observaciones: 'nota previa',
-    fechaRespuestaCorreo: null,
-    fechaAtencionFinal: null,
-    adjuntos: [],
-    camposExtra: [],
-    ...parcial,
-  }
-}
+import { casoDePrueba as caso } from './__fixtures__/caso'
 
 describe('calcularDiff', () => {
   it('lista solo los campos que de verdad cambian', () => {

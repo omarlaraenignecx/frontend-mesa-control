@@ -3,7 +3,22 @@
 import { BellRing, MonitorX, Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAvisosEscritorio } from './escritorio'
-import { guardarTimbre, probarTimbre, timbreEncendido } from './timbre'
+import {
+  guardarTimbre,
+  probarTimbre,
+  timbreEncendido,
+  type DiagnosticoTimbre,
+} from './timbre'
+
+/** Qué decirle al usuario según lo que encontró el timbre. */
+function explicar(d: DiagnosticoTimbre): string {
+  if (d.estado === 'sin-audio') return 'Este navegador no permite reproducir sonido.'
+  if (d.estado === 'suspended' || !d.sono) {
+    return 'El navegador no dejó sonar el timbre todavía. Haz clic en cualquier parte de la página y vuelve a probar.'
+  }
+  if (d.estado === 'closed') return 'El navegador cerró el audio de la página. Recárgala y vuelve a probar.'
+  return `Timbre enviado al audio del navegador, a volumen ${d.volumen}. Si no se oyó, revisa el volumen del sistema y a qué bocinas o audífonos está saliendo.`
+}
 
 /**
  * El timbre, aparte de los globos.
@@ -16,14 +31,14 @@ import { guardarTimbre, probarTimbre, timbreEncendido } from './timbre'
  */
 function Timbre() {
   const [encendido, setEncendido] = useState(true)
-  const [bloqueado, setBloqueado] = useState(false)
+  const [diagnostico, setDiagnostico] = useState<DiagnosticoTimbre | null>(null)
 
   useEffect(() => {
     queueMicrotask(() => setEncendido(timbreEncendido()))
   }, [])
 
   async function probar() {
-    setBloqueado(!(await probarTimbre()))
+    setDiagnostico(await probarTimbre())
   }
 
   function alternar() {
@@ -31,7 +46,7 @@ function Timbre() {
     guardarTimbre(siguiente)
     setEncendido(siguiente)
     if (siguiente) void probar()
-    else setBloqueado(false)
+    else setDiagnostico(null)
   }
 
   const Icono = encendido ? Volume2 : VolumeX
@@ -63,10 +78,19 @@ function Timbre() {
         </div>
       </div>
       {/* Un timbre que no suena y no dice nada es peor que no tener timbre. */}
-      {bloqueado && (
-        <p className="text-sm text-amber-700 dark:text-amber-400">
-          El navegador no dejó sonar el timbre todavía. Haz clic en cualquier parte de la página y
-          vuelve a probar.
+      {diagnostico && (
+        <p
+          className={
+            diagnostico.sono && diagnostico.estado === 'running'
+              ? 'text-sm text-muted-foreground'
+              : 'text-sm text-amber-700 dark:text-amber-400'
+          }
+        >
+          {explicar(diagnostico)}{' '}
+          <span className="text-muted-foreground">
+            (audio: {diagnostico.estado}, interruptor:{' '}
+            {diagnostico.encendido ? 'encendido' : 'apagado'})
+          </span>
         </p>
       )}
     </div>
@@ -86,6 +110,35 @@ function Timbre() {
 export function AjusteEscritorio() {
   const { permiso, encendido, pedirPermiso, alternar } = useAvisosEscritorio()
 
+  return (
+    <>
+      <GlobosDelSistema
+        permiso={permiso}
+        encendido={encendido}
+        pedirPermiso={pedirPermiso}
+        alternar={alternar}
+      />
+      {/* El timbre, siempre. No cuelga del permiso del sistema: es sonido de la
+          página. Antes se dibujaba solo con los globos encendidos, así que quien no
+          los quería —o los tenía bloqueados en el navegador— no tenía dónde
+          encenderlo ni dónde probarlo, y se quedaba sin saber por qué no oía nada. */}
+      <Timbre />
+    </>
+  )
+}
+
+/** La parte que sí depende del permiso del sistema operativo. */
+function GlobosDelSistema({
+  permiso,
+  encendido,
+  pedirPermiso,
+  alternar,
+}: {
+  permiso: ReturnType<typeof useAvisosEscritorio>['permiso']
+  encendido: boolean
+  pedirPermiso: () => void | Promise<void>
+  alternar: () => void
+}) {
   if (permiso === 'sin-soporte') return null
 
   if (permiso === 'preguntar') {
@@ -126,23 +179,19 @@ export function AjusteEscritorio() {
   }
 
   return (
-    <>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
-        <p className="flex items-center gap-2 text-base">
-          <BellRing className="size-4 text-muted-foreground" />
-          Avisos en el escritorio:{' '}
-          <span className="font-medium">{encendido ? 'activados' : 'apagados'}</span>
-        </p>
-        <button
-          type="button"
-          onClick={alternar}
-          className="text-base text-blue-600 underline underline-offset-4 transition-colors hover:text-blue-700 dark:text-blue-400"
-        >
-          {encendido ? 'Apagar' : 'Encender'}
-        </button>
-      </div>
-      {/* El timbre solo tiene sentido si los globos están prendidos: es su sonido. */}
-      {encendido && <Timbre />}
-    </>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
+      <p className="flex items-center gap-2 text-base">
+        <BellRing className="size-4 text-muted-foreground" />
+        Avisos en el escritorio:{' '}
+        <span className="font-medium">{encendido ? 'activados' : 'apagados'}</span>
+      </p>
+      <button
+        type="button"
+        onClick={alternar}
+        className="text-base text-blue-600 underline underline-offset-4 transition-colors hover:text-blue-700 dark:text-blue-400"
+      >
+        {encendido ? 'Apagar' : 'Encender'}
+      </button>
+    </div>
   )
 }

@@ -90,7 +90,24 @@ describe('emisor', () => {
   it('consulta el permiso en el momento de emitir, no al montar', () => {
     // El usuario pudo conceder o revocar en medio, desde el panel o desde el
     // candado de la barra de direcciones.
-    expect(soloCodigo(EMISOR)).toMatch(/alLlegar\(\(nuevas\) => \{\s*\n\s*if \(!avisosEncendidos\(\)\) return/)
+    const codigo = soloCodigo(EMISOR)
+    expect(codigo).toContain('if (!avisosEncendidos()) return')
+    expect(codigo.indexOf('avisosEncendidos()')).toBeGreaterThan(codigo.indexOf('alLlegar('))
+  })
+
+  it('el timbre suena aunque el permiso del sistema no esté concedido', () => {
+    // El defecto del 21/8/2026: el timbre estaba detrás de la guarda del permiso, así
+    // que quien no concedía las notificaciones del navegador se quedaba también sin
+    // sonido, con su interruptor encendido y sin explicación. Son dos permisos
+    // distintos: el globo lo autoriza el sistema; el sonido es de la página.
+    const codigo = soloCodigo(EMISOR)
+    expect(codigo.indexOf('tocarTimbre()')).toBeLessThan(codigo.indexOf('avisosEncendidos()'))
+  })
+
+  it('el emisor no comprueba por su cuenta si el timbre está encendido', () => {
+    // Lo hace `tocarTimbre`. Comprobarlo aquí también sería un segundo lugar donde
+    // olvidarse de la preferencia.
+    expect(soloCodigo(EMISOR)).not.toContain('timbreEncendido')
   })
 
   it('no marca nada como leído: leer es abrir el caso', () => {
@@ -204,13 +221,32 @@ describe('timbre', () => {
     expect(TIMBRE).toContain('Promise.race')
   })
 
-  it('cuando llega un aviso sin sonido, la fila lo dice', () => {
+  it('cuando llega un aviso sin sonido, el listado lo dice', () => {
     const auto = readFileSync(
-      join(import.meta.dirname, '..', '..', 'app', 'fila', 'auto-actualizar.tsx'),
+      join(import.meta.dirname, '..', 'casos', 'auto-actualizar.tsx'),
       'utf8',
     )
     expect(auto).toContain('if (audioBloqueado()) setSinTimbre(true)')
     expect(auto).toMatch(/El timbre no sonó/)
+  })
+
+  it('el panel dibuja el timbre en cualquier estado del permiso', () => {
+    // Antes colgaba de `{encendido && <Timbre />}`: quien tenía los globos apagados o
+    // bloqueados no tenía dónde encender ni probar el timbre, y se quedaba sin saber
+    // por qué no oía nada. La parte que sí depende del permiso está aparte.
+    const codigo = soloCodigo(AJUSTE)
+    expect(codigo).not.toContain('{encendido && <Timbre />}')
+    expect(codigo).toContain('<Timbre />')
+    expect(codigo).toContain('<GlobosDelSistema')
+  })
+
+  it('el interruptor de los globos sí depende del permiso', () => {
+    const globos = soloCodigo(AJUSTE).slice(
+      soloCodigo(AJUSTE).indexOf('function GlobosDelSistema'),
+    )
+    expect(globos).toContain("permiso === 'sin-soporte'")
+    expect(globos).toContain("permiso === 'preguntar'")
+    expect(globos).toContain("permiso === 'negado'")
   })
 
   it('tiene su propio interruptor, aparte de los globos', () => {
@@ -223,9 +259,24 @@ describe('timbre', () => {
     expect(AJUSTE).toContain('if (siguiente) void probar()')
   })
 
-  it('si el navegador no deja sonar, el panel lo dice en lugar de quedarse mudo', () => {
-    expect(TIMBRE).toContain('export async function probarTimbre(): Promise<boolean>')
-    expect(AJUSTE).toContain('setBloqueado(!(await probarTimbre()))')
+  it('Probar informa qué encontró, no solo si sí o no', () => {
+    // «No suena» tiene varias causas que se arreglan distinto y desde fuera del
+    // navegador no se distinguen. Un booleano obligaba a adivinar cuál era.
+    expect(TIMBRE).toContain('export async function probarTimbre(): Promise<DiagnosticoTimbre>')
+    expect(TIMBRE).toContain('estado: AudioContextState')
+    expect(AJUSTE).toContain('setDiagnostico(await probarTimbre())')
+  })
+
+  it('el panel distingue las tres causas de silencio', () => {
+    // Audio bloqueado por el navegador, audio cerrado, y audio corriendo pero sin
+    // que se oiga —volumen del sistema o salida equivocada—, que es la que más
+    // desconcierta porque desde la aplicación todo está bien.
     expect(AJUSTE).toMatch(/no dejó sonar el timbre/)
+    expect(AJUSTE).toMatch(/cerró el audio de la página/)
+    expect(AJUSTE).toMatch(/volumen del sistema/)
+  })
+
+  it('el panel muestra el estado del audio, para poder reportarlo', () => {
+    expect(AJUSTE).toContain('audio: {diagnostico.estado}')
   })
 })

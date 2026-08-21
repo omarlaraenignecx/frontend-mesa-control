@@ -1,3 +1,5 @@
+import type { Modulo } from '@/lib/modulos/modulo'
+
 export type TipoNotificacion = 'caso_nuevo' | 'correo_recibido'
 
 export type Notificacion = {
@@ -20,6 +22,12 @@ export type Sondeo = {
 }
 
 export type NotificacionNueva = {
+  /**
+   * A qué módulo va el aviso. Se sella al crearlo porque deducirlo en cada sondeo
+   * exigiría releer la hoja para saber el área de la fila, treinta veces por minuto
+   * y por persona.
+   */
+  modulo: Modulo
   tipo: TipoNotificacion
   fila: number
   folio: string | null

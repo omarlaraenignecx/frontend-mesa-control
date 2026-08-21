@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * Las dos rutas que despierta n8n no llevan sesión —quien llama es una máquina—,
+ * Las rutas que despierta n8n no llevan sesión —quien llama es una máquina—,
  * así que el proxy las tiene que dejar pasar. El riesgo de esa excepción es que se
  * escriba con `startsWith` y arrastre consigo el sondeo del navegador, que sí
  * devuelve datos de casos y sí necesita sesión. Esto lo vigila.
@@ -16,8 +16,10 @@ const EXENTAS = [...(PROXY.match(/const CON_SECRETO = \[([\s\S]*?)\]/)?.[1] ?? '
 )
 
 describe('excepciones del proxy', () => {
-  it('deja pasar la ruta que despierta n8n', () => {
+  it('deja pasar las tres rutas que despierta n8n', () => {
     expect(EXENTAS).toContain('/api/notificaciones/casos-nuevos')
+    expect(EXENTAS).toContain('/api/notificaciones/correos')
+    expect(EXENTAS).toContain('/api/notificaciones/siniestros-correos')
   })
 
   it('la excepción es por ruta exacta, no por prefijo', () => {

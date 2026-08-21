@@ -6,7 +6,8 @@ const BASE = 'https://gmail.googleapis.com/gmail/v1/users/me'
 export type DepsGmail = {
   fetch: typeof globalThis.fetch
   accessToken: string
-  correoMesa: string
+  /** El buzón por el que se está leyendo: sirve para reconocer los mensajes propios. */
+  correoBuzon: string
 }
 
 export type AdjuntoEntrante = { id: string; nombre: string; tipo: string; bytes: number }
@@ -109,7 +110,7 @@ function partirRemitente(valor: string | null): { autor: string; correo: string 
   return { autor: suelto, correo: suelto }
 }
 
-export function normalizarMensaje(mensaje: MensajeGmail, correoMesa: string): MensajeChat {
+export function normalizarMensaje(mensaje: MensajeGmail, correoBuzon: string): MensajeChat {
   const payload = mensaje.payload
   const { autor, correo } = partirRemitente(cabecera(payload, 'From'))
 
@@ -123,7 +124,7 @@ export function normalizarMensaje(mensaje: MensajeGmail, correoMesa: string): Me
   return {
     id: mensaje.id ?? '',
     messageId: cabecera(payload, 'Message-ID'),
-    deLaMesa: correo.trim().toLowerCase() === correoMesa.trim().toLowerCase(),
+    deLaMesa: correo.trim().toLowerCase() === correoBuzon.trim().toLowerCase(),
     autor,
     correoAutor: correo,
     fechaIso: Number.isNaN(fecha.getTime()) ? new Date(0).toISOString() : fecha.toISOString(),
@@ -137,7 +138,7 @@ export async function leerHilo(deps: DepsGmail, threadId: string): Promise<Hilo>
   const cuerpo = (await respuesta.json()) as { id?: string; messages?: MensajeGmail[] }
 
   const mensajes = (cuerpo.messages ?? [])
-    .map((m) => normalizarMensaje(m, deps.correoMesa))
+    .map((m) => normalizarMensaje(m, deps.correoBuzon))
     .sort((a, b) => a.fechaIso.localeCompare(b.fechaIso))
 
   return { threadId: cuerpo.id ?? threadId, mensajes }

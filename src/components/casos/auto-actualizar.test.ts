@@ -3,9 +3,9 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const AUTO = readFileSync(join(import.meta.dirname, 'auto-actualizar.tsx'), 'utf8')
-const PAGINA = readFileSync(join(import.meta.dirname, 'page.tsx'), 'utf8')
+const PANTALLA = readFileSync(join(import.meta.dirname, 'pantalla-de-casos.tsx'), 'utf8')
 const INSIGNIA = readFileSync(
-  join(import.meta.dirname, '..', '..', 'components', 'notificaciones', 'insignia-correo.tsx'),
+  join(import.meta.dirname, '..', 'notificaciones', 'insignia-correo.tsx'),
   'utf8',
 )
 
@@ -20,7 +20,7 @@ const soloCodigo = (fuente: string) =>
     .filter((linea) => !/^\s*(\/\/|\*|\/\*)/.test(linea))
     .join('\n')
 
-describe('auto-actualizar la fila', () => {
+describe('auto-actualizar el listado', () => {
   it('reacciona a las peticiones nuevas, no a los correos', () => {
     expect(AUTO).toContain("tipo === 'caso_nuevo'")
   })
@@ -44,11 +44,11 @@ describe('auto-actualizar la fila', () => {
 
 describe('la acción de actualizar', () => {
   it('la comparten el botón y el refresco automático', () => {
-    expect(PAGINA).toContain("import { actualizar } from './acciones'")
-    expect(PAGINA).toContain('<BotonActualizar accion={actualizar} />')
+    expect(PANTALLA).toContain("import { actualizar } from '@/app/acciones-casos'")
+    expect(PANTALLA).toContain('<BotonActualizar accion={actualizar} />')
     // Ya no se declara dentro de la página: un componente de cliente no puede
     // importar una acción definida dentro de otro componente.
-    expect(PAGINA).not.toContain("async function actualizar()")
+    expect(PANTALLA).not.toContain("async function actualizar()")
   })
 })
 
@@ -72,7 +72,7 @@ describe('insignia de correo en la tabla', () => {
   })
 
   it('la primera celda le hace lugar y es el ancla de posición', () => {
-    expect(PAGINA).toContain('<TableCell className="relative pl-10">')
-    expect(PAGINA).toContain('<InsigniaCorreo fila={caso.fila} />')
+    expect(PANTALLA).toContain('<TableCell className="relative pl-10">')
+    expect(PANTALLA).toContain('<InsigniaCorreo fila={caso.fila} />')
   })
 })

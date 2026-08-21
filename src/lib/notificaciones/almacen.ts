@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray, isNull, max } from 'drizzle-orm'
 import { getDb, schema } from '@/db'
+import type { Modulo } from '@/lib/modulos/modulo'
 import type { Notificacion, NotificacionNueva, Sondeo } from './tipos'
 
 /**
@@ -13,6 +14,20 @@ export function hojaActual(): string {
   const id = process.env.SHEET_ID
   if (!id) throw new Error('Falta SHEET_ID para resolver las notificaciones de esta hoja.')
   return id
+}
+
+/**
+ * El filtro que toda consulta de avisos lleva. Vive en un solo lugar para que no
+ * haya una consulta que se lo salte por descuido: sin él, un aviso de la copia de
+ * pruebas aparece en un caso de producción que tiene el mismo número de fila.
+ */
+function filtroDeHoja() {
+  return eq(schema.notificaciones.sheetId, hojaActual())
+}
+
+/** El filtro de hoja más el del módulo, para lo que alimenta una campanita. */
+function filtroDeHojaYModulo(modulo: Modulo) {
+  return and(filtroDeHoja(), eq(schema.notificaciones.modulo, modulo))
 }
 
 function claveDeLaMarca(): string {
@@ -50,27 +65,31 @@ export async function guardarNotificaciones(nuevas: NotificacionNueva[]): Promis
 /** Las claves que ya existen, para no pedir a Gmail metadatos que no se usarán. */
 export async function clavesExistentes(claves: string[]): Promise<Set<string>> {
   if (claves.length === 0) return new Set()
-  const hoja = hojaActual()
   const filas = await getDb()
     .select({ clave: schema.notificaciones.clave })
     .from(schema.notificaciones)
-    .where(
-      and(eq(schema.notificaciones.sheetId, hoja), inArray(schema.notificaciones.clave, claves)),
-    )
+    .where(and(filtroDeHoja(), inArray(schema.notificaciones.clave, claves)))
   return new Set(filas.map((f) => f.clave))
 }
 
 /** Tope de avisos que viaja al navegador. El panel no es un histórico. */
 const TOPE_PANEL = 100
 
-export async function sondeoDe(correo: string): Promise<Sondeo> {
+/**
+ * Lo pendiente de una persona en un módulo.
+ *
+ * El módulo filtra de verdad y no solo decora: la Mesa de Control no debe timbrar
+ * por un siniestro que no le toca, ni Atención a Siniestros por las 1,400 peticiones
+ * al año de la mesa. `maxId` también se acota al módulo, o el navegador creería que
+ * llegó algo nuevo cada vez que entra un aviso del otro.
+ */
+export async function sondeoDe(correo: string, modulo: Modulo): Promise<Sondeo> {
   const db = getDb()
-  const hoja = hojaActual()
 
   const [tope] = await db
     .select({ valor: max(schema.notificaciones.id) })
     .from(schema.notificaciones)
-    .where(eq(schema.notificaciones.sheetId, hoja))
+    .where(filtroDeHojaYModulo(modulo))
 
   const filas = await db
     .select({
@@ -90,12 +109,7 @@ export async function sondeoDe(correo: string): Promise<Sondeo> {
         eq(schema.notificacionesLeidas.correoUsuario, correo),
       ),
     )
-    .where(
-      and(
-        eq(schema.notificaciones.sheetId, hoja),
-        isNull(schema.notificacionesLeidas.notificacionId),
-      ),
-    )
+    .where(and(filtroDeHojaYModulo(modulo), isNull(schema.notificacionesLeidas.notificacionId)))
     .orderBy(desc(schema.notificaciones.id))
     .limit(TOPE_PANEL)
 
@@ -128,11 +142,11 @@ export async function marcarLeidas(correo: string, ids: number[]): Promise<void>
 
 /** Marca leído todo lo de un caso: es lo que hace la vista del caso al abrirse. */
 export async function marcarLeidasDeFila(correo: string, fila: number): Promise<void> {
-  const hoja = hojaActual()
   const pendientes = await getDb()
     .select({ id: schema.notificaciones.id })
     .from(schema.notificaciones)
-    .where(and(eq(schema.notificaciones.sheetId, hoja), eq(schema.notificaciones.fila, fila)))
+    // Sin filtrar por módulo: abrir el caso lo lee entero, venga de donde venga.
+    .where(and(filtroDeHoja(), eq(schema.notificaciones.fila, fila)))
   await marcarLeidas(
     correo,
     pendientes.map((p) => p.id),

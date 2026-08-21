@@ -16,7 +16,14 @@ describe('sondeo del navegador', () => {
 
   it('devuelve lo del usuario de la sesión, no de un correo recibido por parámetro', () => {
     expect(SONDEO).toContain('usuario.correo')
-    expect(SONDEO).not.toMatch(/searchParams|\.get\('correo'\)/)
+    expect(SONDEO).not.toMatch(/\.get\('correo'\)/)
+  })
+
+  it('el módulo sí viene de la URL, y se valida', () => {
+    // No es un permiso: cualquier usuario autorizado entra a los dos módulos. Es
+    // qué pantalla pregunta, y sirve para no timbrar por lo que no le toca.
+    expect(SONDEO).toContain("searchParams.get('modulo')")
+    expect(SONDEO).toContain('moduloValido(')
   })
 })
 

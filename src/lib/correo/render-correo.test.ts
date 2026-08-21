@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { avisoDeRespuesta, renderCorreo, sustituirVariables } from './render-correo'
+import {
+  MARCA_MESA,
+  remitenteDe,
+  avisoDeRespuesta,
+  renderCorreo,
+  sustituirVariables,
+  variablesDelCaso,
+} from './render-correo'
 
 const V = {
   solicitante: 'Ricardo Hernandez',
@@ -144,5 +151,132 @@ describe('el aviso dentro del correo', () => {
     expect(texto.indexOf('Recibimos tu solicitud.')).toBeLessThan(
       texto.indexOf(avisoDeRespuesta(V.folio).titulo),
     )
+  })
+})
+
+describe('la marca del correo', () => {
+  const v = {
+    solicitante: 'Ana',
+    folio: '7000',
+    agencia: 'AGENCIA',
+    tramite: 'Emisión',
+    atiende: 'Keynor',
+  }
+
+  it('el correo de la mesa no cambió: misma banda, mismo pie', () => {
+    // Son los correos que salen a diario a las agencias. Cualquier cambio aquí es un
+    // cambio en lo que ven los clientes de la mesa.
+    const { html, texto } = renderCorreo('Buen día', v)
+    expect(html).toContain('background:#005ba9')
+    expect(html).toContain('Mesa de Control')
+    expect(html).toContain('Mesa de Control — Gplus Seguros')
+    expect(html).toContain('Atiende: Keynor')
+    expect(html).toContain('mesadecontrol@gplusseguros.mx')
+    expect(texto).toContain('Atiende: Keynor')
+    // Sin líneas de puesto ni teléfono: la mesa no las tiene.
+    expect(html).not.toContain('TEL ')
+  })
+
+  it('el del ramo firma con la ficha del ejecutivo y no dice quién atiende', () => {
+    // Del otro lado hay un cliente con un siniestro: quiere saber a quién le habla.
+    const marca = {
+      titulo: 'Atención a Siniestros',
+      color: '#0f3d5c',
+      firma: {
+        nombre: 'Jose Juan Mendoza Diaz',
+        puesto: 'Ejecutivo de siniestros',
+        telefono: '55 4884 2862',
+        correo: 'jose.mendoza@gplusseguros.mx',
+      },
+      muestraQuienAtiende: false,
+    }
+    const { html, texto } = renderCorreo('Buen día', v, marca)
+    expect(html).toContain('background:#0f3d5c')
+    expect(html).toContain('Atención a Siniestros')
+    expect(html).toContain('Jose Juan Mendoza Diaz')
+    expect(html).toContain('Ejecutivo de siniestros')
+    expect(html).toContain('TEL 55 4884 2862')
+    expect(html).toContain('jose.mendoza@gplusseguros.mx')
+    // El «Atiende:» de la mesa sobraría: la firma ya dice quién lleva el caso.
+    expect(html).not.toContain('Atiende:')
+    expect(texto).not.toContain('Atiende:')
+    expect(texto).toContain('TEL 55 4884 2862')
+  })
+
+  it('una firma sin teléfono no deja la línea a medias', () => {
+    const marca = {
+      titulo: 'Atención a Siniestros',
+      color: '#0f3d5c',
+      firma: { nombre: 'Norma Zacarías', puesto: null, telefono: null, correo: 'n@x.mx' },
+      muestraQuienAtiende: false,
+    }
+    const { html } = renderCorreo('Buen día', v, marca)
+    expect(html).not.toContain('TEL ')
+    expect(html).toContain('Norma Zacarías')
+  })
+
+  it('el aviso de responder en el mismo correo va en las dos marcas', () => {
+    // Es lo que mantiene la respuesta dentro del hilo del caso.
+    for (const html of [renderCorreo('x', v).html, renderCorreo('x', v, MARCA_MESA).html]) {
+      expect(html).toContain('Responde en este mismo correo')
+    }
+  })
+})
+
+describe('variablesDelCaso', () => {
+  it('prefiere la aseguradora que registró el área a la que declaró el solicitante', () => {
+    // La del seguimiento es la que de verdad está atendiendo el siniestro.
+    const v = variablesDelCaso(
+      { ...CASO_VACIO, aseguradoraSeguimiento: 'HDI', aseguradoraDeclarada: 'QUÁLITAS' },
+      '6426',
+      { nombreEnHoja: 'José Juan', correo: 'j@x.mx' },
+    )
+    expect(v.aseguradora).toBe('HDI')
+  })
+
+  it('cae a la declarada cuando el área todavía no registró ninguna', () => {
+    const v = variablesDelCaso(
+      { ...CASO_VACIO, aseguradoraSeguimiento: null, aseguradoraDeclarada: 'QUÁLITAS' },
+      '6426',
+      { nombreEnHoja: null, correo: 'j@x.mx' },
+    )
+    expect(v.aseguradora).toBe('QUÁLITAS')
+    // Sin nombre en la hoja se firma con el correo: nunca queda en blanco.
+    expect(v.atiende).toBe('j@x.mx')
+  })
+})
+
+const CASO_VACIO = {
+  nombreSolicitante: null,
+  agencia: null,
+  tipoTramite: null,
+  nombreCliente: null,
+  aseguradoraSeguimiento: null,
+  aseguradoraDeclarada: null,
+  numeroSiniestro: null,
+  tipoSiniestro: null,
+  poliza: null,
+}
+
+describe('remitenteDe', () => {
+  it('el sobre lleva la cuenta autenticada, no la de la firma', () => {
+    // Gmail reescribe en silencio un From que no sea de la cuenta autenticada, así
+    // que ponerlo distinto no lo cambia: solo hace creer que se cambió.
+    const marca = {
+      titulo: 'Atención a Siniestros',
+      color: '#0f3d5c',
+      firma: {
+        nombre: 'Jose Juan Mendoza Diaz',
+        puesto: 'Ejecutivo de siniestros',
+        telefono: '55 4884 2862',
+        correo: 'jose.mendoza@gplusseguros.mx',
+      },
+      muestraQuienAtiende: false,
+    }
+    expect(remitenteDe(marca, 'mesadecontrol@gplusseguros.mx')).toBe(
+      'Atención a Siniestros | Gplus Seguros <mesadecontrol@gplusseguros.mx>',
+    )
+    // Y la firma del pie sigue siendo la del ejecutivo: son datos de contacto.
+    expect(renderCorreo('x', V, marca).html).toContain('jose.mendoza@gplusseguros.mx')
   })
 })

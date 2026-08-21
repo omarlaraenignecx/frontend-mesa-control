@@ -28,6 +28,7 @@ Tres hechos medidos el 14 de agosto de 2026 empujaron la detección hacia la app
 | Credencial | `Mesa de Control · Secreto de notificaciones` (`5lPR6srAR4sUDQLt`), tipo `httpHeaderAuth`, cabecera `authorization` |
 | Flujo de casos nuevos | `Mesa de Control · Casos nuevos` — `eRSxeNUOYFEQBbF5` |
 | Flujo de correos | `Mesa de Control · Correos recibidos` — `kRAOw54c5Wfq7GkS` |
+| Flujo de correos del ramo | `Atención a Siniestros · Correos recibidos` — `MXctPqIoE61JGvoR` |
 
 Cada flujo son dos nodos: un **Schedule Trigger** cada minuto y un **HTTP Request**
 `POST` a la ruta correspondiente, autenticado con la credencial. Sin nodos
@@ -38,10 +39,26 @@ el editor de n8n.
 
 ## Estado
 
-**Los dos están desactivados.** Apuntan a `https://frontend-mesa-control.vercel.app`,
-que sirve la **hoja productiva**: activarlos empieza a generar avisos y a escribir
-folios en la hoja real. Eso es el último paso de la salida a producción, descrito en
-`PASO-A-PRODUCCION-NOTIFICACIONES.md`.
+Los dos de la Mesa de Control están **activos** desde el 17 de agosto de 2026.
+
+El de **Atención a Siniestros** está **desactivado**: se creó el 21 de agosto de 2026 y
+apunta a la ruta que el despliegue del módulo todavía no ha publicado. Se activa como
+último paso de la salida del módulo, junto con la autorización de la cuenta de su
+ejecutivo.
+
+## Por qué el ramo tiene flujo aparte
+
+Podría haber sido un nodo más en el flujo de correos de la mesa, y se decidió que no. Lo
+que las distingue no es el horario sino **qué buzón revisan**: la de la mesa usa la
+credencial de `mesadecontrol@` y la del ramo la del ejecutivo designado. Separados, cada
+uno se activa y se apaga por su cuenta —el del ramo tiene que quedarse apagado hasta que
+haya cuenta autorizada— y un fallo de uno no ensucia el historial del otro, que es el
+único registro que queda de estas corridas.
+
+Mientras nadie autorice la cuenta del ramo, su ruta responde
+`{"ok":true,"sinCuenta":true,"mensajes":0,"avisos":0}` en lugar de fallar. Se hizo así a
+propósito: el flujo llama cada minuto, y un 500 por minuto llenaría el historial de rojos
+que no son errores y taparía uno de verdad.
 
 ## Cómo se ve una ejecución sana
 

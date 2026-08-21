@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { type Modulo } from '@/lib/modulos/modulo'
 import type { Notificacion, Sondeo } from '@/lib/notificaciones/tipos'
 import { EmisorEscritorio } from './emisor-escritorio'
 import { avisosEncendidos } from './escritorio'
@@ -28,6 +29,8 @@ const INTERVALO_OCULTO_MS = 60_000
 const VACIO: Sondeo = { maxId: 0, noLeidas: [], correosPorFila: {} }
 
 type Contexto = Sondeo & {
+  /** En qué módulo está la pantalla. Lo necesita el emisor de avisos de escritorio. */
+  modulo: Modulo
   marcarLeidas: (ids: number[]) => Promise<void>
   marcarLeidasDeFila: (fila: number) => Promise<void>
   recargar: () => Promise<void>
@@ -43,7 +46,18 @@ export function useNotificaciones(): Contexto {
   return valor
 }
 
-export function ProveedorNotificaciones({ children }: { children: React.ReactNode }) {
+/**
+ * `modulo` no es decoración: acota el sondeo a los avisos de ese módulo. La
+ * campanita de la Mesa de Control no timbra por un siniestro que no le toca, y la
+ * de Atención a Siniestros no timbra por las ~1,400 peticiones al año de la mesa.
+ */
+export function ProveedorNotificaciones({
+  modulo,
+  children,
+}: {
+  modulo: Modulo
+  children: React.ReactNode
+}) {
   const [estado, setEstado] = useState<Sondeo>(VACIO)
   const conocidas = useRef<Set<number>>(new Set())
   const escuchas = useRef<Set<(nuevas: Notificacion[]) => void>>(new Set())
@@ -56,7 +70,7 @@ export function ProveedorNotificaciones({ children }: { children: React.ReactNod
 
     let datos: Sondeo
     try {
-      const r = await fetch('/api/notificaciones', { cache: 'no-store' })
+      const r = await fetch(`/api/notificaciones?modulo=${modulo}`, { cache: 'no-store' })
       // La sesión venció o se cerró: insistir cada 30 segundos no la recupera.
       if (r.status === 401 || r.status === 403) {
         detenido.current = true
@@ -80,7 +94,7 @@ export function ProveedorNotificaciones({ children }: { children: React.ReactNod
       return
     }
     if (nuevas.length > 0) for (const escucha of escuchas.current) escucha(nuevas)
-  }, [])
+  }, [modulo])
 
   useEffect(() => {
     // En microtarea y no en el cuerpo del efecto: `recargar` termina en un
@@ -139,6 +153,7 @@ export function ProveedorNotificaciones({ children }: { children: React.ReactNod
     <ctx.Provider
       value={{
         ...estado,
+        modulo,
         recargar,
         alLlegar,
         marcarLeidas: (ids) => marcar({ ids }),

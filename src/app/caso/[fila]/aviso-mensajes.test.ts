@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const FUENTE = readFileSync(join(import.meta.dirname, 'aviso-mensajes.tsx'), 'utf8')
-const PAGINA = readFileSync(join(import.meta.dirname, 'page.tsx'), 'utf8')
+const PAGINA = readFileSync(join(import.meta.dirname, '..', '..', '..', 'components', 'casos', 'pantalla-de-caso.tsx'), 'utf8')
 
 describe('aviso de mensajes nuevos', () => {
   it('solo mira los correos de este caso', () => {
@@ -39,7 +39,7 @@ describe('aviso de mensajes nuevos', () => {
 
   it('va junto al título de la conversación', () => {
     const titulo = PAGINA.indexOf('Conversación')
-    const aviso = PAGINA.indexOf('<AvisoMensajesNuevos fila={fila} />')
+    const aviso = PAGINA.indexOf('<AvisoMensajesNuevos ')
     expect(aviso).toBeGreaterThan(titulo)
     // Dentro del mismo encabezado: entre uno y otro no debe cerrarse el título.
     expect(PAGINA.slice(titulo, aviso)).not.toContain('</CardTitle>')

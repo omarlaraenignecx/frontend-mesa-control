@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Caso } from './caso'
+import { casoDePrueba } from './__fixtures__/caso'
 import {
+  ESTATUS_ABIERTOS,
   SIN_ESTATUS,
   VENTANA_COLA_DIAS,
   filtrar,
@@ -8,34 +10,29 @@ import {
   ordenarRecientes,
 } from './cola'
 
+/**
+ * Un caso pendiente y recién llegado, que es el punto de partida de casi toda
+ * prueba de la fila. Sin estatus final —así cae en la selección por omisión— y con
+ * el folio derivado de la fila, para poder identificarlo en los resultados.
+ */
 function c(parcial: Partial<Caso> & { fila: number }): Caso {
-  return {
+  return casoDePrueba({
     folio: String(7000 + parcial.fila),
     marcaTemporalIso: new Date(2026, 7, 1).toISOString(),
     marcaTemporalTexto: '',
-    tipoTramite: 'Emisión',
     tipoNegocio: null,
     nombreSolicitante: 'Solicitante',
     correoSolicitante: 'a@b.mx',
-    correoEjecutivo: null,
     agencia: 'AGENCIA UNO',
     motivo: null,
-    aseguradoraDeclarada: null,
-    nombreCliente: null,
     estatusInicial: null,
     estatusFinal: null,
-    quienAtendio: 'Keynor',
-    folioInterno: null,
     aseguradoraSeguimiento: null,
     teniaPermisos: null,
     causaSeguimiento: null,
     observaciones: null,
-    fechaRespuestaCorreo: null,
-    fechaAtencionFinal: null,
-    adjuntos: [],
-    camposExtra: [],
     ...parcial,
-  }
+  })
 }
 
 describe('ordenarRecientes', () => {
@@ -156,11 +153,51 @@ describe('filtrar', () => {
 
   it('filtra por tipo de trámite y por responsable', () => {
     const todos = ['Concluida', 'Improcedente', 'Tramite', SIN_ESTATUS]
-    expect(filtrar(casos, { tipoTramite: 'Cotización', estatusFinal: todos }).map((x) => x.folio)).toEqual([
+    expect(filtrar(casos, { clasificacion: 'Cotización', estatusFinal: todos }).map((x) => x.folio)).toEqual([
       '7002',
       '7003',
     ])
     expect(filtrar(casos, { responsable: 'Keynor' }).map((x) => x.folio)).toEqual(['7001'])
+  })
+
+  it('clasifica por tipo de siniestro cuando el módulo lo pide', () => {
+    const delRamo = [
+      c({ fila: 1, folio: '6426', tipoTramite: null, tipoSiniestro: 'Daño parcial' }),
+      c({ fila: 2, folio: '6708', tipoTramite: null, tipoSiniestro: 'Pérdida total' }),
+    ]
+    const r = filtrar(delRamo, {
+      clasificacion: 'Daño parcial',
+      campoClasificacion: 'tipoSiniestro',
+    })
+    expect(r.map((x) => x.folio)).toEqual(['6426'])
+  })
+
+  it('sin decir el campo sigue clasificando por trámite, como la mesa', () => {
+    expect(filtrar(casos, { clasificacion: 'Endoso', estatusFinal: ['Improcedente'] }).map(
+      (x) => x.folio,
+    )).toEqual(['7004'])
+  })
+
+  it('un módulo puede traer su propia omisión de estatus', () => {
+    // Siniestros muestra por omisión también los de trámite: con 8 casos al año y
+    // una sola persona atendiéndolos, esconderlos deja la pantalla en blanco.
+    const conTramite = filtrar(casos, { estatusPorOmision: ESTATUS_ABIERTOS })
+    expect(conTramite.map((x) => x.folio)).toEqual(['7001', '7003'])
+    // Y la omisión de la mesa sigue escondiéndolos.
+    expect(filtrar(casos, {}).map((x) => x.folio)).toEqual(['7001'])
+  })
+
+  it('la omisión del módulo no gana cuando el usuario ya eligió', () => {
+    const elegido = filtrar(casos, {
+      estatusPorOmision: ESTATUS_ABIERTOS,
+      estatusFinal: ['Concluida'],
+    })
+    expect(elegido.map((x) => x.folio)).toEqual(['7002'])
+  })
+
+  it('busca por número de siniestro, que es como la aseguradora nombra el caso', () => {
+    const delRamo = [c({ fila: 1, numeroSiniestro: '07-AUIN-205/2026' })]
+    expect(filtrar(delRamo, { texto: 'auin-205' })).toHaveLength(1)
   })
 
   it('combina filtros con la búsqueda de texto', () => {
@@ -242,14 +279,28 @@ describe('opcionesDeFiltro', () => {
       c({ fila: 3, tipoTramite: 'Emisión', quienAtendio: 'Paty', agencia: 'A' }),
     ]
     const o = opcionesDeFiltro(casos)
-    expect(o.tiposTramite).toEqual(['Cotización', 'Emisión'])
+    expect(o.clases).toEqual(['Cotización', 'Emisión'])
     expect(o.responsables).toEqual(['Keynor', 'Paty'])
     expect(o.agencias).toEqual(['A', 'B'])
   })
 
   it('omite los valores nulos', () => {
     const o = opcionesDeFiltro([c({ fila: 1, tipoTramite: null, quienAtendio: null })])
-    expect(o.tiposTramite).toEqual([])
+    expect(o.clases).toEqual([])
     expect(o.responsables).toEqual([])
+  })
+
+  it('las clases salen del campo que el módulo pide', () => {
+    const delRamo = [
+      c({ fila: 1, tipoTramite: null, tipoSiniestro: 'Pérdida total' }),
+      c({ fila: 2, tipoTramite: null, tipoSiniestro: 'Daño parcial' }),
+    ]
+    expect(opcionesDeFiltro(delRamo, 'tipoSiniestro').clases).toEqual([
+      'Daño parcial',
+      'Pérdida total',
+    ])
+    // Con el campo de la mesa, esos mismos casos no ofrecen ninguna opción: es la
+    // razón de que la clasificación sea configurable.
+    expect(opcionesDeFiltro(delRamo).clases).toEqual([])
   })
 })

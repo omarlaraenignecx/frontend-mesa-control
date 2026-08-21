@@ -4,10 +4,11 @@ import { CorreoDemasiadoGrandeError, enviarCorreo } from './gmail-send'
 const DEPS = (fetchMock: typeof globalThis.fetch) => ({
   fetch: fetchMock,
   accessToken: 'ya29.token',
-  correoMesa: 'mesadecontrol@gplusseguros.mx',
+  correoBuzon: 'mesadecontrol@gplusseguros.mx',
 })
 
 const MENSAJE = {
+  de: 'Mesa de Control | Gplus Seguros <mesadecontrol@gplusseguros.mx>',
   para: 'comercial28@garantiplus.mx',
   cc: [] as string[],
   asunto: 'Seguimiento de Caso | Gplus Seguros | 7000',
@@ -31,6 +32,21 @@ describe('enviarCorreo', () => {
     const fetchMock = respuesta({ id: 'm1', threadId: 't1' })
     const r = await enviarCorreo(DEPS(fetchMock), MENSAJE)
     expect(r).toEqual({ id: 'm1', threadId: 't1' })
+  })
+
+  it('el remitente viaja en el mensaje, no en una constante del módulo', async () => {
+    // Hay dos buzones desde que existe el módulo de siniestros, y Google rechaza un
+    // From que no sea de la cuenta autenticada.
+    const fetchMock = respuesta({ id: 'm1', threadId: 't1' })
+    await enviarCorreo(DEPS(fetchMock), {
+      ...MENSAJE,
+      de: 'Atención a Siniestros | Gplus Seguros <jose.mendoza@gplusseguros.mx>',
+    })
+    const [, init] = (fetchMock as unknown as ReturnType<typeof vi.fn>).mock.calls[0]
+    const { raw } = JSON.parse(String((init as RequestInit).body))
+    const mime = Buffer.from(String(raw).replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString()
+    expect(mime).toContain('jose.mendoza@gplusseguros.mx')
+    expect(mime).not.toContain('mesadecontrol@')
   })
 
   it('manda el correo como raw en base64url', async () => {

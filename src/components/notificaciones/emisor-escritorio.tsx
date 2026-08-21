@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import { moduloPorClave } from '@/lib/modulos/modulo'
 import { avisosDeEscritorio } from '@/lib/notificaciones/aviso-escritorio'
 import { avisosEncendidos, emitirAviso } from './escritorio'
 import { useNotificaciones } from './proveedor'
@@ -18,7 +19,7 @@ import { prepararTimbre, tocarTimbre } from './timbre'
  * Nada se marca leído por mostrar el aviso. Leer sigue siendo abrir el caso.
  */
 export function EmisorEscritorio() {
-  const { alLlegar } = useNotificaciones()
+  const { alLlegar, modulo } = useNotificaciones()
   const router = useRouter()
 
   useEffect(() => prepararTimbre(), [])
@@ -26,17 +27,26 @@ export function EmisorEscritorio() {
   useEffect(
     () =>
       alLlegar((nuevas) => {
+        // El timbre va **antes** de la guarda del permiso, y eso es el arreglo del
+        // 21/8/2026. Estaba detrás de ella, así que quien no concedía las
+        // notificaciones del navegador —o las tenía bloqueadas— se quedaba también
+        // sin timbre, con su interruptor encendido y sin ninguna explicación. Son dos
+        // molestias distintas y dos permisos distintos: el globo lo autoriza el
+        // sistema operativo; el sonido es de la página y ya tiene su interruptor,
+        // que `tocarTimbre` consulta por su cuenta.
+        //
+        // Un solo timbre por tanda: tres avisos juntos no son tres campanadas
+        // encimadas.
+        tocarTimbre()
+
         // Se pregunta aquí y no al montar: el permiso puede haberse concedido o
         // revocado en medio, desde el panel o desde la configuración del sitio.
         if (!avisosEncendidos()) return
-        // Un solo timbre por tanda, antes de los globos: tres avisos juntos no son
-        // tres campanadas encimadas.
-        tocarTimbre()
-        for (const aviso of avisosDeEscritorio(nuevas)) {
+        for (const aviso of avisosDeEscritorio(nuevas, moduloPorClave(modulo))) {
           emitirAviso(aviso, (destino) => router.push(destino))
         }
       }),
-    [alLlegar, router],
+    [alLlegar, modulo, router],
   )
 
   return null

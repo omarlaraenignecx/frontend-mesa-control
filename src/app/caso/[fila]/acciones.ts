@@ -3,6 +3,7 @@
 import { revalidatePath, updateTag } from 'next/cache'
 import { requerirUsuario } from '@/lib/auth/guard'
 import { registrarCambios } from '@/lib/casos/bitacora'
+import { claseDelCaso } from '@/lib/casos/caso'
 import { fechaDeCierreASellar, seCierraAhora } from '@/lib/casos/cierre'
 import { cargarCaso, depsDeGoogle } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
@@ -82,7 +83,7 @@ export async function guardarSeguimiento(
     tipo: 'caso_guardado',
     fila,
     folio: caso.folio,
-    tipoTramite: caso.tipoTramite,
+    tipoTramite: claseDelCaso(caso),
     estatusResultante: valores.estatusFinal ?? caso.estatusFinal,
     correoUsuario: usuario.correo,
   })
@@ -91,7 +92,7 @@ export async function guardarSeguimiento(
       tipo: 'caso_cerrado',
       fila,
       folio: caso.folio,
-      tipoTramite: caso.tipoTramite,
+      tipoTramite: claseDelCaso(caso),
       estatusResultante: valores.estatusFinal,
       correoUsuario: usuario.correo,
     })
@@ -160,7 +161,7 @@ export async function atenderYo(fila: number): Promise<ResultadoGuardado> {
     tipo: 'caso_tomado',
     fila,
     folio: caso.folio,
-    tipoTramite: caso.tipoTramite,
+    tipoTramite: claseDelCaso(caso),
     correoUsuario: usuario.correo,
   })
 

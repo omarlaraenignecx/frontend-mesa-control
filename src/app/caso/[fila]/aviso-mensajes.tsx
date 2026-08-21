@@ -16,7 +16,14 @@ const ESPERA_LECTURA_MS = 3_000
  * que abrirlo y verlo cuente como leerlo, sin un clic extra. Con la pestaña oculta
  * no cuenta, o se marcaría leído lo que nadie miró.
  */
-export function AvisoMensajesNuevos({ fila }: { fila: number }) {
+export function AvisoMensajesNuevos({
+  fila,
+  rutaDelCaso,
+}: {
+  fila: number
+  /** La ruta de este caso en su módulo: es la que hay que revalidar. */
+  rutaDelCaso: string
+}) {
   const { correosPorFila, alLlegar, marcarLeidasDeFila } = useNotificaciones()
   const router = useRouter()
   const cuantos = correosPorFila[fila] ?? 0
@@ -26,9 +33,9 @@ export function AvisoMensajesNuevos({ fila }: { fila: number }) {
     () =>
       alLlegar((nuevas) => {
         if (!nuevas.some((n) => n.tipo === 'correo_recibido' && n.fila === fila)) return
-        void refrescarConversacion(fila).then(() => router.refresh())
+        void refrescarConversacion(fila, rutaDelCaso).then(() => router.refresh())
       }),
-    [alLlegar, fila, router],
+    [alLlegar, fila, router, rutaDelCaso],
   )
 
   useEffect(() => {

@@ -43,7 +43,7 @@ describe('panel', () => {
     // Si algún día se le quita, el portal deja de ser necesario; mientras esté,
     // quitar el portal vuelve a romper el panel.
     const caso = readFileSync(
-      join(import.meta.dirname, '..', '..', 'app', 'caso', '[fila]', 'page.tsx'),
+      join(import.meta.dirname, '..', 'casos', 'pantalla-de-caso.tsx'),
       'utf8',
     )
     expect(caso).toContain('backdrop-blur')

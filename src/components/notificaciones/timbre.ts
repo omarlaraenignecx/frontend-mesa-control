@@ -178,16 +178,36 @@ export function tocarTimbre(): void {
 }
 
 /**
- * Suena a pedido, ignorando la preferencia, y **dice si se pudo**.
+ * Qué encontró el timbre al intentar sonar.
  *
- * El valor de retorno es lo que hace visible una falla que antes era muda: si el
- * navegador no deja activar el audio, el panel lo dice en lugar de dejar al usuario
- * creyendo que su timbre quedó listo.
+ * Es un informe y no un booleano porque «no suena» tiene varias causas que se
+ * arreglan distinto, y desde fuera del navegador no hay forma de distinguirlas: el
+ * interruptor apagado, el navegador que no deja activar el audio, o el audio corriendo
+ * y aun así en silencio —volumen del sistema, salida equivocada—. Decirlo en la
+ * pantalla ahorra una sesión entera de adivinar.
  */
-export async function probarTimbre(): Promise<boolean> {
+export type DiagnosticoTimbre = {
+  /** Se programaron las notas de verdad. No garantiza que el usuario las oiga. */
+  sono: boolean
+  /** Lo que dice el navegador del contexto de audio. */
+  estado: AudioContextState | 'sin-audio'
+  /** El interruptor del usuario. `probarTimbre` suena igual, pero conviene saberlo. */
+  encendido: boolean
+  volumen: number
+}
+
+/**
+ * Suena a pedido, ignorando la preferencia, y **dice qué pasó**.
+ *
+ * Ignora la preferencia a propósito: es el botón con el que alguien comprueba si se
+ * oye, y negarle el sonido porque tiene el interruptor apagado sería justo lo que no
+ * quiere en ese momento.
+ */
+export async function probarTimbre(): Promise<DiagnosticoTimbre> {
+  const base = { encendido: timbreEncendido(), volumen: VOLUMEN }
   const ctx = obtenerContexto()
-  if (!ctx) return false
+  if (!ctx) return { ...base, sono: false, estado: 'sin-audio' }
   const activo = await asegurarActivo(ctx)
   if (activo) programarNotas(ctx)
-  return activo
+  return { ...base, sono: activo, estado: ctx.state }
 }
