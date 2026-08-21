@@ -90,7 +90,24 @@ describe('emisor', () => {
   it('consulta el permiso en el momento de emitir, no al montar', () => {
     // El usuario pudo conceder o revocar en medio, desde el panel o desde el
     // candado de la barra de direcciones.
-    expect(soloCodigo(EMISOR)).toMatch(/alLlegar\(\(nuevas\) => \{\s*\n\s*if \(!avisosEncendidos\(\)\) return/)
+    const codigo = soloCodigo(EMISOR)
+    expect(codigo).toContain('if (!avisosEncendidos()) return')
+    expect(codigo.indexOf('avisosEncendidos()')).toBeGreaterThan(codigo.indexOf('alLlegar('))
+  })
+
+  it('el timbre suena aunque el permiso del sistema no esté concedido', () => {
+    // El defecto del 21/8/2026: el timbre estaba detrás de la guarda del permiso, así
+    // que quien no concedía las notificaciones del navegador se quedaba también sin
+    // sonido, con su interruptor encendido y sin explicación. Son dos permisos
+    // distintos: el globo lo autoriza el sistema; el sonido es de la página.
+    const codigo = soloCodigo(EMISOR)
+    expect(codigo.indexOf('tocarTimbre()')).toBeLessThan(codigo.indexOf('avisosEncendidos()'))
+  })
+
+  it('el emisor no comprueba por su cuenta si el timbre está encendido', () => {
+    // Lo hace `tocarTimbre`. Comprobarlo aquí también sería un segundo lugar donde
+    // olvidarse de la preferencia.
+    expect(soloCodigo(EMISOR)).not.toContain('timbreEncendido')
   })
 
   it('no marca nada como leído: leer es abrir el caso', () => {
@@ -211,6 +228,25 @@ describe('timbre', () => {
     )
     expect(auto).toContain('if (audioBloqueado()) setSinTimbre(true)')
     expect(auto).toMatch(/El timbre no sonó/)
+  })
+
+  it('el panel dibuja el timbre en cualquier estado del permiso', () => {
+    // Antes colgaba de `{encendido && <Timbre />}`: quien tenía los globos apagados o
+    // bloqueados no tenía dónde encender ni probar el timbre, y se quedaba sin saber
+    // por qué no oía nada. La parte que sí depende del permiso está aparte.
+    const codigo = soloCodigo(AJUSTE)
+    expect(codigo).not.toContain('{encendido && <Timbre />}')
+    expect(codigo).toContain('<Timbre />')
+    expect(codigo).toContain('<GlobosDelSistema')
+  })
+
+  it('el interruptor de los globos sí depende del permiso', () => {
+    const globos = soloCodigo(AJUSTE).slice(
+      soloCodigo(AJUSTE).indexOf('function GlobosDelSistema'),
+    )
+    expect(globos).toContain("permiso === 'sin-soporte'")
+    expect(globos).toContain("permiso === 'preguntar'")
+    expect(globos).toContain("permiso === 'negado'")
   })
 
   it('tiene su propio interruptor, aparte de los globos', () => {

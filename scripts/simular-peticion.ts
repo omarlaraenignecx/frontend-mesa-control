@@ -7,7 +7,10 @@
  * Esa mecánica importa: es la que hace inútil detectar filas nuevas por conteo.
  *
  * Uso:
- *   pnpm dotenv -e .env.local -- pnpm tsx scripts/simular-peticion.ts crear [mesa|siniestro]
+ *   pnpm dotenv -e .env.local -- pnpm tsx scripts/simular-peticion.ts crear [mesa|siniestro] [correo]
+ *
+ * El correo es opcional y sustituye el del solicitante: sirve para que la prueba de la
+ * conversación llegue a una bandeja que se pueda revisar de verdad.
  *   pnpm dotenv -e .env.local -- pnpm tsx scripts/simular-peticion.ts borrar <fila>
  *
  * Cuidado al borrar: quitar una fila corre hacia arriba todas las de abajo, y los
@@ -128,8 +131,8 @@ function marcaDeAhora(): string {
   return `${ahora.getUTCDate()}/${ahora.getUTCMonth() + 1}/${ahora.getUTCFullYear()} ${ahora.getUTCHours()}:${p(ahora.getUTCMinutes())}:${p(ahora.getUTCSeconds())}`
 }
 
-async function crear(tipo: 'mesa' | 'siniestro'): Promise<void> {
-  const campos = CAMPOS[tipo]
+async function crear(tipo: 'mesa' | 'siniestro', correo?: string): Promise<void> {
+  const campos = { ...CAMPOS[tipo], ...(correo ? { AD: correo } : {}) }
   const hoja = await gid()
   const fila = (await ultimaRespuesta()) + 1
 
@@ -201,11 +204,12 @@ async function main(): Promise<void> {
   }
 
   const [orden, arg] = process.argv.slice(2)
-  if (orden === 'crear' && (arg === undefined || arg === 'mesa')) await crear('mesa')
-  else if (orden === 'crear' && arg === 'siniestro') await crear('siniestro')
+  const correo = process.argv[4]
+  if (orden === 'crear' && (arg === undefined || arg === 'mesa')) await crear('mesa', correo)
+  else if (orden === 'crear' && arg === 'siniestro') await crear('siniestro', correo)
   else if (orden === 'borrar' && arg) await borrar(Number(arg))
   else {
-    console.log('Uso: crear [mesa|siniestro] | borrar <fila>')
+    console.log('Uso: crear [mesa|siniestro] [correo] | borrar <fila>')
     process.exitCode = 1
   }
 }
