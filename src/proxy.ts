@@ -25,7 +25,11 @@ const PUBLICAS = ['/login', '/sin-acceso']
  * `/api/notificaciones`, el sondeo del navegador —que sí necesita sesión, porque
  * devuelve datos de casos— se quedaría sin protección.
  */
-const CON_SECRETO = ['/api/notificaciones/casos-nuevos', '/api/notificaciones/correos']
+const CON_SECRETO = [
+  '/api/notificaciones/casos-nuevos',
+  '/api/notificaciones/correos',
+  '/api/notificaciones/siniestros-correos',
+]
 
 export default auth((req) => {
   const ruta = req.nextUrl.pathname
