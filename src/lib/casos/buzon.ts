@@ -1,4 +1,4 @@
-import { MARCA_MESA, remitenteDe, type MarcaCorreo } from '@/lib/correo/render-correo'
+import { MARCA_MESA, remitenteDe, type MarcaCorreo } from '@/lib/correo/marca'
 import { accessTokenDeLaMesa } from '@/lib/google/auth-mesa'
 import type { DepsGmail } from '@/lib/google/gmail-thread'
 import { moduloDelCaso } from '@/lib/modulos/modulo'
@@ -35,9 +35,6 @@ function marcaDeSiniestros(
 ): MarcaCorreo {
   return {
     titulo: 'Atención a Siniestros',
-    // Un azul más profundo que el de la mesa. Del otro lado hay un cliente con un
-    // siniestro encima; el tono de la banda es parte de cómo se le habla.
-    color: '#0f3d5c',
     firma: {
       nombre: ficha?.nombre?.trim() || 'Atención a Siniestros — Gplus Seguros',
       puesto: ficha?.puesto?.trim() || null,

@@ -5,6 +5,7 @@ import {
   pesoCodificado,
   type AdjuntoSalida,
 } from '@/lib/correo/mime'
+import type { ImagenInline } from '@/lib/correo/envoltura'
 import type { DepsGmail } from './gmail-thread'
 
 const BASE = 'https://gmail.googleapis.com/gmail/v1/users/me'
@@ -31,6 +32,12 @@ export type MensajeSalida = {
   html: string
   texto: string
   adjuntos: AdjuntoSalida[]
+  /**
+   * Las imágenes que el HTML dibuja dentro del cuerpo —hoy, el logo—. Las pone el
+   * renderizador junto con el HTML que las referencia, no quien manda: separarlas
+   * sería mandar un correo con el hueco del logo.
+   */
+  imagenes?: ImagenInline[]
   enRespuestaA?: string
 }
 
@@ -52,7 +59,7 @@ export async function enviarCorreo(
   mensaje: MensajeSalida,
   threadId?: string,
 ): Promise<{ id: string; threadId: string }> {
-  const peso = pesoCodificado(mensaje.adjuntos)
+  const peso = pesoCodificado(mensaje.adjuntos, mensaje.imagenes)
   if (peso > LIMITE_GMAIL_BYTES) throw new CorreoDemasiadoGrandeError(peso)
 
   const mime = componerMime(mensaje)

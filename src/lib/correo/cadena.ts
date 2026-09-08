@@ -1,5 +1,13 @@
 import type { Hilo } from '@/lib/google/gmail-thread'
-import { MARCA_MESA, type MarcaCorreo } from './render-correo'
+import {
+  envolverCorreo,
+  escapar,
+  firmaHtml,
+  parrafos,
+  pieTexto,
+  type ImagenInline,
+} from './envoltura'
+import { MARCA_MESA, PALETA, type MarcaCorreo } from './marca'
 
 /**
  * Un adjunto de la conversación, identificado por la posición que ocupa en su
@@ -35,14 +43,6 @@ export function resumenDeCadena(hilo: Hilo): ResumenDeCadena {
   return { mensajes: hilo.mensajes.length, adjuntos }
 }
 
-function escapar(texto: string): string {
-  return texto
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
 function fechaLegible(iso: string): string {
@@ -61,12 +61,17 @@ const SIN_TEXTO = '(sin texto)'
  * el caso de corrido, con quién dijo qué y cuándo, en lugar de una cadena de
  * citas anidadas. Los archivos van adjuntos al mismo correo y además nombrados
  * dentro de cada mensaje, para que se sepa a qué respuesta pertenecen.
+ *
+ * Los mensajes del área se distinguen de los del solicitante por una franja de color
+ * al canto y un fondo apenas más frío, no por dos colores distintos: quien lee esto
+ * suele ser un tercero —un ajustador, una aseguradora— y lo que necesita es seguir la
+ * conversación, no descifrar una clave de colores.
  */
 export function renderCadena(
   hilo: Hilo,
   v: VariablesCadena,
   marca: MarcaCorreo = MARCA_MESA,
-): { html: string; texto: string } {
+): { html: string; texto: string; imagenes: ImagenInline[] } {
   const mensajes = [...hilo.mensajes].sort((a, b) => a.fechaIso.localeCompare(b.fechaIso))
 
   const bloquesHtml = mensajes
@@ -74,65 +79,61 @@ export function renderCadena(
       const quien = m.deLaMesa ? `${marca.titulo} | Gplus Seguros` : m.autor
       const cuerpo = m.texto.trim()
         ? escapar(m.texto.trim()).replace(/\n/g, '<br>')
-        : `<em style="color:#8a94a1">${SIN_TEXTO}</em>`
+        : `<em style="color:${PALETA.textoTenue}">${SIN_TEXTO}</em>`
       const archivos = m.adjuntos.length
-        ? `<div style="margin-top:10px;font-size:13px;color:#5a6572">Archivos: ${m.adjuntos
+        ? `<div style="margin-top:10px;font-size:13px;color:${PALETA.textoTenue}">Archivos: ${m.adjuntos
             .map((a) => escapar(a.nombre))
             .join(' · ')}</div>`
         : ''
-      const fondo = m.deLaMesa ? '#eef4fb' : '#f6f7f9'
-      return `<tr><td style="padding:0 24px 14px">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${fondo};border:1px solid #e3e8ee;border-radius:10px">
-                <tr><td style="padding:14px 16px">
-                  <div style="font-size:13px;color:#5a6572;margin-bottom:6px">
-                    <strong style="color:#1f2933">${escapar(quien)}</strong>${
-                      m.correoAutor ? ` &lt;${escapar(m.correoAutor)}&gt;` : ''
-                    } · ${fechaLegible(m.fechaIso)}
-                  </div>
-                  <div style="font-size:15px;line-height:1.6">${cuerpo}</div>
-                  ${archivos}
-                </td></tr>
+      const canto = m.deLaMesa ? PALETA.cian : PALETA.borde
+      const fondo = m.deLaMesa ? PALETA.cianSuave : '#f7f9fa'
+      return `        <tr><td style="padding:0 28px 12px">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${fondo};border:1px solid ${PALETA.borde};border-radius:10px">
+                <tr>
+                  <td width="3" style="width:3px;background:${canto};font-size:0;line-height:0">&nbsp;</td>
+                  <td style="padding:14px 16px">
+                    <div style="font-size:13px;color:${PALETA.textoTenue};margin-bottom:6px">
+                      <strong style="color:${PALETA.tinta}">${escapar(quien)}</strong>${
+                        m.correoAutor ? ` &lt;${escapar(m.correoAutor)}&gt;` : ''
+                      } · ${fechaLegible(m.fechaIso)}
+                    </div>
+                    <div style="font-size:15px;line-height:1.6;color:${PALETA.texto}">${cuerpo}</div>
+                    ${archivos}
+                  </td>
+                </tr>
               </table>
             </td></tr>`
     })
     .join('\n')
 
   const nota = v.nota.trim()
-    ? `<tr><td style="padding:0 24px 18px;font-size:16px;line-height:1.6">${escapar(v.nota.trim()).replace(/\n/g, '<br>')}</td></tr>`
+    ? `        <tr><td style="padding:26px 28px 4px">${parrafos(v.nota, '0 0 12px')}</td></tr>`
     : ''
 
-  const referencia = `Caso ${escapar(v.folio)}${v.tramite ? ` · ${escapar(v.tramite)}` : ''}`
+  const cuantos = `${mensajes.length} ${mensajes.length === 1 ? 'mensaje' : 'mensajes'}`
 
-  const html = `<!DOCTYPE html>
-<html lang="es">
-<body style="margin:0;padding:0;background:#f5f7f9">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7f9;padding:24px 12px">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;background:#ffffff;border:1px solid #e3e8ee;border-radius:12px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#1f2933">
-        <tr>
-          <td style="background:${marca.color};padding:18px 24px;color:#ffffff">
-            <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Gplus Seguros</div>
-            <div style="font-size:19px;font-weight:bold;margin-top:2px">Conversación del caso ${escapar(v.folio)}</div>
+  const contenido = `        <tr>
+          <td style="padding:${nota ? '10px' : '26px'} 28px 4px">
+            <div style="font-size:19px;font-weight:bold;color:${PALETA.tinta}">Conversación del caso ${escapar(v.folio)}</div>
           </td>
         </tr>
-        ${nota}
-        <tr><td style="padding:18px 24px 10px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#8a94a1">
-          ${mensajes.length} ${mensajes.length === 1 ? 'mensaje' : 'mensajes'}
+${nota}
+        <tr><td style="padding:14px 28px 10px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${PALETA.textoTenue}">
+          ${cuantos}
         </td></tr>
-        ${bloquesHtml}
-        <tr>
-          <td style="border-top:1px solid #e3e8ee;padding:18px 24px;font-size:14px;color:#5a6572">
-            <div style="font-weight:bold;color:#1f2933">${escapar(marca.firma.nombre)}</div>
-            <div style="margin-top:4px">Compartido por: ${escapar(v.atiende)}</div>
-            <div style="margin-top:2px"><a href="mailto:${marca.firma.correo}" style="color:${marca.color};text-decoration:none">${escapar(marca.firma.correo)}</a></div>
-            <div style="margin-top:10px;font-size:12px;color:#8a94a1">${referencia}</div>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`
+${bloquesHtml}
+        <tr><td style="height:14px;font-size:0;line-height:0">&nbsp;</td></tr>`
+
+  const { html, imagenes } = envolverCorreo({
+    marca,
+    vistaPrevia: v.nota.trim() || `Conversación del caso ${v.folio} · ${cuantos}`,
+    referencia: `Caso ${escapar(v.folio)}${v.tramite ? ` · ${escapar(v.tramite)}` : ''}`,
+    contenido,
+    firma: firmaHtml(marca, { etiqueta: 'Compartido por', valor: v.atiende }),
+    // Una transcripción con varios mensajes anidados necesita más aire que una
+    // respuesta suelta.
+    ancho: 700,
+  })
 
   const bloquesTexto = mensajes.map((m) => {
     const quien = m.deLaMesa ? `${marca.titulo} | Gplus Seguros` : m.autor
@@ -146,16 +147,14 @@ export function renderCadena(
     `Conversación del caso ${v.folio}`,
     ...(v.nota.trim() ? ['', v.nota.trim()] : []),
     '',
-    `${mensajes.length} ${mensajes.length === 1 ? 'mensaje' : 'mensajes'}`,
+    cuantos,
     '',
     bloquesTexto.join('\n\n----------\n\n'),
     '',
-    '---',
-    marca.firma.nombre,
-    `Compartido por: ${v.atiende}`,
-    marca.firma.correo,
+    ...pieTexto(marca, [marca.firma.puesto, `Compartido por: ${v.atiende}`]),
+    '',
     `Caso ${v.folio}${v.tramite ? ` · ${v.tramite}` : ''}`,
   ].join('\n')
 
-  return { html, texto }
+  return { html, texto, imagenes }
 }
