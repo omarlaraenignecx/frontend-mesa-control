@@ -8,7 +8,7 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Diseño técnico | `docs/superpowers/specs/2026-08-05-frontend-mesa-control-design.md` |
 | Repositorio | https://github.com/omarlaraenignecx/frontend-mesa-control |
 | Producción | https://frontend-mesa-control.vercel.app |
-| Última actualización | 7 de septiembre de 2026 (rediseño de los correos con la identidad de Gplus Seguros, **sin desplegar**; el módulo de Atención a Siniestros sigue en producción y falta que José autorice su cuenta de correo y escriba su plantilla) |
+| Última actualización | 7 de septiembre de 2026 (los correos salen con la identidad de Gplus Seguros, **en producción**; el módulo de Atención a Siniestros sigue en producción y falta que José autorice su cuenta de correo y escriba su plantilla) |
 
 ## Estado por etapas
 
@@ -25,6 +25,7 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Notificaciones en vivo | **Completa y en producción** desde el 17/8/2026, con los dos flujos de n8n activos | `docs/superpowers/plans/2026-08-14-notificaciones.md` · salida: `docs/PASO-A-PRODUCCION-NOTIFICACIONES.md` |
 | Avisos de escritorio | **Completa y en producción**, probada en local contra la copia con ocho peticiones simuladas y un correo real | `docs/superpowers/plans/2026-08-17-avisos-escritorio.md` · salida: punto 11 de `docs/PASO-A-PRODUCCION-NOTIFICACIONES.md` |
 | 4 · Producción y cierre | En curso: hoja productiva en uso; falta la jornada real y el cierre documental | `docs/superpowers/plans/2026-08-13-etapa-4-produccion-y-cierre.md` |
+| Identidad de los correos | **Completa y en producción** desde el 7 de septiembre de 2026. Aprobada por el cliente sobre tres correos de muestra enviados por el camino real del sistema | sin plan; pedido del cliente el 7/9/2026 |
 | Atención a Siniestros (etapas 1 a 6) | **Completa y en producción** desde el 21 de agosto de 2026, con su flujo de n8n activo. Pendiente de José: autorizar su cuenta de correo y escribir el texto de la plantilla del ramo | diseño: `docs/superpowers/specs/2026-08-20-modulo-siniestros-design.md` · salida: `docs/PASO-A-PRODUCCION-SINIESTROS.md` |
 
 Suite: **649 pruebas** en 59 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
@@ -41,6 +42,14 @@ Suite: **649 pruebas** en 59 archivos. Comandos: `pnpm test`, `pnpm typecheck`, 
 | Proyecto Vercel | `frontend-mesa-control` en el equipo `omarlara-1860s-projects` |
 | Hoja de desarrollo | `1rimFXIxaM4HrBHC9YQfwYfkh0l-RBJdbe7SLM0CGxEQ` — "Prueba formulario mesa de control". Es la que usan `.env.local` y el entorno **Preview**, para que ninguna prueba escriba en el registro real |
 | Hoja productiva | `1OfK8ve8twu5WCx-Yy3iJoiKJhs34klChq7dIqx4dfr0` — "Formulario sin título (Respuestas)". **En uso por producción desde el 13 de agosto de 2026**, con autorización del área. La vuelta atrás es cambiar `SHEET_ID` de Production a la copia y volver a desplegar |
+
+**El despliegue del 7 de septiembre de 2026 no lo disparó GitHub.** El push a `main`
+llegó (`d172015`), pero pasados cinco minutos Vercel no había creado ningún
+despliegue, así que se hizo con `npx vercel deploy --prod` desde local. Quedó en
+producción y con el dominio apuntando a él, pero **sin los metadatos del commit** que
+sí traen los anteriores: en el panel se ve sin `githubCommitSha`. Conviene revisar la
+integración de GitHub antes del próximo despliegue, o repetir el `vercel deploy --prod`
+a sabiendas.
 
 El push a GitHub usa un credential helper local que lee el token de `~/.gh-token-mesa`, con una entrada vacía previa para descartar el `osxkeychain` del sistema (que responde con otra cuenta).
 
