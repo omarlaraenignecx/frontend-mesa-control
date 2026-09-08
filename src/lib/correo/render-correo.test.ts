@@ -1,12 +1,27 @@
 import { describe, expect, it } from 'vitest'
+import { LOGO_GPLUS } from './marca/logo'
 import {
   MARCA_MESA,
+  PALETA,
   remitenteDe,
   avisoDeRespuesta,
   renderCorreo,
   sustituirVariables,
   variablesDelCaso,
+  type MarcaCorreo,
 } from './render-correo'
+
+/** La marca del ramo, tal como la arma `buzonDelCaso` con la ficha del ejecutivo. */
+const MARCA_SINIESTROS: MarcaCorreo = {
+  titulo: 'Atención a Siniestros',
+  firma: {
+    nombre: 'Jose Juan Mendoza Diaz',
+    puesto: 'Ejecutivo de siniestros',
+    telefono: '55 4884 2862',
+    correo: 'jose.mendoza@gplusseguros.mx',
+  },
+  muestraQuienAtiende: false,
+}
 
 const V = {
   solicitante: 'Ricardo Hernandez',
@@ -111,9 +126,9 @@ describe('renderCorreo', () => {
 describe('avisoDeRespuesta', () => {
   it('pide responder al mismo correo y nombra el caso', () => {
     const aviso = avisoDeRespuesta('7000')
-    expect(aviso.titulo).toBe('Responde en este mismo correo')
+    expect(aviso.titulo).toBe('La conversación continúa en este correo')
     expect(aviso.detalle).toContain('caso 7000')
-    expect(aviso.detalle).toContain('Responder')
+    expect(aviso.detalle).toContain('botón Responder')
   })
 
   it('advierte lo que pasa si la agencia abre un correo nuevo', () => {
@@ -122,8 +137,17 @@ describe('avisoDeRespuesta', () => {
 
   it('sin folio habla de la solicitud, no deja el número en blanco', () => {
     const aviso = avisoDeRespuesta('')
-    expect(aviso.detalle).toContain('tu solicitud')
+    expect(aviso.detalle).toContain('de la solicitud')
     expect(aviso.detalle).not.toContain('caso')
+  })
+
+  it('no tutea ni habla de usted: lo firman dos áreas que no tratan igual a quien leen', () => {
+    // La mesa tutea a las agencias; siniestros habla de usted al cliente. Un aviso en
+    // cualquiera de los dos tratos hace que uno de los dos correos se contradiga.
+    const { titulo, detalle } = avisoDeRespuesta('7000')
+    for (const trato of [/\btu\b/i, /\btus\b/i, /\busted\b/i, /\bsu respuesta\b/i]) {
+      expect(`${titulo} ${detalle}`).not.toMatch(trato)
+    }
   })
 })
 
@@ -136,8 +160,10 @@ describe('el aviso dentro del correo', () => {
     expect(html).toContain(aviso.titulo)
     expect(html).toContain(aviso.detalle)
     expect(html.indexOf(aviso.titulo)).toBeLessThan(html.indexOf('Atiende:'))
-    // Fondo distinto al del cuerpo: es una advertencia, tiene que verse.
-    expect(html).toContain('#fff8e1')
+    // Fondo distinto al del cuerpo, para que se distinga de lo que escribió el área.
+    // En los colores de la marca y no en ámbar de advertencia: lo que dice no es un
+    // problema, es cómo seguir.
+    expect(html).toContain(PALETA.cianSuave)
   })
 
   it('viaja también en la alternativa de texto, que es la que ven algunos clientes', () => {
@@ -163,39 +189,40 @@ describe('la marca del correo', () => {
     atiende: 'Keynor',
   }
 
-  it('el correo de la mesa no cambió: misma banda, mismo pie', () => {
-    // Son los correos que salen a diario a las agencias. Cualquier cambio aquí es un
-    // cambio en lo que ven los clientes de la mesa.
+  it('el de la mesa se anuncia como Mesa de Control y firma como equipo', () => {
+    // Son los correos que salen a diario a las agencias.
     const { html, texto } = renderCorreo('Buen día', v)
-    expect(html).toContain('background:#005ba9')
     expect(html).toContain('Mesa de Control')
     expect(html).toContain('Mesa de Control — Gplus Seguros')
     expect(html).toContain('Atiende: Keynor')
     expect(html).toContain('mesadecontrol@gplusseguros.mx')
     expect(texto).toContain('Atiende: Keynor')
     // Sin líneas de puesto ni teléfono: la mesa no las tiene.
-    expect(html).not.toContain('TEL ')
+    expect(html).not.toContain('href="tel:')
+    expect(texto).not.toContain('TEL ')
+  })
+
+  it('las dos áreas salen con los mismos colores', () => {
+    // Quien recibe el correo es cliente de Gplus Seguros y no tiene por qué
+    // encontrarse dos marcas según a qué área le escribió. El área se distingue por
+    // el rótulo, que es información; el color era ruido.
+    const mesa = renderCorreo('Buen día', v).html
+    const ramo = renderCorreo('Buen día', v, MARCA_SINIESTROS).html
+    for (const color of [PALETA.cian, PALETA.profundo, PALETA.cianSuave]) {
+      expect(mesa).toContain(color)
+      expect(ramo).toContain(color)
+    }
   })
 
   it('el del ramo firma con la ficha del ejecutivo y no dice quién atiende', () => {
     // Del otro lado hay un cliente con un siniestro: quiere saber a quién le habla.
-    const marca = {
-      titulo: 'Atención a Siniestros',
-      color: '#0f3d5c',
-      firma: {
-        nombre: 'Jose Juan Mendoza Diaz',
-        puesto: 'Ejecutivo de siniestros',
-        telefono: '55 4884 2862',
-        correo: 'jose.mendoza@gplusseguros.mx',
-      },
-      muestraQuienAtiende: false,
-    }
-    const { html, texto } = renderCorreo('Buen día', v, marca)
-    expect(html).toContain('background:#0f3d5c')
+    const { html, texto } = renderCorreo('Buen día', v, MARCA_SINIESTROS)
     expect(html).toContain('Atención a Siniestros')
     expect(html).toContain('Jose Juan Mendoza Diaz')
     expect(html).toContain('Ejecutivo de siniestros')
-    expect(html).toContain('TEL 55 4884 2862')
+    // El teléfono es un enlace: en el móvil, el cliente marca desde el correo.
+    expect(html).toContain('href="tel:5548842862"')
+    expect(html).toContain('55 4884 2862')
     expect(html).toContain('jose.mendoza@gplusseguros.mx')
     // El «Atiende:» de la mesa sobraría: la firma ya dice quién lleva el caso.
     expect(html).not.toContain('Atiende:')
@@ -205,20 +232,19 @@ describe('la marca del correo', () => {
 
   it('una firma sin teléfono no deja la línea a medias', () => {
     const marca = {
-      titulo: 'Atención a Siniestros',
-      color: '#0f3d5c',
+      ...MARCA_SINIESTROS,
       firma: { nombre: 'Norma Zacarías', puesto: null, telefono: null, correo: 'n@x.mx' },
-      muestraQuienAtiende: false,
     }
-    const { html } = renderCorreo('Buen día', v, marca)
-    expect(html).not.toContain('TEL ')
+    const { html, texto } = renderCorreo('Buen día', v, marca)
+    expect(html).not.toContain('href="tel:')
+    expect(texto).not.toContain('TEL ')
     expect(html).toContain('Norma Zacarías')
   })
 
   it('el aviso de responder en el mismo correo va en las dos marcas', () => {
     // Es lo que mantiene la respuesta dentro del hilo del caso.
     for (const html of [renderCorreo('x', v).html, renderCorreo('x', v, MARCA_MESA).html]) {
-      expect(html).toContain('Responde en este mismo correo')
+      expect(html).toContain(avisoDeRespuesta(v.folio).titulo)
     }
   })
 })
@@ -262,21 +288,55 @@ describe('remitenteDe', () => {
   it('el sobre lleva la cuenta autenticada, no la de la firma', () => {
     // Gmail reescribe en silencio un From que no sea de la cuenta autenticada, así
     // que ponerlo distinto no lo cambia: solo hace creer que se cambió.
-    const marca = {
-      titulo: 'Atención a Siniestros',
-      color: '#0f3d5c',
-      firma: {
-        nombre: 'Jose Juan Mendoza Diaz',
-        puesto: 'Ejecutivo de siniestros',
-        telefono: '55 4884 2862',
-        correo: 'jose.mendoza@gplusseguros.mx',
-      },
-      muestraQuienAtiende: false,
-    }
-    expect(remitenteDe(marca, 'mesadecontrol@gplusseguros.mx')).toBe(
+    expect(remitenteDe(MARCA_SINIESTROS, 'mesadecontrol@gplusseguros.mx')).toBe(
       'Atención a Siniestros | Gplus Seguros <mesadecontrol@gplusseguros.mx>',
     )
     // Y la firma del pie sigue siendo la del ejecutivo: son datos de contacto.
-    expect(renderCorreo('x', V, marca).html).toContain('jose.mendoza@gplusseguros.mx')
+    expect(renderCorreo('x', V, MARCA_SINIESTROS).html).toContain('jose.mendoza@gplusseguros.mx')
+  })
+})
+
+describe('el logo dentro del correo', () => {
+  it('viaja con el mensaje y el HTML lo pide por su Content-ID', () => {
+    // Referido por `cid:` y no por una URL: así se ve aunque el cliente de correo
+    // bloquee las imágenes remotas, que es lo que Outlook hace por omisión.
+    const { html, imagenes } = renderCorreo('Buen día', V)
+    expect(html).toContain(`src="cid:${LOGO_GPLUS.cid}"`)
+    expect(imagenes).toEqual([LOGO_GPLUS])
+  })
+
+  it('lleva texto alternativo, para quien no ve la imagen', () => {
+    expect(renderCorreo('Buen día', V).html).toContain('alt="Gplus Seguros"')
+  })
+
+  it('declara el tamaño como atributo, que es lo que respeta Outlook', () => {
+    const { html } = renderCorreo('Buen día', V)
+    expect(html).toContain(`width="${LOGO_GPLUS.ancho}"`)
+    expect(html).toContain(`height="${LOGO_GPLUS.alto}"`)
+  })
+
+  it('es un PNG: ningún cliente de correo dibuja un SVG', () => {
+    expect(LOGO_GPLUS.tipo).toBe('image/png')
+  })
+})
+
+describe('la vista previa de la bandeja', () => {
+  it('arranca con el mensaje del área y no con el nombre de la marca', () => {
+    // Sin esto, el cliente de correo toma las primeras palabras del HTML y la bandeja
+    // se llena de correos que dicen todos «Gplus Seguros · Mesa de Control».
+    const { html } = renderCorreo('Recibimos tu solicitud.', V)
+    expect(html.indexOf('Recibimos tu solicitud.')).toBeLessThan(html.indexOf('Mesa de Control'))
+  })
+
+  it('va oculta, para que no se lea dos veces al abrir el correo', () => {
+    const { html } = renderCorreo('Recibimos tu solicitud.', V)
+    const bloque = html.slice(0, html.indexOf('Recibimos tu solicitud.'))
+    expect(bloque).toContain('display:none')
+    expect(bloque).toContain('mso-hide:all')
+  })
+
+  it('escapa lo que escribió el usuario, que también acaba ahí', () => {
+    const { html } = renderCorreo('Ojo con <script>alert(1)</script>', V)
+    expect(html).not.toContain('<script>')
   })
 })

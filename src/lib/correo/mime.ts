@@ -1,3 +1,5 @@
+import type { ImagenInline } from './envoltura'
+
 export type AdjuntoSalida = { nombre: string; tipo: string; contenido: Uint8Array }
 
 export const LIMITE_GMAIL_BYTES = 25 * 1024 * 1024
@@ -5,9 +7,18 @@ export const LIMITE_GMAIL_BYTES = 25 * 1024 * 1024
 /**
  * base64 infla los datos un tercio, y el límite de Gmail aplica al correo
  * codificado: un archivo de 20 MB pesa unos 27 MB al enviarse.
+ *
+ * Las imágenes del diseño cuentan igual que los archivos del usuario —viajan en el
+ * mismo sobre—, aunque hoy sean unos pocos kilobytes y nunca decidan el resultado.
  */
-export function pesoCodificado(adjuntos: AdjuntoSalida[]): number {
-  return adjuntos.reduce((total, a) => total + Math.ceil(a.contenido.length / 3) * 4, 0)
+export function pesoCodificado(
+  adjuntos: AdjuntoSalida[],
+  imagenes: ImagenInline[] = [],
+): number {
+  return (
+    adjuntos.reduce((total, a) => total + Math.ceil(a.contenido.length / 3) * 4, 0) +
+    imagenes.reduce((total, i) => total + i.base64.length, 0)
+  )
 }
 
 /**
@@ -72,6 +83,24 @@ function hashDe(texto: string): number {
   return h
 }
 
+/**
+ * Arma el correo completo, en el formato que Gmail espera recibir.
+ *
+ * Las cajas se anidan de fuera hacia dentro y cada una tiene un porqué:
+ *
+ * ```
+ * multipart/mixed          ← solo si hay archivos que el destinatario descarga
+ *   multipart/related      ← solo si el diseño trae imágenes dentro del cuerpo
+ *     multipart/alternative  el mismo mensaje en texto y en HTML
+ *     image/png              el logo, referido desde el HTML por su Content-ID
+ *   application/pdf …      los archivos que adjuntó la mesa
+ * ```
+ *
+ * Cada caja se omite cuando no hace falta. No es afán de ahorro: un
+ * `multipart/mixed` con una sola parte adentro hace que algunos clientes de correo
+ * anuncien un adjunto que no existe, y un `related` sin imágenes es una envoltura que
+ * solo sirve para que algo la interprete mal.
+ */
 export function componerMime(mensaje: {
   de: string
   para: string
@@ -80,11 +109,16 @@ export function componerMime(mensaje: {
   html: string
   texto: string
   adjuntos: AdjuntoSalida[]
+  /** Las imágenes que el HTML dibuja en el cuerpo, no archivos que se descarguen. */
+  imagenes?: ImagenInline[]
   enRespuestaA?: string
 }): string {
   const limiteAlt = `alt_${Math.abs(hashDe(mensaje.asunto + mensaje.texto)).toString(36)}`
   const limiteMix = `mix_${Math.abs(hashDe(mensaje.para + mensaje.asunto)).toString(36)}`
+  const limiteRel = `rel_${Math.abs(hashDe(mensaje.asunto + mensaje.para)).toString(36)}`
+  const imagenes = mensaje.imagenes ?? []
   const hayAdjuntos = mensaje.adjuntos.length > 0
+  const hayImagenes = imagenes.length > 0
 
   const cabeceras = [
     `From: ${codificarRemitente(mensaje.de)}`,
@@ -115,7 +149,37 @@ export function componerMime(mensaje: {
     `--${limiteAlt}--`,
   ]
 
-  if (!hayAdjuntos) return [...cabeceras, ...alternativa].join('\r\n')
+  /**
+   * El cuerpo del mensaje: el texto y el HTML, y con ellos las imágenes que el HTML
+   * dibuja. `Content-ID` es lo que empareja cada imagen con su `src="cid:…"`, y va
+   * entre picoparéntesis porque así lo pide la RFC 2045; sin ellos, el cliente no
+   * encuentra la imagen y deja el hueco.
+   *
+   * `Content-Disposition: inline` es lo que evita que el logo aparezca además como un
+   * archivo suelto al pie del correo, junto a los que sí mandó la mesa.
+   */
+  const cuerpo = hayImagenes
+    ? [
+        `Content-Type: multipart/related; type="multipart/alternative"; boundary="${limiteRel}"`,
+        '',
+        `--${limiteRel}`,
+        ...alternativa,
+        '',
+        ...imagenes.flatMap((i) => [
+          `--${limiteRel}`,
+          `Content-Type: ${i.tipo}; name="${nombreSeguro(i.nombre)}"`,
+          `Content-Disposition: inline; ${cabecerasDeNombre(i.nombre)}`,
+          `Content-ID: <${i.cid}>`,
+          'Content-Transfer-Encoding: base64',
+          '',
+          troncear(i.base64),
+          '',
+        ]),
+        `--${limiteRel}--`,
+      ]
+    : alternativa
+
+  if (!hayAdjuntos) return [...cabeceras, ...cuerpo].join('\r\n')
 
   const partesAdjuntos = mensaje.adjuntos.flatMap((a) => [
     `--${limiteMix}`,
@@ -132,7 +196,7 @@ export function componerMime(mensaje: {
     `Content-Type: multipart/mixed; boundary="${limiteMix}"`,
     '',
     `--${limiteMix}`,
-    ...alternativa,
+    ...cuerpo,
     '',
     ...partesAdjuntos,
     `--${limiteMix}--`,

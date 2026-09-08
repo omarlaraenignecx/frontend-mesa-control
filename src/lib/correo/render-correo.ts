@@ -1,3 +1,22 @@
+import {
+  avisoHtml,
+  envolverCorreo,
+  escapar,
+  firmaHtml,
+  parrafos,
+  pieTexto,
+  type ImagenInline,
+} from './envoltura'
+import { MARCA_MESA, type MarcaCorreo } from './marca'
+
+export {
+  CORREO_MESA,
+  MARCA_MESA,
+  PALETA,
+  remitenteDe,
+  type MarcaCorreo,
+} from './marca'
+
 export type Variables = {
   solicitante: string
   folio: string
@@ -15,62 +34,6 @@ export type Variables = {
   numeroSiniestro?: string
   poliza?: string
   tipoSiniestro?: string
-}
-
-export const CORREO_MESA = 'mesadecontrol@gplusseguros.mx'
-
-/**
- * La identidad con la que sale un correo: qué dice la banda, de qué color es y con
- * qué firma cierra.
- *
- * Existe porque hay dos áreas escribiendo desde la misma herramienta y no se parecen:
- * la Mesa de Control firma como equipo —«Atiende: quien lo tomó»— y Atención a
- * Siniestros firma como la persona que lleva el caso, con su puesto y su teléfono,
- * porque del otro lado hay un cliente con un siniestro encima y quiere saber a quién
- * le está hablando.
- */
-export type MarcaCorreo = {
-  /** Rótulo de la banda superior, bajo «Gplus Seguros». */
-  titulo: string
-  /** Color de la banda. */
-  color: string
-  firma: {
-    nombre: string
-    puesto: string | null
-    telefono: string | null
-    correo: string
-  }
-  /** Si el pie dice además quién del equipo está atendiendo. */
-  muestraQuienAtiende: boolean
-}
-
-/**
- * La marca de la Mesa de Control, tal como salían sus correos antes de que hubiera
- * dos áreas. No se toca: son los correos que salen a diario a las agencias.
- */
-export const MARCA_MESA: MarcaCorreo = {
-  titulo: 'Mesa de Control',
-  color: '#005ba9',
-  firma: {
-    nombre: 'Mesa de Control — Gplus Seguros',
-    puesto: null,
-    telefono: null,
-    correo: CORREO_MESA,
-  },
-  muestraQuienAtiende: true,
-}
-
-/**
- * Cómo se anuncia el remitente en la cabecera del mensaje.
- *
- * El correo va aparte y no sale de `marca.firma`: el `From` **tiene que ser la cuenta
- * autenticada** con la que se está llamando a Gmail. Cuando no lo es, Gmail no falla
- * —lo reescribe en silencio, salvo que sea un alias verificado—, así que confiar en
- * el `From` que uno puso es engañarse. La firma del pie es otra cosa: son los datos de
- * contacto de la persona, y con el buzón provisional encendido no coinciden.
- */
-export function remitenteDe(marca: MarcaCorreo, correoBuzon: string): string {
-  return `${marca.titulo} | Gplus Seguros <${correoBuzon}>`
 }
 
 /**
@@ -116,14 +79,6 @@ export function sustituirVariables(plantilla: string, v: Variables): string {
   })
 }
 
-function escapar(texto: string): string {
-  return texto
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
 /**
  * Aviso fijo que va en todos los correos que salen de la mesa.
  *
@@ -132,97 +87,66 @@ function escapar(texto: string): string {
  * caso. Responder al mismo mensaje es lo que mantiene la conversación en el
  * `threadId` que la aplicación guardó para esta fila; un correo nuevo abre otra
  * conversación que ya no se ve dentro del caso.
+ *
+ * Está escrito **sin tutear ni hablar de usted** porque lo firman las dos áreas y no
+ * tratan igual a quien les lee: la mesa tutea a las agencias, con las que trabaja a
+ * diario, y siniestros habla de usted a un cliente al que le acaba de pasar algo.
+ * Redactado en cualquiera de los dos tratos, uno de los dos correos salía
+ * contradiciéndose a sí mismo a media página.
  */
 export function avisoDeRespuesta(folio: string): { titulo: string; detalle: string } {
-  const referencia = folio.trim() ? `del caso ${folio.trim()}` : 'de tu solicitud'
+  const referencia = folio.trim() ? `del caso ${folio.trim()}` : 'de la solicitud'
   return {
-    titulo: 'Responde en este mismo correo',
+    titulo: 'La conversación continúa en este correo',
     detalle:
-      `Para continuar, usa el botón Responder de este mensaje. Así tu respuesta ` +
-      `queda en la conversación ${referencia} y la atendemos ahí mismo. ` +
-      `Si escribes un correo nuevo, tu mensaje se separa del expediente y la ` +
-      `atención se retrasa.`,
+      `Al usar el botón Responder de este mensaje, la respuesta queda en la ` +
+      `conversación ${referencia} y se atiende ahí mismo. Un correo nuevo se separa ` +
+      `del expediente y retrasa la atención.`,
   }
 }
 
+/** La referencia del caso, tal como se lee en la banda superior del correo. */
+function referenciaDe(v: Variables): string {
+  return `Caso ${escapar(v.folio)}${v.tramite ? ` · ${escapar(v.tramite)}` : ''}`
+}
+
 /**
- * Los clientes de correo ignoran las hojas de estilo y muchos descartan lo que
- * no sea una tabla, así que el diseño va con estilos en línea sobre tablas.
+ * El correo que sale a la agencia o al cliente.
  *
- * El cuerpo lo escribe la mesa, no la aplicación: se escapa antes de insertarlo
- * para que un signo de menor que no rompa el correo de la agencia.
+ * El cuerpo lo escribe el área, no la aplicación: se escapa antes de insertarlo para
+ * que un signo de menor que no rompa el correo de quien lo reciba. Todo lo demás
+ * —cabecera, aviso, firma y pie— lo pone el chasis de `envolverCorreo`.
  */
 export function renderCorreo(
   cuerpoTexto: string,
   v: Variables,
   marca: MarcaCorreo = MARCA_MESA,
-): { html: string; texto: string } {
-  const parrafos = cuerpoTexto
-    .split(/\n{2,}/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .map(
-      (p) =>
-        `<p style="margin:0 0 14px;line-height:1.6">${escapar(p).replace(/\n/g, '<br>')}</p>`,
-    )
-    .join('\n            ')
-
-  const referencia = `Caso ${escapar(v.folio)}${v.tramite ? ` · ${escapar(v.tramite)}` : ''}`
+): { html: string; texto: string; imagenes: ImagenInline[] } {
   const aviso = avisoDeRespuesta(v.folio)
-  const { firma } = marca
 
-  // Cada línea del pie solo aparece si trae dato: una firma con «TEL` vacío se lee
-  // como un correo a medio hacer.
-  const lineasFirma = [
-    firma.puesto ? `<div style="margin-top:4px">${escapar(firma.puesto)}</div>` : '',
-    marca.muestraQuienAtiende
-      ? `<div style="margin-top:4px">Atiende: ${escapar(v.atiende)}</div>`
-      : '',
-    firma.telefono ? `<div style="margin-top:2px">TEL ${escapar(firma.telefono)}</div>` : '',
-  ]
-    .filter(Boolean)
-    .join('\n            ')
+  const contenido = `        <tr>
+          <td style="padding:28px 28px 8px">
+            ${parrafos(cuerpoTexto)}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:12px 28px 26px">
+            ${avisoHtml(aviso.titulo, aviso.detalle)}
+          </td>
+        </tr>`
 
-  const html = `<!DOCTYPE html>
-<html lang="es">
-<body style="margin:0;padding:0;background:#f5f7f9">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7f9;padding:24px 12px">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background:#ffffff;border:1px solid #e3e8ee;border-radius:12px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#1f2933">
-        <tr>
-          <td style="background:${marca.color};padding:18px 24px;color:#ffffff">
-            <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Gplus Seguros</div>
-            <div style="font-size:19px;font-weight:bold;margin-top:2px">${escapar(marca.titulo)}</div>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:24px;font-size:16px">
-            ${parrafos}
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:0 24px 22px">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fff8e1;border:1px solid #f0d38a;border-radius:10px">
-              <tr><td style="padding:14px 16px;font-size:15px;line-height:1.6;color:#6b5100">
-                <div style="font-weight:bold">${escapar(aviso.titulo)}</div>
-                <div style="margin-top:4px">${escapar(aviso.detalle)}</div>
-              </td></tr>
-            </table>
-          </td>
-        </tr>
-        <tr>
-          <td style="border-top:1px solid #e3e8ee;padding:18px 24px;font-size:14px;color:#5a6572">
-            <div style="font-weight:bold;color:#1f2933">${escapar(firma.nombre)}</div>
-            ${lineasFirma}
-            <div style="margin-top:2px"><a href="mailto:${firma.correo}" style="color:${marca.color};text-decoration:none">${escapar(firma.correo)}</a></div>
-            <div style="margin-top:10px;font-size:12px;color:#8a94a1">${referencia}</div>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`
+  const { html, imagenes } = envolverCorreo({
+    marca,
+    // La bandeja enseña el arranque del mensaje del área, que es lo que de verdad
+    // distingue un correo de otro; el nombre del área ya va en el remitente.
+    vistaPrevia: cuerpoTexto,
+    referencia: referenciaDe(v),
+    contenido,
+    firma: firmaHtml(
+      marca,
+      marca.muestraQuienAtiende ? { etiqueta: 'Atiende', valor: v.atiende } : null,
+    ),
+  })
 
   const texto = [
     cuerpoTexto.trim(),
@@ -230,16 +154,13 @@ export function renderCorreo(
     `** ${aviso.titulo} **`,
     aviso.detalle,
     '',
-    '---',
-    firma.nombre,
-    firma.puesto,
-    marca.muestraQuienAtiende ? `Atiende: ${v.atiende}` : null,
-    firma.telefono ? `TEL ${firma.telefono}` : null,
-    firma.correo,
+    ...pieTexto(marca, [
+      marca.firma.puesto,
+      marca.muestraQuienAtiende ? `Atiende: ${v.atiende}` : null,
+    ]),
+    '',
     `Caso ${v.folio}${v.tramite ? ` · ${v.tramite}` : ''}`,
-  ]
-    .filter((l): l is string => Boolean(l))
-    .join('\n')
+  ].join('\n')
 
-  return { html, texto }
+  return { html, texto, imagenes }
 }

@@ -70,7 +70,11 @@ export async function enviarMensaje(fila: number, datos: FormData): Promise<Resu
   // que se pulsó Enviar: así una respuesta no puede salir del área equivocada por
   // haber entrado por la URL de al lado.
   const buzon = await buzonDelCaso(caso)
-  const { html, texto } = renderCorreo(cuerpo, variablesDelCaso(caso, folio, usuario), buzon.marca)
+  const { html, texto, imagenes } = renderCorreo(
+    cuerpo,
+    variablesDelCaso(caso, folio, usuario),
+    buzon.marca,
+  )
 
   const deps = buzon.deps
   const vinculo = await leerVinculo(fila)
@@ -101,6 +105,7 @@ export async function enviarMensaje(fila: number, datos: FormData): Promise<Resu
         asunto: componerAsunto(folio),
         html,
         texto,
+        imagenes,
         adjuntos: await archivosDeFormData(datos),
         enRespuestaA,
       },
@@ -250,7 +255,7 @@ export async function reenviarCadena(fila: number, datos: FormData): Promise<Res
     }
   }
 
-  const { html, texto } = renderCadena(
+  const { html, texto, imagenes } = renderCadena(
     hilo,
     {
       folio,
@@ -269,6 +274,7 @@ export async function reenviarCadena(fila: number, datos: FormData): Promise<Res
       asunto: asuntoDeReenvio(folio),
       html,
       texto,
+      imagenes,
       adjuntos,
     })
   } catch (e) {

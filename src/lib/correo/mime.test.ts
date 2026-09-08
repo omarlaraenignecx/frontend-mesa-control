@@ -208,3 +208,70 @@ describe('acentos en las cabeceras', () => {
     expect(mime).not.toContain('filename*=')
   })
 })
+
+describe('las imágenes del diseño', () => {
+  const LOGO = {
+    cid: 'logo-gplus@gplusseguros.mx',
+    nombre: 'gplus-seguros.png',
+    tipo: 'image/png',
+    base64: 'iVBORw0KGgo=',
+  }
+
+  it('sin imágenes el mensaje sigue siendo el de siempre, sin envoltura de más', () => {
+    // Un `related` vacío es una caja que solo sirve para que algo la interprete mal.
+    const mime = componerMime(BASE)
+    expect(mime).not.toContain('multipart/related')
+    expect(mime).toContain('multipart/alternative')
+  })
+
+  it('van en un multipart/related junto al texto y el HTML', () => {
+    const mime = componerMime({ ...BASE, imagenes: [LOGO] })
+    expect(mime).toContain('Content-Type: multipart/related; type="multipart/alternative"')
+    expect(mime).toContain('Content-Type: image/png; name="gplus-seguros.png"')
+    expect(mime.indexOf('multipart/related')).toBeLessThan(mime.indexOf('multipart/alternative'))
+  })
+
+  it('el Content-ID va entre picoparéntesis, que es lo que empareja el src="cid:"', () => {
+    const mime = componerMime({ ...BASE, imagenes: [LOGO] })
+    expect(mime).toContain('Content-ID: <logo-gplus@gplusseguros.mx>')
+  })
+
+  it('van como inline, para que no aparezcan como archivo suelto al pie', () => {
+    const mime = componerMime({ ...BASE, imagenes: [LOGO] })
+    expect(mime).toContain('Content-Disposition: inline; filename="gplus-seguros.png"')
+    expect(mime).not.toContain('Content-Disposition: attachment; filename="gplus-seguros.png"')
+  })
+
+  it('con archivos adjuntos, el related queda dentro del mixed', () => {
+    // El orden importa: el logo pertenece al cuerpo del mensaje, y los archivos de la
+    // mesa son hermanos del cuerpo entero, no del HTML.
+    const mime = componerMime({
+      ...BASE,
+      imagenes: [LOGO],
+      adjuntos: [{ nombre: 'poliza.pdf', tipo: 'application/pdf', contenido: new Uint8Array([1]) }],
+    })
+    expect(mime.indexOf('multipart/mixed')).toBeLessThan(mime.indexOf('multipart/related'))
+    expect(mime.indexOf('multipart/related')).toBeLessThan(mime.indexOf('multipart/alternative'))
+    expect(mime.indexOf('Content-ID:')).toBeLessThan(mime.indexOf('poliza.pdf'))
+  })
+
+  it('cierra todas las fronteras que abre', () => {
+    // Una frontera sin cerrar deja al cliente de correo leyendo hasta el final y el
+    // mensaje aparece con el HTML crudo a la vista.
+    const mime = componerMime({
+      ...BASE,
+      imagenes: [LOGO],
+      adjuntos: [{ nombre: 'p.pdf', tipo: 'application/pdf', contenido: new Uint8Array([1]) }],
+    })
+    for (const prefijo of ['alt_', 'rel_', 'mix_']) {
+      const frontera = mime.match(new RegExp(`boundary="(${prefijo}[a-z0-9]+)"`))?.[1]
+      expect(frontera, `falta la frontera ${prefijo}`).toBeTruthy()
+      expect(mime).toContain(`--${frontera}--`)
+    }
+  })
+
+  it('el peso de la imagen cuenta para el límite de Gmail', () => {
+    expect(pesoCodificado([], [LOGO])).toBe(LOGO.base64.length)
+    expect(pesoCodificado([])).toBe(0)
+  })
+})
