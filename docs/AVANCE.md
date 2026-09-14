@@ -26,9 +26,10 @@ Estado consolidado del proyecto. Este documento es la fuente de contexto para re
 | Avisos de escritorio | **Completa y en producción**, probada en local contra la copia con ocho peticiones simuladas y un correo real | `docs/superpowers/plans/2026-08-17-avisos-escritorio.md` · salida: punto 11 de `docs/PASO-A-PRODUCCION-NOTIFICACIONES.md` |
 | 4 · Producción y cierre | En curso: hoja productiva en uso; falta la jornada real y el cierre documental | `docs/superpowers/plans/2026-08-13-etapa-4-produccion-y-cierre.md` |
 | Identidad de los correos | **Completa y en producción** desde el 7 de septiembre de 2026. Aprobada por el cliente sobre tres correos de muestra enviados por el camino real del sistema | sin plan; pedido del cliente el 7/9/2026 |
+| Corrección del tipo de trámite | **Completa en código**, sin desplegar. Pedido del cliente el 12/9/2026: los solicitantes eligen mal la opción del formulario y eso rompe sus reportes. La mesa ya puede corregirlo desde Seguimiento | sin plan; ver `src/lib/casos/tramite.ts` y el comentario de `CAMPOS_ESCRIBIBLES` |
 | Atención a Siniestros (etapas 1 a 6) | **Completa y en producción** desde el 21 de agosto de 2026, con su flujo de n8n activo. Pendiente de José: autorizar su cuenta de correo y escribir el texto de la plantilla del ramo | diseño: `docs/superpowers/specs/2026-08-20-modulo-siniestros-design.md` · salida: `docs/PASO-A-PRODUCCION-SINIESTROS.md` |
 
-Suite: **649 pruebas** en 59 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
+Suite: **677 pruebas** en 60 archivos. Comandos: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm dev`, `pnpm db:push`, `pnpm db:seed`.
 
 ## Infraestructura
 

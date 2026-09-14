@@ -8,6 +8,7 @@ import { fechaDeCierreASellar, seCierraAhora } from '@/lib/casos/cierre'
 import { cargarCaso, depsDeGoogle } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
 import { componerObservaciones } from '@/lib/casos/observaciones'
+import { notaDelGuardado, rechazoDeCorreccion } from '@/lib/casos/tramite'
 import { calcularDiff, type Seguimiento } from '@/lib/casos/seguimiento'
 import {
   FilaCambiadaError,
@@ -34,11 +35,24 @@ export async function guardarSeguimiento(
   const valores: Seguimiento = { ...propuesto }
   const ahora = new Date()
 
+  // El trámite es la única respuesta del formulario que se puede escribir, así que
+  // sus condiciones se comprueban aquí y no solo en la pantalla: esta acción la
+  // comparten los dos módulos y se puede invocar sin pasar por ella.
+  if (valores.tipoTramite !== undefined) {
+    const rechazo = rechazoDeCorreccion(caso, valores.tipoTramite)
+    if (rechazo) return { ok: false, error: rechazo, conflicto: false }
+  }
+
+  // Si el trámite cambia, la corrección se anota también en Observaciones. La
+  // bitácora vive en la base de datos y el área trabaja en la hoja: sin esta
+  // línea, lo que eligió el solicitante desaparecería de la única vista que abren.
+  const nota = notaDelGuardado(caso, valores.tipoTramite, notaNueva)
+
   // Observaciones: acumulativo, nunca sobrescribe lo que ya escribió alguien.
-  if (notaNueva.trim()) {
+  if (nota) {
     valores.observaciones = componerObservaciones(
       caso.observaciones,
-      notaNueva,
+      nota,
       usuario.nombreEnHoja ?? usuario.correo,
       ahora,
     )
@@ -79,11 +93,16 @@ export async function guardarSeguimiento(
   }
 
   await registrarCambios(fila, caso.folio, usuario.correo, cambios)
+  // La clasificación **resultante**, no la que traía el caso al abrirlo: igual que
+  // `estatusResultante`. Antes se anotaba la anterior, y en el guardado donde se
+  // corrige el trámite eso dejaba el evento con el valor equivocado justo en el
+  // momento en que importa.
+  const claseResultante = valores.tipoTramite ?? claseDelCaso(caso)
   await emitirEvento({
     tipo: 'caso_guardado',
     fila,
     folio: caso.folio,
-    tipoTramite: claseDelCaso(caso),
+    tipoTramite: claseResultante,
     estatusResultante: valores.estatusFinal ?? caso.estatusFinal,
     correoUsuario: usuario.correo,
   })
@@ -92,7 +111,7 @@ export async function guardarSeguimiento(
       tipo: 'caso_cerrado',
       fila,
       folio: caso.folio,
-      tipoTramite: claseDelCaso(caso),
+      tipoTramite: claseResultante,
       estatusResultante: valores.estatusFinal,
       correoUsuario: usuario.correo,
     })

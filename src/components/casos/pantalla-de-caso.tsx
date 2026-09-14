@@ -23,6 +23,7 @@ import { sustituirVariables, variablesDelCaso } from '@/lib/correo/render-correo
 import { buzonDelCaso } from '@/lib/casos/buzon'
 import type { ConfigModulo } from '@/lib/modulos/modulo'
 import { claseDelCaso, estaVivo } from '@/lib/casos/caso'
+import { motivoSinCorreccion, puedeCorregirTramite } from '@/lib/casos/tramite'
 import { leerBitacora } from '@/lib/casos/bitacora'
 import { listarArchivos } from '@/lib/casos/archivos'
 import { agruparCamposExtra } from '@/lib/casos/campos-extra'
@@ -89,7 +90,7 @@ export async function PantallaDeCaso({
     )
   }
 
-  const { caso, catalogos, sinFolioTotal } = cargado
+  const { caso, catalogos, sinFolioTotal, tramitesUsados } = cargado
 
   await emitirEvento({
     tipo: 'caso_visualizado',
@@ -385,6 +386,9 @@ export async function PantallaDeCaso({
                   caso={caso}
                   catalogos={catalogos}
                   nombreUsuario={usuario.nombreEnHoja}
+                  tramites={tramitesUsados}
+                  puedeCorregirTramite={puedeCorregirTramite(modulo, caso)}
+                  motivoSinCorreccion={motivoSinCorreccion(modulo, caso)}
                 />
               </CardContent>
             </Card>

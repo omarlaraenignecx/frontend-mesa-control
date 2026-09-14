@@ -36,11 +36,16 @@ describe('construirMapa con los 307 encabezados reales', () => {
     expect(mapa.columnasPorCampo.marcaTemporal).toEqual([1])
   })
 
-  it('agrupa las cinco columnas equivalentes de tipo de trámite', () => {
-    // N, BQ, CY, FH, HQ comparten el encabezado "Tipo de trámite:"
-    expect(mapa.columnasPorCampo.tipoTramite).toEqual(
-      expect.arrayContaining([14, 69, 103, 164, 225]),
-    )
+  it('agrupa las diecisiete columnas equivalentes de tipo de trámite', () => {
+    // N, BQ, CY, FH y HQ comparten el encabezado "Tipo de trámite:"; las demás son
+    // las otras tres redacciones de la misma pregunta, repetidas por bloque.
+    //
+    // El grupo va fijado entero y en orden, no con `arrayContaining`: la corrección
+    // del trámite escribe en la primera de estas columnas que traiga valor, así que
+    // cuáles son y en qué orden están dejó de ser un detalle de la lectura.
+    expect(mapa.columnasPorCampo.tipoTramite).toEqual([
+      14, 26, 45, 69, 88, 101, 103, 135, 136, 162, 164, 196, 197, 223, 225, 257, 258,
+    ])
   })
 
   it('resuelve el área en sus dos encabezados distintos', () => {

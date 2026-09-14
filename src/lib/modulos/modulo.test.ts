@@ -25,6 +25,15 @@ describe('qué casos le tocan a cada módulo', () => {
   })
 })
 
+describe('corrección del tipo de trámite', () => {
+  it('solo la mesa la ofrece', () => {
+    // Siniestros clasifica por tipo de siniestro, que sigue siendo una respuesta
+    // intocable del solicitante: nadie ha pedido poder corregirla.
+    expect(MESA.corrigeTipoTramite).toBe(true)
+    expect(SINIESTROS.corrigeTipoTramite).toBe(false)
+  })
+})
+
 describe('rutas de cada módulo', () => {
   it('el caso lleva a la vista de su propio módulo', () => {
     expect(MESA.rutaCaso(7250)).toBe('/caso/7250')
