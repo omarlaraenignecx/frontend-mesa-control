@@ -1,3 +1,4 @@
+import { razonDeGoogle } from './error-google'
 import type { DepsLectura } from './sheet-reader'
 import { letraColumna, type CampoLogico, type MapaEsquema } from './sheet-schema'
 
@@ -165,7 +166,9 @@ async function pedir(deps: DepsLectura, url: string, init?: RequestInit) {
     )
   }
   if (!respuesta.ok) {
-    throw new Error(`Sheets respondió ${respuesta.status} al guardar los cambios.`)
+    throw new Error(
+      `Sheets respondió ${respuesta.status} al guardar los cambios.${await razonDeGoogle(respuesta)}`,
+    )
   }
   return respuesta
 }

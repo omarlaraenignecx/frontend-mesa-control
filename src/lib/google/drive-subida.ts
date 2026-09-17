@@ -6,6 +6,8 @@
  * devolvería 403. Viven en una carpeta que crea esta misma aplicación —lo único
  * que el permiso `drive.file` alcanza— y su registro queda en Postgres.
  */
+import { razonDeGoogle } from './error-google'
+
 export type DepsDrive = {
   fetch: typeof globalThis.fetch
   accessToken: string
@@ -74,7 +76,9 @@ async function revisar(respuesta: Response): Promise<void> {
       'Google rechazó la operación sobre Drive. Lo más probable es que falte el permiso de escritura: pide al administrador que vuelva a autorizar el acceso en Ajustes.',
     )
   }
-  throw new Error(`Drive respondió ${respuesta.status} al procesar el archivo.`)
+  throw new Error(
+    `Drive respondió ${respuesta.status} al procesar el archivo.${await razonDeGoogle(respuesta)}`,
+  )
 }
 
 export async function crearCarpeta(deps: DepsDrive): Promise<string> {

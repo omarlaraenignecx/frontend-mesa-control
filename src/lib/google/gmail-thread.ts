@@ -1,5 +1,6 @@
 import { consultaDeBusqueda } from '@/lib/correo/asunto'
 import { limpiarCuerpo } from '@/lib/correo/html-a-texto'
+import { razonDeGoogle } from './error-google'
 
 const BASE = 'https://gmail.googleapis.com/gmail/v1/users/me'
 
@@ -55,7 +56,9 @@ async function pedir(deps: DepsGmail, url: string) {
     throw new Error('Google limitó las consultas de correo. Intenta de nuevo en un momento.')
   }
   if (!respuesta.ok) {
-    throw new Error(`Gmail respondió ${respuesta.status} al leer la conversación.`)
+    throw new Error(
+      `Gmail respondió ${respuesta.status} al leer la conversación.${await razonDeGoogle(respuesta)}`,
+    )
   }
   return respuesta
 }

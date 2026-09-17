@@ -1,5 +1,6 @@
 import { parsearFechaHoja, type Caso } from '@/lib/casos/caso'
 import { extraerAdjuntos, type Adjunto } from './drive-links'
+import { razonDeGoogle } from './error-google'
 import {
   construirMapa,
   letraColumna,
@@ -38,7 +39,9 @@ async function pedirValores(deps: DepsLectura, rango: string): Promise<string[][
     )
   }
   if (!respuesta.ok) {
-    throw new Error(`Sheets respondió ${respuesta.status} al leer los casos.`)
+    throw new Error(
+      `Sheets respondió ${respuesta.status} al leer los casos.${await razonDeGoogle(respuesta)}`,
+    )
   }
 
   const cuerpo = (await respuesta.json()) as { values?: string[][] }

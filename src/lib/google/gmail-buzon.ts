@@ -1,3 +1,4 @@
+import { razonDeGoogle } from './error-google'
 import type { DepsGmail } from './gmail-thread'
 
 const BASE = 'https://gmail.googleapis.com/gmail/v1/users/me'
@@ -10,7 +11,9 @@ async function pedir(deps: DepsGmail, url: string): Promise<unknown> {
     headers: { Authorization: `Bearer ${deps.accessToken}` },
   })
   if (!respuesta.ok) {
-    throw new Error(`Gmail respondió ${respuesta.status} al revisar el buzón de la mesa.`)
+    throw new Error(
+      `Gmail respondió ${respuesta.status} al revisar el buzón de la mesa.${await razonDeGoogle(respuesta)}`,
+    )
   }
   return respuesta.json()
 }

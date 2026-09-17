@@ -6,6 +6,7 @@ import {
   type AdjuntoSalida,
 } from '@/lib/correo/mime'
 import type { ImagenInline } from '@/lib/correo/envoltura'
+import { razonDeGoogle } from './error-google'
 import type { DepsGmail } from './gmail-thread'
 
 const BASE = 'https://gmail.googleapis.com/gmail/v1/users/me'
@@ -80,7 +81,9 @@ export async function enviarCorreo(
     throw new Error('Google aplicó un límite de envío. Intenta de nuevo en un momento.')
   }
   if (!respuesta.ok) {
-    throw new Error(`Gmail respondió ${respuesta.status} al enviar el correo.`)
+    throw new Error(
+      `Gmail respondió ${respuesta.status} al enviar el correo.${await razonDeGoogle(respuesta)}`,
+    )
   }
 
   const cuerpo = (await respuesta.json()) as { id?: string; threadId?: string }

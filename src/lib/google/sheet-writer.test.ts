@@ -22,7 +22,12 @@ const DEPS_BASE = {
 
 /** El escritor primero relee la fila (testigo) y solo entonces escribe. */
 function fetchDeEscritura(
-  opciones: { marcaTemporal?: string; folio?: string; statusEscritura?: number } = {},
+  opciones: {
+    marcaTemporal?: string
+    folio?: string
+    statusEscritura?: number
+    cuerpoEscritura?: unknown
+  } = {},
 ) {
   const llamadas: { url: string; init?: RequestInit }[] = []
   const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
@@ -40,7 +45,7 @@ function fetchDeEscritura(
         { status: 200, headers: { 'content-type': 'application/json' } },
       )
     }
-    return new Response(JSON.stringify({ totalUpdatedCells: 3 }), {
+    return new Response(JSON.stringify(opciones.cuerpoEscritura ?? { totalUpdatedCells: 3 }), {
       status: opciones.statusEscritura ?? 200,
       headers: { 'content-type': 'application/json' },
     })
@@ -351,6 +356,36 @@ describe('forma de la escritura', () => {
         TESTIGO,
       ),
     ).rejects.toThrow(/permiso de edición/)
+  })
+
+  /**
+   * El mensaje que llega a la pantalla es el único rastro que deja un guardado
+   * fallido —la acción devuelve el error, no lo registra—, así que la razón de
+   * Google tiene que viajar con él hasta la tarjeta roja. `razonDeGoogle` tiene
+   * sus propias pruebas; esta cuida que siga enchufada al camino del guardado.
+   */
+  it('lleva la explicación de Google hasta el mensaje del guardado', async () => {
+    const { fetchMock } = fetchDeEscritura({
+      statusEscritura: 400,
+      cuerpoEscritura: {
+        error: {
+          code: 400,
+          message: 'Unable to parse range: Respuestas de formulario 1!N0',
+          status: 'INVALID_ARGUMENT',
+        },
+      },
+    })
+    await expect(
+      escribirSeguimiento(
+        { ...DEPS_BASE, fetch: fetchMock },
+        MAPA,
+        7176,
+        { estatusFinal: 'Concluida' },
+        TESTIGO,
+      ),
+    ).rejects.toThrow(
+      'Sheets respondió 400 al guardar los cambios. Google explicó: «Unable to parse range: Respuestas de formulario 1!N0»',
+    )
   })
 
   it('explica el límite de cuota al guardar', async () => {
