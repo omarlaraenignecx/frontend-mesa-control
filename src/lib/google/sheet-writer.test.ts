@@ -388,6 +388,42 @@ describe('forma de la escritura', () => {
     )
   })
 
+  /**
+   * El caso real que motivó todo esto: en el libro de producción las 17 columnas
+   * del tipo de trámite caen dentro de un rango protegido sin editores, así que
+   * la cuenta de la mesa no puede escribirlas. Sheets lo contesta como un 400
+   * cualquiera, y el número solo no le dice a nadie que hay que ir a la hoja a
+   * dar un permiso.
+   *
+   * Se prueba con un campo de columna única porque el rechazo lo traduce `pedir`,
+   * que no sabe qué campo viene; el trámite además necesitaría releer sus 17
+   * columnas y eso es otra prueba.
+   */
+  it('dice qué hacer cuando la hoja rechaza la celda por protegida', async () => {
+    const { fetchMock } = fetchDeEscritura({
+      statusEscritura: 400,
+      cuerpoEscritura: {
+        error: {
+          code: 400,
+          message:
+            'Invalid data[0]: Estás intentando modificar una celda o un objeto protegido. Si necesitas realizar cambios, comunícate con el propietario de la hoja de cálculo para que quite la protección.',
+          status: 'INVALID_ARGUMENT',
+        },
+      },
+    })
+    const fallo = escribirSeguimiento(
+      { ...DEPS_BASE, fetch: fetchMock },
+      MAPA,
+      7176,
+      { estatusFinal: 'Concluida' },
+      TESTIGO,
+    )
+    await expect(fallo).rejects.toThrow(/rango protegido/)
+    // El texto original de Google sigue viajando: es lo que permite reconocer el
+    // error si la heurística del idioma alguna vez falla.
+    await expect(fallo).rejects.toThrow(/Google explicó/)
+  })
+
   it('explica el límite de cuota al guardar', async () => {
     const { fetchMock } = fetchDeEscritura({ statusEscritura: 429 })
     await expect(

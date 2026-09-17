@@ -1,4 +1,4 @@
-import { razonDeGoogle } from './error-google'
+import { comoRazon, esCeldaProtegida, mensajeDeGoogle } from './error-google'
 import type { DepsLectura } from './sheet-reader'
 import { letraColumna, type CampoLogico, type MapaEsquema } from './sheet-schema'
 
@@ -166,8 +166,21 @@ async function pedir(deps: DepsLectura, url: string, init?: RequestInit) {
     )
   }
   if (!respuesta.ok) {
+    const mensaje = await mensajeDeGoogle(respuesta)
+    // La hoja protege columnas por rangos con lista de editores, y el rango que
+    // cubre las respuestas del formulario no incluye a la cuenta de la mesa. Se
+    // nota al corregir el tipo de trámite, que es lo único que la aplicación
+    // escribe ahí. No se arregla desde el código: hay que dar el permiso en la
+    // hoja, y decirlo aquí ahorra el viaje de averiguarlo.
+    if (esCeldaProtegida(mensaje)) {
+      throw new Error(
+        'La hoja tiene esa columna dentro de un rango protegido y la cuenta de Google que autorizó la mesa no está entre sus editores. ' +
+          'Pide al propietario del libro que la agregue como editora de ese rango.' +
+          comoRazon(mensaje),
+      )
+    }
     throw new Error(
-      `Sheets respondió ${respuesta.status} al guardar los cambios.${await razonDeGoogle(respuesta)}`,
+      `Sheets respondió ${respuesta.status} al guardar los cambios.${comoRazon(mensaje)}`,
     )
   }
   return respuesta
