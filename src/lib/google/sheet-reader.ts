@@ -140,6 +140,7 @@ export function construirCasos(
       teniaPermisos: campo(fila, 'teniaPermisos'),
       causaSeguimiento: campo(fila, 'causaSeguimiento'),
       observaciones: campo(fila, 'observaciones'),
+      reclasificacion: campo(fila, 'reclasificacion'),
       fechaRespuestaCorreo: campo(fila, 'fechaRespuestaCorreo'),
       fechaAtencionFinal: campo(fila, 'fechaAtencionFinal'),
       adjuntos,

@@ -18,6 +18,7 @@ export function casoDePrueba(parcial: Partial<Caso> = {}): Caso {
     marcaTemporalTexto: '5/8/2026 15:14:58',
     area: 'Mesa de control',
     tipoTramite: 'Emisión',
+    reclasificacion: null,
     tipoSiniestro: null,
     tipoAtencion: null,
     numeroSiniestro: null,

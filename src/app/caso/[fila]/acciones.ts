@@ -4,11 +4,12 @@ import { revalidatePath, updateTag } from 'next/cache'
 import { requerirUsuario } from '@/lib/auth/guard'
 import { registrarCambios } from '@/lib/casos/bitacora'
 import { claseDelCaso } from '@/lib/casos/caso'
+import { esSiniestro } from '@/lib/casos/area'
 import { fechaDeCierreASellar, seCierraAhora } from '@/lib/casos/cierre'
 import { cargarCaso, depsDeGoogle } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
 import { componerObservaciones } from '@/lib/casos/observaciones'
-import { notaDelGuardado, rechazoDeCorreccion } from '@/lib/casos/tramite'
+import { SIN_RECLASIFICACION, notaDelGuardado } from '@/lib/casos/reclasificacion'
 import { calcularDiff, type Seguimiento } from '@/lib/casos/seguimiento'
 import {
   FilaCambiadaError,
@@ -35,18 +36,17 @@ export async function guardarSeguimiento(
   const valores: Seguimiento = { ...propuesto }
   const ahora = new Date()
 
-  // El trámite es la única respuesta del formulario que se puede escribir, así que
-  // sus condiciones se comprueban aquí y no solo en la pantalla: esta acción la
-  // comparten los dos módulos y se puede invocar sin pasar por ella.
-  if (valores.tipoTramite !== undefined) {
-    const rechazo = rechazoDeCorreccion(caso, valores.tipoTramite)
-    if (rechazo) return { ok: false, error: rechazo, conflicto: false }
+  // La reclasificación sólo existe en la mesa, y esta acción la comparten los dos
+  // módulos: se puede invocar sin pasar por la pantalla, así que la última palabra
+  // está de este lado.
+  if (valores.reclasificacion !== undefined && esSiniestro(caso)) {
+    return { ok: false, error: SIN_RECLASIFICACION, conflicto: false }
   }
 
-  // Si el trámite cambia, la corrección se anota también en Observaciones. La
-  // bitácora vive en la base de datos y el área trabaja en la hoja: sin esta
-  // línea, lo que eligió el solicitante desaparecería de la única vista que abren.
-  const nota = notaDelGuardado(caso, valores.tipoTramite, notaNueva)
+  // Si la reclasificación cambia, queda también una línea en Observaciones: la
+  // columna KV muestra el valor nuevo, pero no de dónde se venía, y eso es lo que
+  // explica el número en el reporte.
+  const nota = notaDelGuardado(caso, valores.reclasificacion, notaNueva)
 
   // Observaciones: acumulativo, nunca sobrescribe lo que ya escribió alguien.
   if (nota) {
@@ -93,11 +93,10 @@ export async function guardarSeguimiento(
   }
 
   await registrarCambios(fila, caso.folio, usuario.correo, cambios)
-  // La clasificación **resultante**, no la que traía el caso al abrirlo: igual que
-  // `estatusResultante`. Antes se anotaba la anterior, y en el guardado donde se
-  // corrige el trámite eso dejaba el evento con el valor equivocado justo en el
-  // momento en que importa.
-  const claseResultante = valores.tipoTramite ?? claseDelCaso(caso)
+  // La clasificación del formulario, que es la que sigue mandando en los filtros y
+  // en BI: la reclasificación es una anotación de la mesa en su propia columna y
+  // no sustituye a la respuesta del solicitante.
+  const claseResultante = claseDelCaso(caso)
   await emitirEvento({
     tipo: 'caso_guardado',
     fila,

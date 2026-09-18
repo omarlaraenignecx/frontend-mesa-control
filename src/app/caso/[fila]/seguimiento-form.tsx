@@ -8,19 +8,15 @@ import type { Cambio, Seguimiento } from '@/lib/casos/seguimiento'
 import { ETIQUETAS_SEGUIMIENTO, calcularDiff } from '@/lib/casos/seguimiento'
 import type { Caso } from '@/lib/casos/caso'
 import type { Catalogos } from '@/lib/google/sheet-catalogs'
-import { notaDelGuardado, opcionesDeTramite } from '@/lib/casos/tramite'
+import { notaDelGuardado, opcionesDeReclasificacion } from '@/lib/casos/reclasificacion'
 import { guardarSeguimiento, type ResultadoGuardado } from './acciones'
 
 type Props = {
   caso: Caso
   catalogos: Catalogos
   nombreUsuario: string | null
-  /** Trámites que existen en la hoja, para el selector de corrección. */
-  tramites: string[]
-  /** Si en este caso se puede corregir el trámite; ver `lib/casos/tramite.ts`. */
-  puedeCorregirTramite: boolean
-  /** Por qué no se puede, cuando no se puede. */
-  motivoSinCorreccion: string | null
+  /** Si en este caso se puede reclasificar; ver `lib/casos/reclasificacion.ts`. */
+  puedeReclasificar: boolean
 }
 
 const CAMPOS_SELECT = [
@@ -36,9 +32,7 @@ export function SeguimientoForm({
   caso,
   catalogos,
   nombreUsuario,
-  tramites,
-  puedeCorregirTramite,
-  motivoSinCorreccion,
+  puedeReclasificar,
 }: Props) {
   // El responsable llega precargado con quien está trabajando, y es editable.
   const [valores, setValores] = useState<Seguimiento>({
@@ -49,9 +43,9 @@ export function SeguimientoForm({
     teniaPermisos: caso.teniaPermisos ?? '',
     causaSeguimiento: caso.causaSeguimiento ?? '',
     folioInterno: caso.folioInterno ?? '',
-    // Solo viaja si este caso admite corrección: si no, no debe entrar al diff ni
-    // aunque alguien manipule el formulario.
-    ...(puedeCorregirTramite ? { tipoTramite: caso.tipoTramite ?? '' } : {}),
+    // Solo viaja si este caso admite reclasificación: si no, no debe entrar al
+    // diff ni aunque alguien manipule el formulario.
+    ...(puedeReclasificar ? { reclasificacion: caso.reclasificacion ?? '' } : {}),
   })
   const [nota, setNota] = useState('')
   const [porConfirmar, setPorConfirmar] = useState<Cambio[] | null>(null)
@@ -67,9 +61,9 @@ export function SeguimientoForm({
   function revisar() {
     const propuesto: Seguimiento = { ...valores }
     // La misma función que usa el servidor, para que el panel anuncie exactamente
-    // lo que se va a escribir: corregir el trámite deja línea en observaciones
-    // aunque quien atiende no haya escrito ninguna nota.
-    const aAnotar = notaDelGuardado(caso, valores.tipoTramite, nota)
+    // lo que se va a escribir: reclasificar deja línea en observaciones aunque
+    // quien atiende no haya escrito ninguna nota.
+    const aAnotar = notaDelGuardado(caso, valores.reclasificacion, nota)
     if (aAnotar) {
       // El diff solo necesita saber que las observaciones cambian; el texto
       // definitivo lo compone el servidor para no perder lo ya escrito.
@@ -100,43 +94,46 @@ export function SeguimientoForm({
   const selectClase =
     'h-11 w-full rounded-lg border border-input bg-background px-3 text-base shadow-xs outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30'
 
-  const opcionesTramite = opcionesDeTramite(tramites, caso.tipoTramite)
+  const opcionesReclasificacion = opcionesDeReclasificacion(caso.reclasificacion)
 
   return (
     <div className="space-y-5">
       {/*
-        El trámite va aparte de la rejilla y arriba de todo: es lo que clasifica el
-        caso, y es el único campo de aquí que sobrescribe una respuesta del
-        solicitante. Por eso lleva su propia explicación y no la opción de vaciarlo.
+        La reclasificación va aparte de la rejilla y arriba de todo porque es lo
+        que clasifica el caso. Muestra al lado lo que pidió el solicitante, que no
+        se toca: es su registro, y la comparación entre los dos es justo el dato.
       */}
       <div className="space-y-1.5 rounded-xl border border-dashed p-4">
-        <label className="block text-base font-medium text-muted-foreground" htmlFor="tipoTramite">
-          {ETIQUETAS_SEGUIMIENTO.tipoTramite}
+        <label
+          className="block text-base font-medium text-muted-foreground"
+          htmlFor="reclasificacion"
+        >
+          {ETIQUETAS_SEGUIMIENTO.reclasificacion}
         </label>
-        {puedeCorregirTramite ? (
+        <p className="text-sm text-muted-foreground">
+          El solicitante pidió:{' '}
+          <span className="text-foreground">{caso.tipoTramite?.trim() || '—'}</span>
+        </p>
+        {puedeReclasificar && (
           <>
             <select
-              id="tipoTramite"
+              id="reclasificacion"
               className={selectClase}
-              value={valores.tipoTramite ?? ''}
-              onChange={(e) => cambiar('tipoTramite', e.target.value)}
+              value={valores.reclasificacion ?? ''}
+              onChange={(e) => cambiar('reclasificacion', e.target.value)}
             >
-              {opcionesTramite.map((o) => (
+              <option value="">Sin reclasificar</option>
+              {opcionesReclasificacion.map((o) => (
                 <option key={o} value={o}>
                   {o}
                 </option>
               ))}
             </select>
             <p className="text-sm text-muted-foreground">
-              Corrige lo que eligió el solicitante cuando se equivocó de opción. Se sobrescribe en
-              la hoja; el valor anterior queda en la bitácora del caso y en una línea de
-              observaciones.
+              Úsalo cuando el solicitante se equivocó de opción. Se escribe en la columna
+              Reclasificación de la hoja, sin tocar lo que él eligió; el cambio queda en la
+              bitácora del caso y en una línea de observaciones.
             </p>
-          </>
-        ) : (
-          <>
-            <p className="text-base">{caso.tipoTramite?.trim() || '—'}</p>
-            <p className="text-sm text-muted-foreground">{motivoSinCorreccion}</p>
           </>
         )}
       </div>
@@ -221,12 +218,6 @@ export function SeguimientoForm({
               </li>
             ))}
           </ul>
-          {porConfirmar.some((c) => c.campo === 'tipoTramite') && (
-            <p className="text-sm">
-              El tipo de trámite es una respuesta del formulario: al guardarlo se sustituye lo que
-              eligió el solicitante.
-            </p>
-          )}
           <div className="flex gap-2">
             <Button onClick={confirmar} disabled={pendiente}>
               {pendiente ? 'Guardando…' : 'Confirmar y guardar'}

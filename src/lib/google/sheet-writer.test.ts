@@ -1,12 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import fixture from './__fixtures__/encabezados-307.json'
+import fixture from './__fixtures__/encabezados-308.json'
 import { construirMapa } from './sheet-schema'
 import {
   CAMPOS_ESCRIBIBLES,
   ColumnaNoEscribibleError,
   FilaCambiadaError,
   SelloNoEscritoError,
-  SinColumnaDeOrigenError,
   escribirFolios,
   escribirSeguimiento,
 } from './sheet-writer'
@@ -57,7 +56,7 @@ const escrituras = (llamadas: { url: string; init?: RequestInit }[]) =>
   llamadas.filter((l) => l.init?.method && l.init.method !== 'GET')
 
 describe('lista blanca de columnas', () => {
-  it('declara las diez columnas de seguimiento acordadas, más el tipo de trámite', () => {
+  it('declara las diez columnas de seguimiento acordadas, más la reclasificación', () => {
     expect([...CAMPOS_ESCRIBIBLES].sort()).toEqual(
       [
         'aseguradoraSeguimiento',
@@ -70,17 +69,31 @@ describe('lista blanca de columnas', () => {
         'observaciones',
         'quienAtendio',
         'teniaPermisos',
-        // La única respuesta del formulario que se puede escribir, por decisión del
-        // área del 14/9/2026: el solicitante se equivoca al elegir y la mesa no
-        // tenía cómo corregirlo. Ver el comentario de CAMPOS_ESCRIBIBLES.
-        'tipoTramite',
+        // Columna de la mesa, no respuesta del formulario. Ver el comentario de
+        // CAMPOS_ESCRIBIBLES.
+        'reclasificacion',
       ].sort(),
     )
   })
 
+  it('rechaza escribir el tipo de trámite: es la respuesta del solicitante', async () => {
+    // Llegó a estar permitido, para corregirlo en su propia celda. No se pudo —esa
+    // columna está protegida en el libro— y ahora la corrección vive en KV, así
+    // que el formulario vuelve a ser intocable entero.
+    const { fetchMock } = fetchDeEscritura()
+    await expect(
+      escribirSeguimiento(
+        { ...DEPS_BASE, fetch: fetchMock },
+        MAPA,
+        7176,
+        { tipoTramite: 'Endoso' } as never,
+        TESTIGO,
+      ),
+    ).rejects.toBeInstanceOf(ColumnaNoEscribibleError)
+    expect((fetchMock as unknown as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0)
+  })
+
   it('rechaza escribir un campo del formulario antes de llamar a Google', async () => {
-    // El ejemplo era `tipoTramite` hasta que dejó de estar prohibido. Sigue siendo
-    // la regla para todo lo demás que contestó el solicitante.
     const { fetchMock } = fetchDeEscritura()
     await expect(
       escribirSeguimiento(
@@ -439,171 +452,61 @@ describe('forma de la escritura', () => {
 })
 
 /**
- * La corrección del tipo de trámite es el único caso en que se escribe una
- * respuesta del formulario, y es el único campo que no vive en una sola columna:
- * agrupa 17 columnas equivalentes y cada fila llenó una. Escribir en la
- * equivocada dejaría el dato donde nadie lo lee, así que estas pruebas son las
- * que sostienen la función.
+ * La reclasificación vive en una sola columna de la zona de la mesa (KV), como
+ * los demás campos de seguimiento. Estas pruebas cuidan que siga siendo así: que
+ * escriba ahí y que no toque la columna del formulario, que es el registro del
+ * solicitante y además está protegida en el libro.
  */
-describe('corrección del tipo de trámite', () => {
-  /** Responde celda por celda, para poder decir qué bloque del formulario trae valor. */
-  function fetchDeFila(celdas: Record<string, string>) {
-    const llamadas: { url: string; init?: RequestInit }[] = []
-    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
-      llamadas.push({ url: String(url), init })
-      const esLectura = !init?.method || init.method === 'GET'
-      if (esLectura) {
-        const rangos = new URL(String(url)).searchParams.getAll('ranges')
-        return new Response(
-          JSON.stringify({
-            valueRanges: rangos.map((r) => {
-              const celda = r.split('!')[1]
-              const valor = celdas[celda]
-              return valor === undefined ? {} : { values: [[valor]] }
-            }),
-          }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        )
-      }
-      return new Response(JSON.stringify({ totalUpdatedCells: 1 }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })
-    }) as unknown as typeof globalThis.fetch
-    return { fetchMock, llamadas }
-  }
-
-  /** La fila tal como la lee el escritor: testigo al día y el trámite donde se diga. */
-  const fila = (bloques: Record<string, string>) => ({
-    A7176: TESTIGO.marcaTemporalTexto,
-    JY7176: '7000',
-    ...bloques,
-  })
-
+describe('reclasificación', () => {
   const rangosEscritos = (llamadas: { url: string; init?: RequestInit }[]) =>
     escrituras(llamadas).flatMap(
       (l) => (JSON.parse(String(l.init?.body)) as { data: { range: string }[] }).data,
     )
 
-  it('escribe en la columna del bloque que trae el valor, no en la primera del grupo', async () => {
-    const { fetchMock, llamadas } = fetchDeFila(fila({ CY7176: 'Emisión' }))
+  it('escribe en la columna de la mesa y no en la del formulario', async () => {
+    const { fetchMock, llamadas } = fetchDeEscritura()
     await escribirSeguimiento(
       { ...DEPS_BASE, fetch: fetchMock },
       MAPA,
       7176,
-      { tipoTramite: 'Endoso' },
+      { reclasificacion: 'Endoso' },
       TESTIGO,
     )
 
     const rangos = rangosEscritos(llamadas).map((d) => d.range)
-    expect(rangos).toEqual(['Respuestas de formulario 1!CY7176'])
-    expect(rangos.some((r) => r.includes('N7176'))).toBe(false)
+    expect(rangos).toEqual(['Respuestas de formulario 1!KV7176'])
   })
 
-  it('con dos bloques llenos escribe en el primero, igual que la regla de lectura', async () => {
-    // `valorDe()` en el lector se queda con el primer valor no vacío. Si el
-    // escritor eligiera otro, la aplicación escribiría en una celda y leería otra.
-    const { fetchMock, llamadas } = fetchDeFila(fila({ N7176: 'Emisión', CY7176: 'Cotización' }))
+  it('deja vaciarla: quitar una reclasificación es una decisión legítima', async () => {
+    const { fetchMock, llamadas } = fetchDeEscritura()
     await escribirSeguimiento(
       { ...DEPS_BASE, fetch: fetchMock },
       MAPA,
       7176,
-      { tipoTramite: 'Endoso' },
+      { reclasificacion: '' },
       TESTIGO,
     )
 
-    expect(rangosEscritos(llamadas).map((d) => d.range)).toEqual([
-      'Respuestas de formulario 1!N7176',
+    const datos = rangosEscritos(llamadas)
+    expect(datos).toHaveLength(1)
+    expect(datos[0].range).toBe('Respuestas de formulario 1!KV7176')
+  })
+
+  it('relee solo el testigo: ya no hay bloques que resolver', async () => {
+    const { fetchMock, llamadas } = fetchDeEscritura()
+    await escribirSeguimiento(
+      { ...DEPS_BASE, fetch: fetchMock },
+      MAPA,
+      7176,
+      { reclasificacion: 'Endoso' },
+      TESTIGO,
+    )
+
+    const lectura = llamadas.find((l) => !l.init?.method || l.init.method === 'GET')
+    expect(new URL(String(lectura?.url)).searchParams.getAll('ranges')).toEqual([
+      'Respuestas de formulario 1!A7176',
+      'Respuestas de formulario 1!JY7176',
     ])
-  })
-
-  it('resuelve el bloque en la misma lectura del testigo, sin una llamada extra', async () => {
-    const { fetchMock, llamadas } = fetchDeFila(fila({ HQ7176: 'Emisión' }))
-    await escribirSeguimiento(
-      { ...DEPS_BASE, fetch: fetchMock },
-      MAPA,
-      7176,
-      { tipoTramite: 'Endoso', estatusFinal: 'Concluida' },
-      TESTIGO,
-    )
-
-    const lecturas = llamadas.filter((l) => !l.init?.method || l.init.method === 'GET')
-    expect(lecturas).toHaveLength(1)
-    // Marca temporal, folio y las 17 columnas equivalentes del trámite.
-    expect(new URL(lecturas[0].url).searchParams.getAll('ranges')).toHaveLength(19)
-  })
-
-  it('un guardado que no toca el trámite sigue pidiendo dos rangos', async () => {
-    const { fetchMock, llamadas } = fetchDeFila(fila({}))
-    await escribirSeguimiento(
-      { ...DEPS_BASE, fetch: fetchMock },
-      MAPA,
-      7176,
-      { estatusFinal: 'Concluida' },
-      TESTIGO,
-    )
-
-    const lecturas = llamadas.filter((l) => !l.init?.method || l.init.method === 'GET')
-    expect(new URL(lecturas[0].url).searchParams.getAll('ranges')).toHaveLength(2)
-  })
-
-  it('no escribe nada si la fila no trae el trámite en ninguna de sus columnas', async () => {
-    const { fetchMock, llamadas } = fetchDeFila(fila({}))
-    await expect(
-      escribirSeguimiento(
-        { ...DEPS_BASE, fetch: fetchMock },
-        MAPA,
-        7176,
-        { tipoTramite: 'Endoso' },
-        TESTIGO,
-      ),
-    ).rejects.toBeInstanceOf(SinColumnaDeOrigenError)
-    expect(escrituras(llamadas)).toHaveLength(0)
-  })
-
-  it('rechaza vaciar el trámite antes de tocar la hoja', async () => {
-    const { fetchMock } = fetchDeFila(fila({ N7176: 'Emisión' }))
-    await expect(
-      escribirSeguimiento(
-        { ...DEPS_BASE, fetch: fetchMock },
-        MAPA,
-        7176,
-        { tipoTramite: '   ' },
-        TESTIGO,
-      ),
-    ).rejects.toThrow(/no se puede dejar vacío/)
-    expect((fetchMock as unknown as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0)
-  })
-
-  it('el testigo sigue mandando aunque venga una corrección de trámite', async () => {
-    const { fetchMock, llamadas } = fetchDeFila({
-      ...fila({ N7176: 'Emisión' }),
-      A7176: '6/8/2026 09:00:00',
-    })
-    await expect(
-      escribirSeguimiento(
-        { ...DEPS_BASE, fetch: fetchMock },
-        MAPA,
-        7176,
-        { tipoTramite: 'Endoso' },
-        TESTIGO,
-      ),
-    ).rejects.toBeInstanceOf(FilaCambiadaError)
-    expect(escrituras(llamadas)).toHaveLength(0)
-  })
-
-  it('escribe el trámite en RAW, con el resto del texto', async () => {
-    const { fetchMock, llamadas } = fetchDeFila(fila({ N7176: 'Emisión' }))
-    await escribirSeguimiento(
-      { ...DEPS_BASE, fetch: fetchMock },
-      MAPA,
-      7176,
-      { tipoTramite: 'Endoso', fechaAtencionFinal: '12/9/2026 11:09:59' },
-      TESTIGO,
-    )
-
-    const conTramite = escrituras(llamadas).find((l) => String(l.init?.body).includes('Endoso'))
-    expect(conTramite?.url).toContain('valueInputOption=RAW')
   })
 })
 

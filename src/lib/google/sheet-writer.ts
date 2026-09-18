@@ -15,7 +15,7 @@ export type CampoEscribible =
   | 'teniaPermisos'
   | 'causaSeguimiento'
   | 'observaciones'
-  | 'tipoTramite'
+  | 'reclasificacion'
 
 /**
  * Lista blanca: las únicas columnas que esta aplicación puede escribir.
@@ -25,19 +25,16 @@ export type CampoEscribible =
  * residuales de estatus. La comprobación ocurre antes de cualquier llamada HTTP,
  * de modo que un error de programación no alcanza a tocar la hoja.
  *
- * `tipoTramite` es la **única** respuesta del formulario que se puede escribir, y
- * es una excepción autorizada por el área el 14/9/2026, no una puerta abierta: el
- * solicitante elige el trámite de una lista y se equivoca a menudo —manda un
- * endoso marcado como emisión—, y la mesa no tenía forma de corregirlo, así que
- * sus reportes contaban una póliza emitida que nunca existió. El valor anterior
- * no se pierde: queda en la bitácora y en una línea de Observaciones, que es la
- * que la mesa lee desde la propia hoja.
+ * Ninguna respuesta del formulario está aquí, y `reclasificacion` no es una
+ * excepción: es una columna propia de la mesa (KV, «Reclasificación»), al lado de
+ * las demás de seguimiento. Cuando el solicitante elige mal el trámite —manda un
+ * endoso marcado como emisión— la mesa anota ahí la clasificación buena, y lo que
+ * él eligió sigue intacto en su columna del formulario.
  *
- * Queda un riesgo que esto no cubre y conviene conocer: si el solicitante usa el
- * enlace de «editar respuesta» de Google Forms, Forms reescribe su fila con lo
- * que él eligió y borra la corrección. No lo detecta `confirmarFila`, porque
- * editar una respuesta no cambia la marca temporal. El rastro de la bitácora y de
- * Observaciones es lo que permite darse cuenta y rehacerla.
+ * Se intentó antes escribir el trámite en su propia celda y no se pudo: esas
+ * columnas viven dentro de un rango protegido del libro que no incluye a la
+ * cuenta de la mesa, y Sheets contesta 400. Escribir al lado evita el permiso y
+ * además conserva el original, que es mejor registro.
  */
 export const CAMPOS_ESCRIBIBLES = [
   'estatusInicial',
@@ -50,24 +47,8 @@ export const CAMPOS_ESCRIBIBLES = [
   'teniaPermisos',
   'causaSeguimiento',
   'observaciones',
-  'tipoTramite',
+  'reclasificacion',
 ] as const satisfies readonly CampoEscribible[]
-
-/**
- * Los escribibles que no viven en una sola columna.
- *
- * El formulario está replicado en bloques y además pregunta lo mismo con cuatro
- * redacciones distintas —«Tipo de trámite:», «Trámite:», «Indicar tipo de trámite
- * solicitado», «Indicar el tipo de solicitud»—, así que el campo agrupa **17**
- * columnas equivalentes y cada fila llenó una sola. La celda buena es la que hoy
- * trae el valor: la misma de la que se leyó el caso. Se resuelve al escribir,
- * releyendo la fila; ver `confirmarFila`.
- */
-const CAMPOS_REPLICADOS = ['tipoTramite'] as const satisfies readonly CampoEscribible[]
-
-function esCampoReplicado(campo: CampoEscribible): boolean {
-  return (CAMPOS_REPLICADOS as readonly string[]).includes(campo)
-}
 
 /**
  * Los dos campos que van a columnas con formato de fecha (`KB` y `KD`). Se
@@ -92,20 +73,6 @@ export class ColumnaNoEscribibleError extends Error {
   constructor(readonly campo: string) {
     super(`El campo "${campo}" no está en la lista de columnas que la herramienta puede escribir.`)
     this.name = 'ColumnaNoEscribibleError'
-  }
-}
-
-/**
- * No hay dónde escribir la corrección: la fila no trae valor en ninguna de las
- * columnas equivalentes del campo, así que no se sabe qué bloque del formulario
- * llenó y elegir uno a ciegas dejaría el dato donde nadie lo lee.
- */
-export class SinColumnaDeOrigenError extends Error {
-  constructor(readonly campo: string) {
-    super(
-      `Este caso no trae ${campo} en el formulario, así que no hay ninguna celda donde escribir la corrección.`,
-    )
-    this.name = 'SinColumnaDeOrigenError'
   }
 }
 
@@ -167,11 +134,10 @@ async function pedir(deps: DepsLectura, url: string, init?: RequestInit) {
   }
   if (!respuesta.ok) {
     const mensaje = await mensajeDeGoogle(respuesta)
-    // La hoja protege columnas por rangos con lista de editores, y el rango que
-    // cubre las respuestas del formulario no incluye a la cuenta de la mesa. Se
-    // nota al corregir el tipo de trámite, que es lo único que la aplicación
-    // escribe ahí. No se arregla desde el código: hay que dar el permiso en la
-    // hoja, y decirlo aquí ahorra el viaje de averiguarlo.
+    // La hoja protege columnas por rangos con lista de editores. Si la cuenta de
+    // la mesa no está en la del rango que toca, Sheets contesta 400 y no 403. No
+    // se arregla desde el código —hay que dar el permiso en la hoja—, y decirlo
+    // aquí ahorra el viaje de averiguarlo.
     if (esCeldaProtegida(mensaje)) {
       throw new Error(
         'La hoja tiene esa columna dentro de un rango protegido y la cuenta de Google que autorizó la mesa no está entre sus editores. ' +
@@ -187,44 +153,28 @@ async function pedir(deps: DepsLectura, url: string, init?: RequestInit) {
 }
 
 /**
- * Relee la fila, confirma que sigue siendo el caso que el usuario abrió y resuelve
- * en qué columna vive cada campo replicado.
+ * Relee la fila y confirma que sigue siendo el caso que el usuario abrió.
  *
- * Lo primero cubre el hueco que el bloqueo interno no puede cerrar: alguien
- * editando la hoja directamente. El PRD asume ese riesgo a cambio de conservar la
- * hoja como red de seguridad, y esta comprobación es lo que evita pisar su cambio.
- *
- * Lo segundo va aquí y no en una lectura aparte por dos razones. La cuota de
- * Sheets cuenta peticiones y no rangos, así que resolver el bloque dentro de esta
- * misma llamada no cuesta nada; y sobre todo, el testigo y la columna destino
- * salen entonces de la **misma** foto de la fila, que es justo lo que esta función
- * existe para garantizar.
+ * Cubre el hueco que el bloqueo interno no puede cerrar: alguien editando la hoja
+ * directamente. El PRD asume ese riesgo a cambio de conservar la hoja como red de
+ * seguridad, y esta comprobación es lo que evita pisar su cambio.
  */
 async function confirmarFila(
   deps: DepsLectura,
   mapa: MapaEsquema,
   fila: number,
   testigo: Testigo,
-  aResolver: CampoEscribible[] = [],
-): Promise<Partial<Record<CampoEscribible, number>>> {
+): Promise<void> {
   const colFecha = columnaDe(mapa, 'marcaTemporal')
   const colFolio = columnaDe(mapa, 'folio')
 
-  const bloques = aResolver.map((campo) => ({
-    campo,
-    columnas: mapa.columnasPorCampo[campo as CampoLogico] ?? [],
-  }))
-
-  // Rangos exactos y no uno continuo: la marca temporal está en la columna A y el
-  // folio en JY, así que un rango A:JY traería 285 celdas para comparar 2. Son dos
-  // cuando el guardado no toca ningún campo replicado, y 19 cuando corrige el
-  // trámite —sus 17 columnas equivalentes—, siempre en una sola petición: la cuota
-  // de Sheets cuenta peticiones, no rangos.
+  // Dos rangos exactos y no uno continuo: la marca temporal está en la columna A
+  // y el folio en JY, así que un rango A:JY traería 285 celdas para comparar 2.
   const celda = (columna: number) => `${deps.pestana}!${letraColumna(columna)}${fila}`
-  const columnas = [colFecha, colFolio, ...bloques.flatMap((b) => b.columnas)]
   const url =
-    `${BASE}/${deps.sheetId}/values:batchGet?` +
-    columnas.map((c) => `ranges=${encodeURIComponent(celda(c))}`).join('&') +
+    `${BASE}/${deps.sheetId}/values:batchGet` +
+    `?ranges=${encodeURIComponent(celda(colFecha))}` +
+    `&ranges=${encodeURIComponent(celda(colFolio))}` +
     `&majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE`
 
   const respuesta = await pedir(deps, url)
@@ -250,25 +200,6 @@ async function confirmarFila(
       encontrado: folioActual,
     })
   }
-
-  // La primera columna con valor, recorriendo el grupo en el orden del mapa. Es
-  // **la misma regla** que usa `valorDe()` al leer (`sheet-reader.ts`): si las dos
-  // divergieran, la aplicación escribiría en una celda y leería otra.
-  const resueltas: Partial<Record<CampoEscribible, number>> = {}
-  let desplazamiento = 2
-  for (const { campo, columnas: delCampo } of bloques) {
-    const base = desplazamiento
-    desplazamiento += delCampo.length
-    const columna = delCampo.find((_, i) => leer(base + i) !== null)
-    if (columna === undefined) throw new SinColumnaDeOrigenError(ETIQUETAS_REPLICADAS[campo])
-    resueltas[campo] = columna
-  }
-  return resueltas
-}
-
-/** Cómo nombrar el campo en el error que ve quien está guardando. */
-const ETIQUETAS_REPLICADAS: Record<string, string> = {
-  tipoTramite: 'tipo de trámite',
 }
 
 /**
@@ -310,30 +241,16 @@ export async function escribirSeguimiento(
 
   // Primero la lista blanca: si algo no está permitido, no se hace ni una
   // llamada a Google.
-  for (const [campo, valor] of entradas) {
+  for (const [campo] of entradas) {
     if (!CAMPOS_ESCRIBIBLES.includes(campo)) throw new ColumnaNoEscribibleError(campo)
-    // Vaciar un campo replicado borraría la respuesta del solicitante sin poner
-    // nada en su lugar, y dejaría la fila sin clasificación ni celda que resolver
-    // la próxima vez. Corregir es sustituir, no borrar.
-    if (esCampoReplicado(campo) && !valor.trim()) {
-      throw new Error(
-        `El ${ETIQUETAS_REPLICADAS[campo]} no se puede dejar vacío: se corrige por otro valor, no se borra.`,
-      )
-    }
   }
   if (entradas.length === 0) return
 
-  const resueltas = await confirmarFila(
-    deps,
-    mapa,
-    fila,
-    testigo,
-    entradas.map(([campo]) => campo).filter(esCampoReplicado),
-  )
+  await confirmarFila(deps, mapa, fila, testigo)
 
   const celdas = entradas.map(([campo, valor]) => ({
     campo,
-    columna: resueltas[campo] ?? columnaDe(mapa, campo),
+    columna: columnaDe(mapa, campo),
     valor,
   }))
   const fechas = celdas.filter((c) => esCampoDeFecha(c.campo))

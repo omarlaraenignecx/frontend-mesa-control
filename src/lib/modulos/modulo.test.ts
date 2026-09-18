@@ -29,8 +29,8 @@ describe('corrección del tipo de trámite', () => {
   it('solo la mesa la ofrece', () => {
     // Siniestros clasifica por tipo de siniestro, que sigue siendo una respuesta
     // intocable del solicitante: nadie ha pedido poder corregirla.
-    expect(MESA.corrigeTipoTramite).toBe(true)
-    expect(SINIESTROS.corrigeTipoTramite).toBe(false)
+    expect(MESA.reclasifica).toBe(true)
+    expect(SINIESTROS.reclasifica).toBe(false)
   })
 })
 

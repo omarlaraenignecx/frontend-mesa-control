@@ -13,7 +13,7 @@ export type Cambio = {
 export const ETIQUETAS_SEGUIMIENTO: Record<CampoEscribible, string> = {
   // Va primero porque es lo que clasifica el caso. Este texto es el que termina en
   // la columna `campo` de la bitácora, así que lo lee el área.
-  tipoTramite: 'Tipo de trámite',
+  reclasificacion: 'Reclasificación',
   estatusInicial: 'Estatus inicial',
   estatusFinal: 'Estatus final',
   fechaRespuestaCorreo: 'Fecha de respuesta por correo',

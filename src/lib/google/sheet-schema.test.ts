@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import fixture from './__fixtures__/encabezados-307.json'
+import fixture from './__fixtures__/encabezados-308.json'
 import { construirMapa, letraColumna, normalizarEncabezado, rangoDeLectura } from './sheet-schema'
 
 const ENCABEZADOS: string[] = fixture.encabezados
@@ -124,6 +124,7 @@ describe('construirMapa con los 307 encabezados reales', () => {
       'teniaPermisos',
       'causaSeguimiento',
       'observaciones',
+      'reclasificacion',
     ]
     for (const [campo, columnas] of Object.entries(mapa.columnasPorCampo)) {
       for (const c of columnas) {
@@ -213,6 +214,9 @@ describe('construirMapa con los 307 encabezados reales', () => {
 describe('rangoDeLectura', () => {
   it('cubre desde la columna A hasta la última columna que algún campo necesita', () => {
     const mapa = construirMapa(ENCABEZADOS)
-    expect(rangoDeLectura(mapa)).toBe('A2:KJ')
+    // Llegaba a KJ (Observaciones) hasta que se agregó KV, la Reclasificación: es
+    // ahora la última que la aplicación necesita leer, y el rango tiene que
+    // alcanzarla o el campo llegaría siempre vacío.
+    expect(rangoDeLectura(mapa)).toBe('A2:KV')
   })
 })

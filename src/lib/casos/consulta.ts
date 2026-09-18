@@ -4,7 +4,6 @@ import { leerCatalogos, type Catalogos } from '@/lib/google/sheet-catalogs'
 import { leerCasos, type DepsLectura } from '@/lib/google/sheet-reader'
 import type { MapaEsquema } from '@/lib/google/sheet-schema'
 import { sinFolio, type Caso } from './caso'
-import { opcionesDeFiltro } from './cola'
 
 export type ResultadoCola = {
   casos: Caso[]
@@ -42,31 +41,17 @@ export const cargarCola = unstable_cache(leerDeLaHoja, ['cola-casos'], {
  * `sinFolioTotal` cuenta los casos sin folio de toda la hoja, no solo este: el
  * aviso que ofrece generarlos actúa sobre la columna completa. Sale de la lectura
  * que ya se hizo, así que no cuesta una llamada más.
- *
- * `tramitesUsados` sale de esa misma lectura y por la misma razón. Son los valores
- * que llenan el selector con que se corrige el trámite, y son exactamente los que
- * ya alimentan el filtro de la pantalla de la fila: misma fuente, mismas opciones
- * en las dos pantallas. No pueden salir de `leerCatalogos`, que lee la validación
- * de datos de la hoja y el formulario de Google no deja ninguna en sus columnas de
- * respuestas.
  */
 export async function cargarCaso(fila: number): Promise<{
   caso: Caso
   catalogos: Catalogos
   mapa: MapaEsquema
   sinFolioTotal: number
-  tramitesUsados: string[]
 } | null> {
   const deps = await depsDeGoogle()
   const { casos, mapa } = await leerCasos(deps)
   const caso = casos.find((c) => c.fila === fila)
   if (!caso) return null
   const catalogos = await leerCatalogos(deps, mapa, fila)
-  return {
-    caso,
-    catalogos,
-    mapa,
-    sinFolioTotal: casos.filter(sinFolio).length,
-    tramitesUsados: opcionesDeFiltro(casos, 'tipoTramite').clases,
-  }
+  return { caso, catalogos, mapa, sinFolioTotal: casos.filter(sinFolio).length }
 }

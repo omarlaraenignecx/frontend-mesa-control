@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import fixture from './__fixtures__/encabezados-307.json'
+import fixture from './__fixtures__/encabezados-308.json'
 import { leerCatalogos } from './sheet-catalogs'
 import { construirMapa } from './sheet-schema'
 

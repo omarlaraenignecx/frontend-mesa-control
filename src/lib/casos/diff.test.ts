@@ -17,21 +17,23 @@ describe('calcularDiff', () => {
     })
   })
 
-  it('ve el cambio de tipo de trámite como cualquier otro campo', () => {
-    // Es el único que pisa una respuesta del formulario, pero el diff no tiene por
-    // qué saberlo: lo que lo hace especial vive en el escritor y en la acción.
-    expect(calcularDiff(caso(), { tipoTramite: 'Endoso' })).toEqual([
+  it('ve la reclasificación como cualquier otro campo', () => {
+    // Se compara contra la reclasificación anterior, no contra el trámite del
+    // formulario: son columnas distintas y el trámite no se toca.
+    expect(calcularDiff(caso(), { reclasificacion: 'Endoso' })).toEqual([
       {
-        campo: 'tipoTramite',
-        etiqueta: ETIQUETAS_SEGUIMIENTO.tipoTramite,
-        anterior: 'Emisión',
+        campo: 'reclasificacion',
+        etiqueta: ETIQUETAS_SEGUIMIENTO.reclasificacion,
+        anterior: null,
         nuevo: 'Endoso',
       },
     ])
   })
 
-  it('no reporta cambio cuando el trámite propuesto es el que ya tenía', () => {
-    expect(calcularDiff(caso(), { tipoTramite: 'Emisión' })).toEqual([])
+  it('no reporta cambio cuando la reclasificación propuesta es la que ya tenía', () => {
+    expect(calcularDiff(caso({ reclasificacion: 'Endoso' }), { reclasificacion: 'Endoso' })).toEqual(
+      [],
+    )
   })
 
   it('trata el paso de vacío a con dato como un cambio', () => {
