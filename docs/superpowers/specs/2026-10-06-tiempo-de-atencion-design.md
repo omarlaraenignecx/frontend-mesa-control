@@ -49,8 +49,12 @@ y el promedio lo saca el área desde la propia hoja.
   `CAMPOS_ESCRIBIBLES`. Se escribe con `RAW` y como **número JSON**, no como cadena:
   con RAW, una cadena `"26.5"` quedaría como texto y `PROMEDIO` la ignoraría. Con
   `USER_ENTERED` dependería de la configuración regional del libro, que decide si el
-  separador decimal es punto o coma. Los valores de las celdas pasan de `string` a
-  `string | number`. Sólo este campo manda número.
+  separador decimal es punto o coma. `Seguimiento`, el diff y la bitácora siguen
+  trabajando con cadenas (`"26.5"`). Es `escribirSeguimiento` quien convierte este
+  campo con `Number()` justo antes de mandarlo, y rechaza el lote sin llamar a Google
+  si el texto no es un número finito. Sólo este campo se manda como número.
+- El cliente nunca decide este valor: `guardarSeguimiento` descarta cualquier
+  `tiempoAtencion` que llegue del formulario antes de calcular el suyo.
 
 ### 4.2 Regla de cálculo — `lib/casos/tiempo-atencion.ts` (nuevo, puro)
 
@@ -64,7 +68,9 @@ y el promedio lo saca el área desde la propia hoja.
   1. el caso no es de siniestros;
   2. el estatus resultante es terminal (`!estaVivo`);
   3. la columna del tiempo está vacía (no se sobrescribe);
-  4. hay marca temporal legible y fecha de cierre legible (`parsearFechaHoja`).
+  4. hay marca temporal legible y fecha de cierre legible (`parsearFechaHoja`), y la
+     fecha de cierre trae hora. Una KD tecleada sólo con el día («5/8/2026») mediría
+     hasta la medianoche y daría un tiempo falso, así que no se usa.
 
 No hace falta que el cierre ocurra en ese mismo guardado. Así, un caso cerrado a mano
 en la hoja se completa la próxima vez que alguien lo guarde desde la aplicación.
@@ -108,8 +114,9 @@ las mismas variables que la aplicación (`.env.local`).
 5. Antes de escribir relee el encabezado de la columna destino y aborta si no es el
    esperado (que nadie haya movido la columna entre la lectura y la escritura).
 
-Los casos cerrados sin KD o con KD ilegible se cuentan en el reporte como «sin fecha de
-cierre» y se dejan vacíos. No se inventa una fecha.
+Los casos cerrados sin KD, con KD ilegible o sin hora se cuentan en el reporte como
+«sin fecha de cierre utilizable» y se dejan vacíos. No se inventa una fecha. El script
+lee todos los años (`anioMinimo = 0`), no sólo 2026 como la cola.
 
 ## 6. Errores
 
