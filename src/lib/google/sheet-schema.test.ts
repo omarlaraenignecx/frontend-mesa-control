@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import fixture from './__fixtures__/encabezados-308.json'
-import { construirMapa, letraColumna, normalizarEncabezado, rangoDeLectura } from './sheet-schema'
+import fixture from './__fixtures__/encabezados-309.json'
+import {
+  construirMapa,
+  letraColumna,
+  normalizarEncabezado,
+  rangoDeLectura,
+  ubicarColumnaTiempo,
+} from './sheet-schema'
 
 const ENCABEZADOS: string[] = fixture.encabezados
 
@@ -26,6 +32,7 @@ describe('letraColumna', () => {
     expect(letraColumna(285)).toBe('JY')
     expect(letraColumna(296)).toBe('KJ')
     expect(letraColumna(307)).toBe('KU')
+    expect(letraColumna(309)).toBe('KW')
   })
 })
 
@@ -125,6 +132,7 @@ describe('construirMapa con los 307 encabezados reales', () => {
       'causaSeguimiento',
       'observaciones',
       'reclasificacion',
+      'tiempoAtencion',
     ]
     for (const [campo, columnas] of Object.entries(mapa.columnasPorCampo)) {
       for (const c of columnas) {
@@ -214,9 +222,30 @@ describe('construirMapa con los 307 encabezados reales', () => {
 describe('rangoDeLectura', () => {
   it('cubre desde la columna A hasta la última columna que algún campo necesita', () => {
     const mapa = construirMapa(ENCABEZADOS)
-    // Llegaba a KJ (Observaciones) hasta que se agregó KV, la Reclasificación: es
-    // ahora la última que la aplicación necesita leer, y el rango tiene que
-    // alcanzarla o el campo llegaría siempre vacío.
-    expect(rangoDeLectura(mapa)).toBe('A2:KV')
+    // Llegaba a KJ (Observaciones) hasta que se agregó KV, la Reclasificación, y
+    // luego KW, el tiempo de atención: es ahora la última que la aplicación
+    // necesita leer, y el rango tiene que alcanzarla o el campo llegaría siempre
+    // vacío —y el tiempo se volvería a escribir encima en cada guardado—.
+    expect(rangoDeLectura(mapa)).toBe('A2:KW')
+  })
+})
+
+describe('columna del tiempo de atención', () => {
+  const mapa = construirMapa(ENCABEZADOS)
+
+  it('resuelve KW como tiempoAtencion, de la zona de la mesa', () => {
+    expect(mapa.columnasPorCampo.tiempoAtencion).toEqual([309]) // KW
+    expect(mapa.indicesSinResolver).not.toContain(309)
+  })
+
+  it('la ubica por encabezado cuando ya existe', () => {
+    expect(ubicarColumnaTiempo(ENCABEZADOS)).toEqual({ columna: 309, existe: true })
+  })
+
+  it('cuando falta, propone la primera columna después de la última con encabezado', () => {
+    const sinTiempo = ENCABEZADOS.slice(0, 308)
+    expect(ubicarColumnaTiempo(sinTiempo)).toEqual({ columna: 309, existe: false })
+    // Celdas vacías al final no cuentan como columna ocupada.
+    expect(ubicarColumnaTiempo([...sinTiempo, '', ''])).toEqual({ columna: 309, existe: false })
   })
 })

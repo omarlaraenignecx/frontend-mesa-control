@@ -19,6 +19,7 @@ export function casoDePrueba(parcial: Partial<Caso> = {}): Caso {
     area: 'Mesa de control',
     tipoTramite: 'Emisión',
     reclasificacion: null,
+    tiempoAtencion: null,
     tipoSiniestro: null,
     tipoAtencion: null,
     numeroSiniestro: null,

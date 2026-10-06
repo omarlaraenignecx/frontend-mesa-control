@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import fixture from './__fixtures__/encabezados-308.json'
+import fixture from './__fixtures__/encabezados-309.json'
 import { construirMapa } from './sheet-schema'
 import {
   CAMPOS_ESCRIBIBLES,
