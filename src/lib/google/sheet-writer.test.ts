@@ -6,8 +6,10 @@ import {
   ColumnaNoEscribibleError,
   FilaCambiadaError,
   SelloNoEscritoError,
+  crearColumnaTiempo,
   escribirFolios,
   escribirSeguimiento,
+  escribirTiempos,
 } from './sheet-writer'
 
 const ENCABEZADOS = fixture.encabezados as string[]
@@ -691,6 +693,94 @@ describe('tiempo de atención', () => {
         TESTIGO,
       ),
     ).rejects.toThrow(/no es un número/)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+function fetchDeHoja(respuestas: ((url: string, init?: RequestInit) => unknown)[]) {
+  const llamadas: { url: string; init?: RequestInit }[] = []
+  let i = 0
+  const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+    llamadas.push({ url: String(url), init })
+    const cuerpo = respuestas[i++]?.(String(url), init) ?? {}
+    return new Response(JSON.stringify(cuerpo), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
+  }) as unknown as typeof globalThis.fetch
+  return { fetchMock, llamadas }
+}
+
+const PROPIEDADES = (columnas: number) => ({
+  sheets: [
+    { properties: { sheetId: 0, title: 'Otra', gridProperties: { columnCount: 500 } } },
+    {
+      properties: {
+        sheetId: 1234,
+        title: 'Respuestas de formulario 1',
+        gridProperties: { columnCount: columnas },
+      },
+    },
+  ],
+})
+
+describe('crearColumnaTiempo', () => {
+  it('agranda la cuadrícula si no alcanza y escribe el encabezado', async () => {
+    const { fetchMock, llamadas } = fetchDeHoja([() => PROPIEDADES(308), () => ({}), () => ({})])
+    await crearColumnaTiempo({ ...DEPS_BASE, fetch: fetchMock }, 309)
+
+    const agrandar = JSON.parse(String(llamadas[1].init!.body))
+    expect(llamadas[1].url).toContain(':batchUpdate')
+    expect(agrandar.requests).toEqual([
+      { appendDimension: { sheetId: 1234, dimension: 'COLUMNS', length: 1 } },
+    ])
+    const encabezado = JSON.parse(String(llamadas[2].init!.body))
+    expect(encabezado.data).toEqual([
+      {
+        range: 'Respuestas de formulario 1!KW1',
+        majorDimension: 'ROWS',
+        values: [['Tiempo de atención (horas)']],
+      },
+    ])
+  })
+
+  it('no agranda la cuadrícula si ya alcanza', async () => {
+    const { fetchMock, llamadas } = fetchDeHoja([() => PROPIEDADES(320), () => ({})])
+    await crearColumnaTiempo({ ...DEPS_BASE, fetch: fetchMock }, 309)
+    expect(llamadas).toHaveLength(2)
+    expect(llamadas[1].url).toContain('values:batchUpdate')
+  })
+})
+
+describe('escribirTiempos', () => {
+  it('relee el encabezado y escribe todos los tiempos en un lote RAW', async () => {
+    const { fetchMock, llamadas } = fetchDeHoja([
+      () => ({ values: [['Tiempo de atención (horas)']] }),
+      () => ({}),
+    ])
+    await escribirTiempos({ ...DEPS_BASE, fetch: fetchMock }, 309, [
+      { fila: 10, horas: 26.5 },
+      { fila: 12, horas: 1 },
+    ])
+    expect(llamadas[1].url).toContain('valueInputOption=RAW')
+    const cuerpo = JSON.parse(String(llamadas[1].init!.body))
+    expect(cuerpo.data).toEqual([
+      { range: 'Respuestas de formulario 1!KW10', majorDimension: 'ROWS', values: [[26.5]] },
+      { range: 'Respuestas de formulario 1!KW12', majorDimension: 'ROWS', values: [[1]] },
+    ])
+  })
+
+  it('aborta sin escribir si la columna ya no es la del tiempo', async () => {
+    const { fetchMock, llamadas } = fetchDeHoja([() => ({ values: [['Otra cosa']] })])
+    await expect(
+      escribirTiempos({ ...DEPS_BASE, fetch: fetchMock }, 309, [{ fila: 10, horas: 2 }]),
+    ).rejects.toThrow(/no es la del tiempo de atención/)
+    expect(llamadas).toHaveLength(1)
+  })
+
+  it('sin asignaciones no llama a Google', async () => {
+    const { fetchMock } = fetchDeHoja([])
+    await escribirTiempos({ ...DEPS_BASE, fetch: fetchMock }, 309, [])
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

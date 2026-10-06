@@ -1,6 +1,12 @@
 import { comoRazon, esCeldaProtegida, mensajeDeGoogle } from './error-google'
 import type { DepsLectura } from './sheet-reader'
-import { letraColumna, type CampoLogico, type MapaEsquema } from './sheet-schema'
+import {
+  ENCABEZADO_TIEMPO_ATENCION,
+  letraColumna,
+  normalizarEncabezado,
+  type CampoLogico,
+  type MapaEsquema,
+} from './sheet-schema'
 
 const BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
 
@@ -371,6 +377,86 @@ export async function escribirFolios(
         range: celda(colFolio, fila),
         majorDimension: 'ROWS',
         values: [[folio]],
+      })),
+    }),
+  })
+}
+
+/**
+ * Abre la columna del tiempo de atención al final de la hoja: la agrega a la
+ * cuadrícula si no alcanza —escribir fuera de ella falla— y le pone encabezado.
+ * Sólo la usa el script del histórico; la aplicación nunca crea columnas.
+ */
+export async function crearColumnaTiempo(deps: DepsLectura, columna: number): Promise<void> {
+  const respuesta = await pedir(
+    deps,
+    `${BASE}/${deps.sheetId}?fields=${encodeURIComponent(
+      'sheets.properties(sheetId,title,gridProperties.columnCount)',
+    )}`,
+  )
+  const cuerpo = (await respuesta.json()) as {
+    sheets?: {
+      properties?: { sheetId?: number; title?: string; gridProperties?: { columnCount?: number } }
+    }[]
+  }
+  const pestana = cuerpo.sheets?.find((s) => s.properties?.title === deps.pestana)?.properties
+  if (pestana?.sheetId === undefined) {
+    throw new Error(`No se encontró la pestaña "${deps.pestana}" en la hoja.`)
+  }
+  const actuales = pestana.gridProperties?.columnCount ?? 0
+  if (actuales < columna) {
+    await pedir(deps, `${BASE}/${deps.sheetId}:batchUpdate`, {
+      method: 'POST',
+      body: JSON.stringify({
+        requests: [
+          {
+            appendDimension: {
+              sheetId: pestana.sheetId,
+              dimension: 'COLUMNS',
+              length: columna - actuales,
+            },
+          },
+        ],
+      }),
+    })
+  }
+  await escribirCeldas(deps, 1, [{ columna, valor: ENCABEZADO_TIEMPO_ATENCION }])
+}
+
+/**
+ * Escribe los tiempos del histórico en un solo lote.
+ *
+ * Antes relee el encabezado de la columna: si alguien la movió entre la lectura
+ * del script y este momento, escribir por posición pondría horas en la columna de
+ * otro. En ese caso no se escribe nada.
+ */
+export async function escribirTiempos(
+  deps: DepsLectura,
+  columna: number,
+  asignaciones: { fila: number; horas: number }[],
+): Promise<void> {
+  if (asignaciones.length === 0) return
+  const letra = letraColumna(columna)
+  const respuesta = await pedir(
+    deps,
+    `${BASE}/${deps.sheetId}/values/${encodeURIComponent(`${deps.pestana}!${letra}1`)}` +
+      '?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE',
+  )
+  const cuerpo = (await respuesta.json()) as { values?: string[][] }
+  const encabezado = cuerpo.values?.[0]?.[0] ?? ''
+  if (normalizarEncabezado(encabezado) !== normalizarEncabezado(ENCABEZADO_TIEMPO_ATENCION)) {
+    throw new Error(
+      `La columna ${letra} dice "${encabezado}" y no es la del tiempo de atención; no se escribe nada.`,
+    )
+  }
+  await pedir(deps, `${BASE}/${deps.sheetId}/values:batchUpdate?valueInputOption=RAW`, {
+    method: 'POST',
+    body: JSON.stringify({
+      valueInputOption: 'RAW',
+      data: asignaciones.map(({ fila, horas }) => ({
+        range: `${deps.pestana}!${letra}${fila}`,
+        majorDimension: 'ROWS',
+        values: [[horas]],
       })),
     }),
   })
