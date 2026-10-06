@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { casoDePrueba, siniestroDePrueba } from './__fixtures__/caso'
-import { horasDeAtencion, tiempoASellar } from './tiempo-atencion'
+import { conTiempoAtencion, horasDeAtencion, tiempoASellar } from './tiempo-atencion'
 
 // casoDePrueba llegó el 5/8/2026 15:14:58.
 const LLEGADA = '5/8/2026 15:14:58'
@@ -51,5 +51,37 @@ describe('tiempoASellar', () => {
 
   it('reconoce el estatus aunque venga con otra capitalización o espacios', () => {
     expect(tiempoASellar(caso, ' concluida ', '6/8/2026 17:44:58')).toBe(26.5)
+  })
+})
+
+describe('conTiempoAtencion', () => {
+  const caso = casoDePrueba({ marcaTemporalTexto: LLEGADA })
+
+  it('agrega el tiempo, como texto, cuando el guardado cierra el caso', () => {
+    const valores = { estatusFinal: 'Concluida', fechaAtencionFinal: '6/8/2026 17:44:58' }
+    expect(conTiempoAtencion(caso, valores, true)).toEqual({ ...valores, tiempoAtencion: '26.5' })
+  })
+
+  it('usa la KD que ya tenía el caso si este guardado no la sella', () => {
+    const cerrado = casoDePrueba({
+      marcaTemporalTexto: LLEGADA,
+      estatusFinal: 'Concluida',
+      fechaAtencionFinal: '5/8/2026 16:14:58',
+    })
+    expect(conTiempoAtencion(cerrado, { observaciones: 'x' }, true)).toEqual({
+      observaciones: 'x',
+      tiempoAtencion: '1',
+    })
+  })
+
+  it('descarta un tiempo que mande el formulario: lo decide la aplicación', () => {
+    expect(conTiempoAtencion(caso, { tiempoAtencion: '1', estatusFinal: 'Tramite' }, true)).toEqual({
+      estatusFinal: 'Tramite',
+    })
+  })
+
+  it('si la hoja aún no tiene la columna, el guardado sigue sin el tiempo', () => {
+    const valores = { estatusFinal: 'Concluida', fechaAtencionFinal: '6/8/2026 17:44:58' }
+    expect(conTiempoAtencion(caso, valores, false)).toEqual(valores)
   })
 })

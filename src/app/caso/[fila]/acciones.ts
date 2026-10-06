@@ -10,6 +10,7 @@ import { cargarCaso, depsDeGoogle } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
 import { componerObservaciones } from '@/lib/casos/observaciones'
 import { SIN_RECLASIFICACION, notaDelGuardado } from '@/lib/casos/reclasificacion'
+import { conTiempoAtencion } from '@/lib/casos/tiempo-atencion'
 import { calcularDiff, type Seguimiento } from '@/lib/casos/seguimiento'
 import {
   FilaCambiadaError,
@@ -65,7 +66,15 @@ export async function guardarSeguimiento(
   const fechaCierre = fechaDeCierreASellar(caso, valores.estatusFinal, ahora)
   if (fechaCierre) valores.fechaAtencionFinal = fechaCierre
 
-  const cambios = calcularDiff(caso, valores)
+  // El tiempo de atención se calcula con la KD que acaba de sellarse o con la que ya
+  // tenía el caso. Sólo en la mesa y sólo una vez; ver `lib/casos/tiempo-atencion.ts`.
+  const aEscribir = conTiempoAtencion(
+    caso,
+    valores,
+    mapa.columnasPorCampo.tiempoAtencion.length > 0,
+  )
+
+  const cambios = calcularDiff(caso, aEscribir)
   if (cambios.length === 0) return { ok: true, cambios: 0 }
 
   let aviso: string | undefined

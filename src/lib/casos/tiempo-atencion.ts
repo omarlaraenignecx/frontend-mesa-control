@@ -1,5 +1,6 @@
 import { esSiniestro } from './area'
 import { estaVivo, parsearFechaHoja, type Caso } from './caso'
+import type { Seguimiento } from './seguimiento'
 
 /**
  * Cuánto tardó la mesa en atender un caso: horas naturales desde que llegó la
@@ -45,4 +46,31 @@ export function tiempoASellar(
   const cierre = parsearFechaHoja(fechaCierreTexto)
   if (!recibido || !cierre) return null
   return horasDeAtencion(recibido, cierre)
+}
+
+/**
+ * Los valores de un guardado, con el tiempo de atención agregado si toca.
+ *
+ * Lo que mande el formulario en `tiempoAtencion` se descarta siempre: es un dato
+ * que calcula la aplicación, y la acción se puede invocar sin pasar por la
+ * pantalla. Si la hoja todavía no tiene la columna, el guardado sigue sin él: no
+ * se frena a la mesa por un dato de reporte.
+ *
+ * Va como texto, igual que el resto del seguimiento, para que el diff y la
+ * bitácora lo traten como cualquier otro campo; el writer lo convierte en número.
+ */
+export function conTiempoAtencion(
+  caso: Caso,
+  valores: Seguimiento,
+  hayColumna: boolean,
+): Seguimiento {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { tiempoAtencion: _delCliente, ...resto } = valores
+  if (!hayColumna) return resto
+  const horas = tiempoASellar(
+    caso,
+    resto.estatusFinal ?? caso.estatusFinal,
+    resto.fechaAtencionFinal ?? caso.fechaAtencionFinal,
+  )
+  return horas === null ? resto : { ...resto, tiempoAtencion: String(horas) }
 }
