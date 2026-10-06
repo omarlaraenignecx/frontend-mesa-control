@@ -16,6 +16,7 @@ export type CampoEscribible =
   | 'causaSeguimiento'
   | 'observaciones'
   | 'reclasificacion'
+  | 'tiempoAtencion'
 
 /**
  * Lista blanca: las únicas columnas que esta aplicación puede escribir.
@@ -35,6 +36,9 @@ export type CampoEscribible =
  * columnas viven dentro de un rango protegido del libro que no incluye a la
  * cuenta de la mesa, y Sheets contesta 400. Escribir al lado evita el permiso y
  * además conserva el original, que es mejor registro.
+ *
+ * `tiempoAtencion` es otra columna de la mesa (KW). No la teclea nadie: la calcula
+ * la aplicación al cerrar un caso, a partir de A y KD. Ver `lib/casos/tiempo-atencion.ts`.
  */
 export const CAMPOS_ESCRIBIBLES = [
   'estatusInicial',
@@ -48,6 +52,7 @@ export const CAMPOS_ESCRIBIBLES = [
   'causaSeguimiento',
   'observaciones',
   'reclasificacion',
+  'tiempoAtencion',
 ] as const satisfies readonly CampoEscribible[]
 
 /**
@@ -67,6 +72,23 @@ const CAMPOS_DE_FECHA = [
 
 function esCampoDeFecha(campo: CampoEscribible): boolean {
   return (CAMPOS_DE_FECHA as readonly string[]).includes(campo)
+}
+
+/**
+ * Campos que van a la hoja como número. Con RAW, una cadena "26.5" quedaría como
+ * texto y `PROMEDIO` la ignoraría; con `USER_ENTERED` el punto decimal dependería
+ * de la configuración regional del libro. Un número JSON con RAW no depende de
+ * ninguna de las dos cosas.
+ */
+const CAMPOS_NUMERICOS = ['tiempoAtencion'] as const satisfies readonly CampoEscribible[]
+
+function valorParaLaHoja(campo: CampoEscribible, valor: string): string | number {
+  if (!(CAMPOS_NUMERICOS as readonly string[]).includes(campo)) return valor
+  const numero = Number(valor)
+  if (!valor.trim() || !Number.isFinite(numero)) {
+    throw new Error(`El ${campo} "${valor}" no es un número; la herramienta no lo escribe.`)
+  }
+  return numero
 }
 
 export class ColumnaNoEscribibleError extends Error {
@@ -210,7 +232,7 @@ async function confirmarFila(
 async function escribirCeldas(
   deps: DepsLectura,
   fila: number,
-  celdas: { columna: number; valor: string }[],
+  celdas: { columna: number; valor: string | number }[],
   modo: 'RAW' | 'USER_ENTERED' = 'RAW',
 ): Promise<void> {
   if (celdas.length === 0) return
@@ -246,9 +268,14 @@ export async function escribirSeguimiento(
   }
   if (entradas.length === 0) return
 
+  // También antes de cualquier llamada: un tiempo ilegible se rechaza sin tocar la hoja.
+  const convertidos = entradas.map(
+    ([campo, valor]) => [campo, valorParaLaHoja(campo, valor)] as const,
+  )
+
   await confirmarFila(deps, mapa, fila, testigo)
 
-  const celdas = entradas.map(([campo, valor]) => ({
+  const celdas = convertidos.map(([campo, valor]) => ({
     campo,
     columna: columnaDe(mapa, campo),
     valor,

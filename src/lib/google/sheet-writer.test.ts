@@ -72,6 +72,8 @@ describe('lista blanca de columnas', () => {
         // Columna de la mesa, no respuesta del formulario. Ver el comentario de
         // CAMPOS_ESCRIBIBLES.
         'reclasificacion',
+        // Columna de la mesa (KW); la calcula la aplicación al cerrar.
+        'tiempoAtencion',
       ].sort(),
     )
   })
@@ -653,5 +655,42 @@ describe('escribirFolios', () => {
     const { fetchMock, llamadas } = fetchDeLote({})
     await escribirFolios({ ...DEPS_BASE, fetch: fetchMock }, MAPA, [], new Map())
     expect(llamadas).toHaveLength(0)
+  })
+})
+
+describe('tiempo de atención', () => {
+  it('lo manda como número y con RAW, para que PROMEDIO lo cuente', async () => {
+    const { fetchMock, llamadas } = fetchDeEscritura()
+    await escribirSeguimiento(
+      { ...DEPS_BASE, fetch: fetchMock },
+      MAPA,
+      7176,
+      { tiempoAtencion: '26.5' },
+      TESTIGO,
+    )
+    const [escritura] = escrituras(llamadas)
+    expect(escritura.url).toContain('valueInputOption=RAW')
+    const cuerpo = JSON.parse(String(escritura.init!.body))
+    expect(cuerpo.data).toEqual([
+      {
+        range: 'Respuestas de formulario 1!KW7176',
+        majorDimension: 'ROWS',
+        values: [[26.5]],
+      },
+    ])
+  })
+
+  it('rechaza un tiempo que no es número sin llamar a Google', async () => {
+    const { fetchMock } = fetchDeEscritura()
+    await expect(
+      escribirSeguimiento(
+        { ...DEPS_BASE, fetch: fetchMock },
+        MAPA,
+        7176,
+        { tiempoAtencion: 'veinte' },
+        TESTIGO,
+      ),
+    ).rejects.toThrow(/no es un número/)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })
