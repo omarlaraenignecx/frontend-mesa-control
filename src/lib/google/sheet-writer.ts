@@ -1,6 +1,12 @@
 import { comoRazon, esCeldaProtegida, mensajeDeGoogle } from './error-google'
 import type { DepsLectura } from './sheet-reader'
-import { letraColumna, type CampoLogico, type MapaEsquema } from './sheet-schema'
+import {
+  ENCABEZADO_TIEMPO_ATENCION,
+  esEncabezadoTiempo,
+  letraColumna,
+  type CampoLogico,
+  type MapaEsquema,
+} from './sheet-schema'
 
 const BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
 
@@ -16,6 +22,7 @@ export type CampoEscribible =
   | 'causaSeguimiento'
   | 'observaciones'
   | 'reclasificacion'
+  | 'tiempoAtencion'
 
 /**
  * Lista blanca: las únicas columnas que esta aplicación puede escribir.
@@ -35,6 +42,9 @@ export type CampoEscribible =
  * columnas viven dentro de un rango protegido del libro que no incluye a la
  * cuenta de la mesa, y Sheets contesta 400. Escribir al lado evita el permiso y
  * además conserva el original, que es mejor registro.
+ *
+ * `tiempoAtencion` es otra columna de la mesa (KW). No la teclea nadie: la calcula
+ * la aplicación al cerrar un caso, a partir de A y KD. Ver `lib/casos/tiempo-atencion.ts`.
  */
 export const CAMPOS_ESCRIBIBLES = [
   'estatusInicial',
@@ -48,6 +58,7 @@ export const CAMPOS_ESCRIBIBLES = [
   'causaSeguimiento',
   'observaciones',
   'reclasificacion',
+  'tiempoAtencion',
 ] as const satisfies readonly CampoEscribible[]
 
 /**
@@ -67,6 +78,31 @@ const CAMPOS_DE_FECHA = [
 
 function esCampoDeFecha(campo: CampoEscribible): boolean {
   return (CAMPOS_DE_FECHA as readonly string[]).includes(campo)
+}
+
+/**
+ * Campos que van a la hoja como número. Como cadena, "26.5" quedaría como texto
+ * con RAW —y `PROMEDIO` la ignoraría— o dependería de la configuración regional
+ * del libro con `USER_ENTERED`. Un número JSON se guarda como número con los dos
+ * modos y no pasa por el análisis de texto.
+ *
+ * Además va en el lote del sello, junto a la fecha de atención final: el tiempo
+ * se mide contra esa fecha, y si la fecha no llega a la hoja tampoco debe llegar
+ * un tiempo que dependa de ella.
+ */
+const CAMPOS_NUMERICOS = ['tiempoAtencion'] as const satisfies readonly CampoEscribible[]
+
+function esCampoNumerico(campo: CampoEscribible): boolean {
+  return (CAMPOS_NUMERICOS as readonly string[]).includes(campo)
+}
+
+function valorParaLaHoja(campo: CampoEscribible, valor: string): string | number {
+  if (!esCampoNumerico(campo)) return valor
+  const numero = Number(valor)
+  if (!valor.trim() || !Number.isFinite(numero)) {
+    throw new Error(`El ${campo} "${valor}" no es un número; la herramienta no lo escribe.`)
+  }
+  return numero
 }
 
 export class ColumnaNoEscribibleError extends Error {
@@ -210,7 +246,7 @@ async function confirmarFila(
 async function escribirCeldas(
   deps: DepsLectura,
   fila: number,
-  celdas: { columna: number; valor: string }[],
+  celdas: { columna: number; valor: string | number }[],
   modo: 'RAW' | 'USER_ENTERED' = 'RAW',
 ): Promise<void> {
   if (celdas.length === 0) return
@@ -246,15 +282,21 @@ export async function escribirSeguimiento(
   }
   if (entradas.length === 0) return
 
+  // También antes de cualquier llamada: un tiempo ilegible se rechaza sin tocar la hoja.
+  const convertidos = entradas.map(
+    ([campo, valor]) => [campo, valorParaLaHoja(campo, valor)] as const,
+  )
+
   await confirmarFila(deps, mapa, fila, testigo)
 
-  const celdas = entradas.map(([campo, valor]) => ({
+  const celdas = convertidos.map(([campo, valor]) => ({
     campo,
     columna: columnaDe(mapa, campo),
     valor,
   }))
-  const fechas = celdas.filter((c) => esCampoDeFecha(c.campo))
-  const texto = celdas.filter((c) => !esCampoDeFecha(c.campo))
+  const esDelSello = (campo: CampoEscribible) => esCampoDeFecha(campo) || esCampoNumerico(campo)
+  const fechas = celdas.filter((c) => esDelSello(c.campo))
+  const texto = celdas.filter((c) => !esDelSello(c.campo))
 
   // El texto primero: es lo que la mesa capturó. El sello lo deriva la app y se
   // puede reconstruir volviendo a guardar, así que es el que puede quedar
@@ -347,4 +389,109 @@ export async function escribirFolios(
       })),
     }),
   })
+}
+
+/**
+ * Abre la columna del tiempo de atención al final de la hoja: la agrega a la
+ * cuadrícula si no alcanza —escribir fuera de ella falla— y le pone encabezado.
+ * Sólo la usa el script del histórico; la aplicación nunca crea columnas.
+ */
+export async function crearColumnaTiempo(deps: DepsLectura, columna: number): Promise<void> {
+  const respuesta = await pedir(
+    deps,
+    `${BASE}/${deps.sheetId}?fields=${encodeURIComponent(
+      'sheets.properties(sheetId,title,gridProperties.columnCount)',
+    )}`,
+  )
+  const cuerpo = (await respuesta.json()) as {
+    sheets?: {
+      properties?: { sheetId?: number; title?: string; gridProperties?: { columnCount?: number } }
+    }[]
+  }
+  const pestana = cuerpo.sheets?.find((s) => s.properties?.title === deps.pestana)?.properties
+  if (pestana?.sheetId === undefined) {
+    throw new Error(`No se encontró la pestaña "${deps.pestana}" en la hoja.`)
+  }
+  const actuales = pestana.gridProperties?.columnCount ?? 0
+  if (actuales < columna) {
+    await pedir(deps, `${BASE}/${deps.sheetId}:batchUpdate`, {
+      method: 'POST',
+      body: JSON.stringify({
+        requests: [
+          {
+            appendDimension: {
+              sheetId: pestana.sheetId,
+              dimension: 'COLUMNS',
+              length: columna - actuales,
+            },
+          },
+        ],
+      }),
+    })
+  }
+  await escribirCeldas(deps, 1, [{ columna, valor: ENCABEZADO_TIEMPO_ATENCION }])
+}
+
+/**
+ * Escribe los tiempos del histórico en un solo lote y devuelve cuántos escribió.
+ *
+ * Entre la lectura del script y este momento la hoja puede cambiar, así que antes
+ * relee, en una sola llamada, la columna A y la del tiempo:
+ * - si el encabezado de la columna ya no es el del tiempo, alguien la movió y
+ *   escribir por posición pondría horas en la columna de otro: no se escribe nada;
+ * - si una fila ya no trae la marca temporal que se leyó, alguien ordenó o movió
+ *   filas: tampoco se escribe nada, igual que con los folios, porque un lote a
+ *   medias no dejaría saber qué quedó bien;
+ * - si una celda del tiempo ya tiene dato —la aplicación la selló en ese lapso—,
+ *   esa fila se salta: nunca se toca una celda con dato.
+ */
+export async function escribirTiempos(
+  deps: DepsLectura,
+  columna: number,
+  asignaciones: { fila: number; horas: number; marcaTemporalTexto: string }[],
+): Promise<number> {
+  if (asignaciones.length === 0) return 0
+  const letra = letraColumna(columna)
+  const respuesta = await pedir(
+    deps,
+    `${BASE}/${deps.sheetId}/values:batchGet` +
+      `?ranges=${encodeURIComponent(`${deps.pestana}!A1:A`)}` +
+      `&ranges=${encodeURIComponent(`${deps.pestana}!${letra}1:${letra}`)}` +
+      '&majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE',
+  )
+  const cuerpo = (await respuesta.json()) as { valueRanges?: { values?: string[][] }[] }
+  const leer = (rango: number, fila: number) =>
+    (cuerpo.valueRanges?.[rango]?.values?.[fila - 1]?.[0] ?? '').trim()
+
+  const encabezado = leer(1, 1)
+  if (!esEncabezadoTiempo(encabezado)) {
+    throw new Error(
+      `La columna ${letra} dice "${encabezado}" y no es la del tiempo de atención; no se escribe nada.`,
+    )
+  }
+  for (const { fila, marcaTemporalTexto } of asignaciones) {
+    const actual = leer(0, fila) || null
+    if (actual !== marcaTemporalTexto.trim()) {
+      throw new FilaCambiadaError({
+        campo: `marca temporal de la fila ${fila}`,
+        esperado: marcaTemporalTexto,
+        encontrado: actual,
+      })
+    }
+  }
+  const pendientes = asignaciones.filter(({ fila }) => !leer(1, fila))
+  if (pendientes.length === 0) return 0
+
+  await pedir(deps, `${BASE}/${deps.sheetId}/values:batchUpdate?valueInputOption=RAW`, {
+    method: 'POST',
+    body: JSON.stringify({
+      valueInputOption: 'RAW',
+      data: pendientes.map(({ fila, horas }) => ({
+        range: `${deps.pestana}!${letra}${fila}`,
+        majorDimension: 'ROWS',
+        values: [[horas]],
+      })),
+    }),
+  })
+  return pendientes.length
 }

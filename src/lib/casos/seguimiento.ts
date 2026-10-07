@@ -24,6 +24,8 @@ export const ETIQUETAS_SEGUIMIENTO: Record<CampoEscribible, string> = {
   teniaPermisos: '¿El ejecutivo tenía permisos?',
   causaSeguimiento: 'Causa',
   observaciones: 'Observaciones',
+  // No se captura en el formulario; aparece en la bitácora cuando la aplicación lo sella.
+  tiempoAtencion: 'Tiempo de atención (horas)',
 }
 
 /**

@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
-import fixture from './__fixtures__/encabezados-308.json'
+import fixture from './__fixtures__/encabezados-309.json'
 import { construirCasos, leerCasos, leerColumnaFolios } from './sheet-reader'
 import { construirMapa } from './sheet-schema'
 
 const ENCABEZADOS: string[] = fixture.encabezados
 const MAPA = construirMapa(ENCABEZADOS)
 
-/** Construye una fila de 307 celdas con valores en columnas concretas (1-based). */
+/** Construye una fila de 309 celdas con valores en columnas concretas (1-based). */
 function fila(valores: Record<number, string>): string[] {
-  const f = new Array(307).fill('')
+  const f = new Array(309).fill('')
   for (const [col, v] of Object.entries(valores)) f[Number(col) - 1] = v
   return f
 }
@@ -158,6 +158,16 @@ describe('construirCasos', () => {
   it('tolera filas más cortas que el total de columnas, como las devuelve Sheets', () => {
     const corta = ['5/8/2026 15:00:00', '', '', 'Emisión']
     expect(() => construirCasos([corta], MAPA, ENCABEZADOS, 2026)).not.toThrow()
+  })
+
+  it('lee el tiempo de atención de su columna', () => {
+    const [caso] = construirCasos(
+      [fila({ 1: '5/8/2026 15:14:58', 285: '7000', 309: '26.5' })],
+      MAPA,
+      ENCABEZADOS,
+      2026,
+    )
+    expect(caso.tiempoAtencion).toBe('26.5')
   })
 })
 

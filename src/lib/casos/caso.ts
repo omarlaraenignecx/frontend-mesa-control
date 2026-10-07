@@ -47,6 +47,11 @@ export type Caso = {
    * registro de lo que pidió el solicitante.
    */
   reclasificacion: string | null
+  /**
+   * Horas de atención que escribió la aplicación al cerrar el caso, tal como las
+   * muestra la hoja. Sólo se usa para saber si ya hay dato: nunca se sobrescribe.
+   */
+  tiempoAtencion: string | null
   fechaRespuestaCorreo: string | null
   fechaAtencionFinal: string | null
   adjuntos: Adjunto[]

@@ -1,7 +1,7 @@
 {
-  "descripcion": "Fila 1 de 'Respuestas de formulario 1', leida el 5 de agosto de 2026. Son los encabezados del formulario, no datos de clientes. La columna 308 (KV, 'Reclasificación') se agregó el 18 de septiembre de 2026: es de la mesa, no del formulario, y es donde se anota la clasificación buena cuando el solicitante se equivocó al elegir el trámite.",
+  "descripcion": "Fila 1 de 'Respuestas de formulario 1', leida el 5 de agosto de 2026. Son los encabezados del formulario, no datos de clientes. La columna 308 (KV, 'Reclasificación') se agregó el 18 de septiembre de 2026: es de la mesa, no del formulario, y es donde se anota la clasificación buena cuando el solicitante se equivocó al elegir el trámite. La columna 309 (KW, 'Tiempo de atención (horas)') se agregó el 6 de octubre de 2026: también es de la mesa, y guarda las horas entre la llegada de la petición y su atención final.",
   "pestana": "Respuestas de formulario 1",
-  "columnas": 308,
+  "columnas": 309,
   "encabezados": [
     "Marca temporal",
     "¿Tipo de negocio?",
@@ -310,6 +310,7 @@
     "SLA",
     "Año Recibe",
     "Mes Recibe",
-    "Reclasificación"
+    "Reclasificación",
+    "Tiempo de atención (horas)"
   ]
 }

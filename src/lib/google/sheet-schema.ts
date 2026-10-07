@@ -29,6 +29,7 @@ export type CampoLogico =
   | 'reclasificacion'
   | 'fechaRespuestaCorreo'
   | 'fechaAtencionFinal'
+  | 'tiempoAtencion'
 
 export type MapaEsquema = {
   columnasPorCampo: Record<CampoLogico, number[]>
@@ -116,6 +117,16 @@ const ALIAS: Record<CampoLogico, string[]> = {
    * esta se lee al lado. Ver `lib/casos/reclasificacion.ts`.
    */
   reclasificacion: ['reclasificacion'],
+
+  /**
+   * Horas naturales entre la llegada de la petición (A) y su atención final (KD).
+   * Columna de la mesa (KW), como la reclasificación; la escribe la aplicación al
+   * cerrar un caso. Ver `lib/casos/tiempo-atencion.ts`.
+   *
+   * Dos encabezados: el que pone el script cuando crea la columna y el que le
+   * puso el área a mano en producción el 7/10/2026 («Tiempo de Atención», en KY).
+   */
+  tiempoAtencion: ['tiempo de atencion (horas)', 'tiempo de atencion'],
 }
 
 /**
@@ -164,6 +175,7 @@ const CAMPOS_COLUMNA_UNICA: CampoLogico[] = [
   'causaSeguimiento',
   'observaciones',
   'reclasificacion',
+  'tiempoAtencion',
 ]
 
 const PATRONES_ADJUNTO = [
@@ -306,4 +318,26 @@ export function rangoDeLectura(mapa: MapaEsquema): string {
   ]
   const ultima = Math.max(...usadas)
   return `A2:${letraColumna(ultima)}`
+}
+
+export const ENCABEZADO_TIEMPO_ATENCION = 'Tiempo de atención (horas)'
+
+/** Si el texto es alguno de los encabezados con que se reconoce la columna del tiempo. */
+export function esEncabezadoTiempo(texto: string): boolean {
+  return ALIAS.tiempoAtencion.includes(normalizarEncabezado(texto))
+}
+
+/**
+ * Dónde vive —o dónde va a vivir— la columna del tiempo de atención. Si la hoja
+ * ya la tiene, se ubica por encabezado; si no, es la primera después de la última
+ * columna con encabezado, que es donde el área abrió la de reclasificación.
+ */
+export function ubicarColumnaTiempo(encabezados: string[]): { columna: number; existe: boolean } {
+  const actual = encabezados.findIndex((t) => esEncabezadoTiempo(t ?? ''))
+  if (actual >= 0) return { columna: actual + 1, existe: true }
+  let ultima = 0
+  encabezados.forEach((t, i) => {
+    if (t?.trim()) ultima = i + 1
+  })
+  return { columna: ultima + 1, existe: false }
 }
