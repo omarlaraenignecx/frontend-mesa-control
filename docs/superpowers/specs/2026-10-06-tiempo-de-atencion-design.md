@@ -46,10 +46,11 @@ y el promedio lo saca el área desde la propia hoja.
 - `sheet-reader.ts` / `Caso`: nuevo campo `tiempoAtencion: string | null`, que se lee
   como texto igual que los demás.
 - `sheet-writer.ts`: `tiempoAtencion` entra a `CampoEscribible` y a
-  `CAMPOS_ESCRIBIBLES`. Se escribe con `RAW` y como **número JSON**, no como cadena:
-  con RAW, una cadena `"26.5"` quedaría como texto y `PROMEDIO` la ignoraría. Con
-  `USER_ENTERED` dependería de la configuración regional del libro, que decide si el
-  separador decimal es punto o coma. `Seguimiento`, el diff y la bitácora siguen
+  `CAMPOS_ESCRIBIBLES`. Se escribe como **número JSON**, no como cadena, y en el mismo
+  lote que la fecha de atención final (`USER_ENTERED`): si KD no llega a la hoja, el
+  tiempo que depende de ella tampoco. Como cadena, `"26.5"` quedaría como texto con
+  RAW —y `PROMEDIO` la ignoraría— o dependería de la configuración regional del libro
+  con `USER_ENTERED`; un número JSON se guarda como número con los dos modos. `Seguimiento`, el diff y la bitácora siguen
   trabajando con cadenas (`"26.5"`). Es `escribirSeguimiento` quien convierte este
   campo con `Number()` justo antes de mandarlo, y rechaza el lote sin llamar a Google
   si el texto no es un número finito. Sólo este campo se manda como número.

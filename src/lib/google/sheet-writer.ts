@@ -81,15 +81,23 @@ function esCampoDeFecha(campo: CampoEscribible): boolean {
 }
 
 /**
- * Campos que van a la hoja como número. Con RAW, una cadena "26.5" quedaría como
- * texto y `PROMEDIO` la ignoraría; con `USER_ENTERED` el punto decimal dependería
- * de la configuración regional del libro. Un número JSON con RAW no depende de
- * ninguna de las dos cosas.
+ * Campos que van a la hoja como número. Como cadena, "26.5" quedaría como texto
+ * con RAW —y `PROMEDIO` la ignoraría— o dependería de la configuración regional
+ * del libro con `USER_ENTERED`. Un número JSON se guarda como número con los dos
+ * modos y no pasa por el análisis de texto.
+ *
+ * Además va en el lote del sello, junto a la fecha de atención final: el tiempo
+ * se mide contra esa fecha, y si la fecha no llega a la hoja tampoco debe llegar
+ * un tiempo que dependa de ella.
  */
 const CAMPOS_NUMERICOS = ['tiempoAtencion'] as const satisfies readonly CampoEscribible[]
 
+function esCampoNumerico(campo: CampoEscribible): boolean {
+  return (CAMPOS_NUMERICOS as readonly string[]).includes(campo)
+}
+
 function valorParaLaHoja(campo: CampoEscribible, valor: string): string | number {
-  if (!(CAMPOS_NUMERICOS as readonly string[]).includes(campo)) return valor
+  if (!esCampoNumerico(campo)) return valor
   const numero = Number(valor)
   if (!valor.trim() || !Number.isFinite(numero)) {
     throw new Error(`El ${campo} "${valor}" no es un número; la herramienta no lo escribe.`)
@@ -286,8 +294,9 @@ export async function escribirSeguimiento(
     columna: columnaDe(mapa, campo),
     valor,
   }))
-  const fechas = celdas.filter((c) => esCampoDeFecha(c.campo))
-  const texto = celdas.filter((c) => !esCampoDeFecha(c.campo))
+  const esDelSello = (campo: CampoEscribible) => esCampoDeFecha(campo) || esCampoNumerico(campo)
+  const fechas = celdas.filter((c) => esDelSello(c.campo))
+  const texto = celdas.filter((c) => !esDelSello(c.campo))
 
   // El texto primero: es lo que la mesa capturó. El sello lo deriva la app y se
   // puede reconstruir volviendo a guardar, así que es el que puede quedar

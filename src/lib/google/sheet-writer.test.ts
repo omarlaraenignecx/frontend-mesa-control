@@ -661,7 +661,7 @@ describe('escribirFolios', () => {
 })
 
 describe('tiempo de atención', () => {
-  it('lo manda como número y con RAW, para que PROMEDIO lo cuente', async () => {
+  it('lo manda como número, para que PROMEDIO lo cuente', async () => {
     const { fetchMock, llamadas } = fetchDeEscritura()
     await escribirSeguimiento(
       { ...DEPS_BASE, fetch: fetchMock },
@@ -671,7 +671,6 @@ describe('tiempo de atención', () => {
       TESTIGO,
     )
     const [escritura] = escrituras(llamadas)
-    expect(escritura.url).toContain('valueInputOption=RAW')
     const cuerpo = JSON.parse(String(escritura.init!.body))
     expect(cuerpo.data).toEqual([
       {
@@ -679,6 +678,30 @@ describe('tiempo de atención', () => {
         majorDimension: 'ROWS',
         values: [[26.5]],
       },
+    ])
+  })
+
+  it('viaja en el mismo lote que la fecha de cierre: o quedan los dos o ninguno', async () => {
+    const { fetchMock, llamadas } = fetchDeEscritura()
+    await escribirSeguimiento(
+      { ...DEPS_BASE, fetch: fetchMock },
+      MAPA,
+      7176,
+      { estatusFinal: 'Concluida', fechaAtencionFinal: '6/8/2026 17:44:58', tiempoAtencion: '26.5' },
+      TESTIGO,
+    )
+    const [texto, sello] = escrituras(llamadas)
+    expect(JSON.parse(String(texto.init!.body)).data.map((d: { range: string }) => d.range)).toEqual([
+      'Respuestas de formulario 1!KA7176',
+    ])
+    expect(sello.url).toContain('valueInputOption=USER_ENTERED')
+    expect(JSON.parse(String(sello.init!.body)).data).toEqual([
+      {
+        range: 'Respuestas de formulario 1!KD7176',
+        majorDimension: 'ROWS',
+        values: [['6/8/2026 17:44:58']],
+      },
+      { range: 'Respuestas de formulario 1!KW7176', majorDimension: 'ROWS', values: [[26.5]] },
     ])
   })
 
