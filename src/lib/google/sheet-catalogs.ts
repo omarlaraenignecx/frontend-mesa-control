@@ -1,3 +1,4 @@
+import { razonDeGoogle } from './error-google'
 import type { DepsLectura } from './sheet-reader'
 import { letraColumna, type CampoLogico, type MapaEsquema } from './sheet-schema'
 
@@ -66,7 +67,9 @@ export async function leerCatalogos(
     throw new Error('La cuenta de la mesa no tiene permiso para leer esta hoja de cálculo.')
   }
   if (!respuesta.ok) {
-    throw new Error(`Sheets respondió ${respuesta.status} al leer los catálogos.`)
+    throw new Error(
+      `Sheets respondió ${respuesta.status} al leer los catálogos.${await razonDeGoogle(respuesta)}`,
+    )
   }
 
   const cuerpo = (await respuesta.json()) as {

@@ -41,6 +41,12 @@ export type Caso = {
   teniaPermisos: string | null
   causaSeguimiento: string | null
   observaciones: string | null
+  /**
+   * La clasificación que le pone la mesa cuando el solicitante eligió mal. Vive
+   * en su propia columna y no sustituye a `tipoTramite`, que sigue siendo el
+   * registro de lo que pidió el solicitante.
+   */
+  reclasificacion: string | null
   fechaRespuestaCorreo: string | null
   fechaAtencionFinal: string | null
   adjuntos: Adjunto[]

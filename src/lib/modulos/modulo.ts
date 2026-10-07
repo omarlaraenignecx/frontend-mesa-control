@@ -66,6 +66,13 @@ export type ConfigModulo = {
    * en dos pantallas sería el mismo botón dos veces.
    */
   generaFolios: boolean
+  /**
+   * Si este módulo deja reclasificar un caso a mano.
+   *
+   * Solo la mesa. Siniestros clasifica por `tipoSiniestro`, que nadie ha pedido
+   * poder reclasificar.
+   */
+  reclasifica: boolean
 }
 
 export const MESA: ConfigModulo = {
@@ -91,6 +98,7 @@ export const MESA: ConfigModulo = {
   estatusPorOmision: { valores: ESTATUS_POR_OMISION, etiqueta: 'Pendientes' },
   columnasExtra: [],
   generaFolios: true,
+  reclasifica: true,
 }
 
 export const SINIESTROS: ConfigModulo = {
@@ -113,6 +121,7 @@ export const SINIESTROS: ConfigModulo = {
   estatusPorOmision: { valores: ESTATUS_ABIERTOS, etiqueta: 'Abiertos' },
   columnasExtra: [{ encabezado: 'Número de siniestro', campo: 'numeroSiniestro' }],
   generaFolios: false,
+  reclasifica: false,
 }
 
 export const MODULOS: ConfigModulo[] = [MESA, SINIESTROS]

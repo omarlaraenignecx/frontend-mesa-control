@@ -23,6 +23,7 @@ import { sustituirVariables, variablesDelCaso } from '@/lib/correo/render-correo
 import { buzonDelCaso } from '@/lib/casos/buzon'
 import type { ConfigModulo } from '@/lib/modulos/modulo'
 import { claseDelCaso, estaVivo } from '@/lib/casos/caso'
+import { puedeReclasificar } from '@/lib/casos/reclasificacion'
 import { leerBitacora } from '@/lib/casos/bitacora'
 import { listarArchivos } from '@/lib/casos/archivos'
 import { agruparCamposExtra } from '@/lib/casos/campos-extra'
@@ -385,6 +386,7 @@ export async function PantallaDeCaso({
                   caso={caso}
                   catalogos={catalogos}
                   nombreUsuario={usuario.nombreEnHoja}
+                  puedeReclasificar={puedeReclasificar(modulo, caso)}
                 />
               </CardContent>
             </Card>

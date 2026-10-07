@@ -4,10 +4,12 @@ import { revalidatePath, updateTag } from 'next/cache'
 import { requerirUsuario } from '@/lib/auth/guard'
 import { registrarCambios } from '@/lib/casos/bitacora'
 import { claseDelCaso } from '@/lib/casos/caso'
+import { esSiniestro } from '@/lib/casos/area'
 import { fechaDeCierreASellar, seCierraAhora } from '@/lib/casos/cierre'
 import { cargarCaso, depsDeGoogle } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
 import { componerObservaciones } from '@/lib/casos/observaciones'
+import { SIN_RECLASIFICACION, notaDelGuardado } from '@/lib/casos/reclasificacion'
 import { calcularDiff, type Seguimiento } from '@/lib/casos/seguimiento'
 import {
   FilaCambiadaError,
@@ -34,11 +36,23 @@ export async function guardarSeguimiento(
   const valores: Seguimiento = { ...propuesto }
   const ahora = new Date()
 
+  // La reclasificación sólo existe en la mesa, y esta acción la comparten los dos
+  // módulos: se puede invocar sin pasar por la pantalla, así que la última palabra
+  // está de este lado.
+  if (valores.reclasificacion !== undefined && esSiniestro(caso)) {
+    return { ok: false, error: SIN_RECLASIFICACION, conflicto: false }
+  }
+
+  // Si la reclasificación cambia, queda también una línea en Observaciones: la
+  // columna KV muestra el valor nuevo, pero no de dónde se venía, y eso es lo que
+  // explica el número en el reporte.
+  const nota = notaDelGuardado(caso, valores.reclasificacion, notaNueva)
+
   // Observaciones: acumulativo, nunca sobrescribe lo que ya escribió alguien.
-  if (notaNueva.trim()) {
+  if (nota) {
     valores.observaciones = componerObservaciones(
       caso.observaciones,
-      notaNueva,
+      nota,
       usuario.nombreEnHoja ?? usuario.correo,
       ahora,
     )
@@ -79,11 +93,15 @@ export async function guardarSeguimiento(
   }
 
   await registrarCambios(fila, caso.folio, usuario.correo, cambios)
+  // La clasificación del formulario, que es la que sigue mandando en los filtros y
+  // en BI: la reclasificación es una anotación de la mesa en su propia columna y
+  // no sustituye a la respuesta del solicitante.
+  const claseResultante = claseDelCaso(caso)
   await emitirEvento({
     tipo: 'caso_guardado',
     fila,
     folio: caso.folio,
-    tipoTramite: claseDelCaso(caso),
+    tipoTramite: claseResultante,
     estatusResultante: valores.estatusFinal ?? caso.estatusFinal,
     correoUsuario: usuario.correo,
   })
@@ -92,7 +110,7 @@ export async function guardarSeguimiento(
       tipo: 'caso_cerrado',
       fila,
       folio: caso.folio,
-      tipoTramite: claseDelCaso(caso),
+      tipoTramite: claseResultante,
       estatusResultante: valores.estatusFinal,
       correoUsuario: usuario.correo,
     })

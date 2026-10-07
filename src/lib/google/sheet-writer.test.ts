@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import fixture from './__fixtures__/encabezados-307.json'
+import fixture from './__fixtures__/encabezados-308.json'
 import { construirMapa } from './sheet-schema'
 import {
   CAMPOS_ESCRIBIBLES,
@@ -21,7 +21,12 @@ const DEPS_BASE = {
 
 /** El escritor primero relee la fila (testigo) y solo entonces escribe. */
 function fetchDeEscritura(
-  opciones: { marcaTemporal?: string; folio?: string; statusEscritura?: number } = {},
+  opciones: {
+    marcaTemporal?: string
+    folio?: string
+    statusEscritura?: number
+    cuerpoEscritura?: unknown
+  } = {},
 ) {
   const llamadas: { url: string; init?: RequestInit }[] = []
   const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
@@ -39,7 +44,7 @@ function fetchDeEscritura(
         { status: 200, headers: { 'content-type': 'application/json' } },
       )
     }
-    return new Response(JSON.stringify({ totalUpdatedCells: 3 }), {
+    return new Response(JSON.stringify(opciones.cuerpoEscritura ?? { totalUpdatedCells: 3 }), {
       status: opciones.statusEscritura ?? 200,
       headers: { 'content-type': 'application/json' },
     })
@@ -51,7 +56,7 @@ const escrituras = (llamadas: { url: string; init?: RequestInit }[]) =>
   llamadas.filter((l) => l.init?.method && l.init.method !== 'GET')
 
 describe('lista blanca de columnas', () => {
-  it('declara exactamente las diez columnas de seguimiento acordadas', () => {
+  it('declara las diez columnas de seguimiento acordadas, más la reclasificación', () => {
     expect([...CAMPOS_ESCRIBIBLES].sort()).toEqual(
       [
         'aseguradoraSeguimiento',
@@ -64,8 +69,28 @@ describe('lista blanca de columnas', () => {
         'observaciones',
         'quienAtendio',
         'teniaPermisos',
+        // Columna de la mesa, no respuesta del formulario. Ver el comentario de
+        // CAMPOS_ESCRIBIBLES.
+        'reclasificacion',
       ].sort(),
     )
+  })
+
+  it('rechaza escribir el tipo de trámite: es la respuesta del solicitante', async () => {
+    // Llegó a estar permitido, para corregirlo en su propia celda. No se pudo —esa
+    // columna está protegida en el libro— y ahora la corrección vive en KV, así
+    // que el formulario vuelve a ser intocable entero.
+    const { fetchMock } = fetchDeEscritura()
+    await expect(
+      escribirSeguimiento(
+        { ...DEPS_BASE, fetch: fetchMock },
+        MAPA,
+        7176,
+        { tipoTramite: 'Endoso' } as never,
+        TESTIGO,
+      ),
+    ).rejects.toBeInstanceOf(ColumnaNoEscribibleError)
+    expect((fetchMock as unknown as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0)
   })
 
   it('rechaza escribir un campo del formulario antes de llamar a Google', async () => {
@@ -75,7 +100,7 @@ describe('lista blanca de columnas', () => {
         { ...DEPS_BASE, fetch: fetchMock },
         MAPA,
         7176,
-        { tipoTramite: 'Emisión' } as never,
+        { motivo: 'aplicar el pago' } as never,
         TESTIGO,
       ),
     ).rejects.toBeInstanceOf(ColumnaNoEscribibleError)
@@ -346,6 +371,72 @@ describe('forma de la escritura', () => {
     ).rejects.toThrow(/permiso de edición/)
   })
 
+  /**
+   * El mensaje que llega a la pantalla es el único rastro que deja un guardado
+   * fallido —la acción devuelve el error, no lo registra—, así que la razón de
+   * Google tiene que viajar con él hasta la tarjeta roja. `razonDeGoogle` tiene
+   * sus propias pruebas; esta cuida que siga enchufada al camino del guardado.
+   */
+  it('lleva la explicación de Google hasta el mensaje del guardado', async () => {
+    const { fetchMock } = fetchDeEscritura({
+      statusEscritura: 400,
+      cuerpoEscritura: {
+        error: {
+          code: 400,
+          message: 'Unable to parse range: Respuestas de formulario 1!N0',
+          status: 'INVALID_ARGUMENT',
+        },
+      },
+    })
+    await expect(
+      escribirSeguimiento(
+        { ...DEPS_BASE, fetch: fetchMock },
+        MAPA,
+        7176,
+        { estatusFinal: 'Concluida' },
+        TESTIGO,
+      ),
+    ).rejects.toThrow(
+      'Sheets respondió 400 al guardar los cambios. Google explicó: «Unable to parse range: Respuestas de formulario 1!N0»',
+    )
+  })
+
+  /**
+   * El caso real que motivó todo esto: en el libro de producción las 17 columnas
+   * del tipo de trámite caen dentro de un rango protegido sin editores, así que
+   * la cuenta de la mesa no puede escribirlas. Sheets lo contesta como un 400
+   * cualquiera, y el número solo no le dice a nadie que hay que ir a la hoja a
+   * dar un permiso.
+   *
+   * Se prueba con un campo de columna única porque el rechazo lo traduce `pedir`,
+   * que no sabe qué campo viene; el trámite además necesitaría releer sus 17
+   * columnas y eso es otra prueba.
+   */
+  it('dice qué hacer cuando la hoja rechaza la celda por protegida', async () => {
+    const { fetchMock } = fetchDeEscritura({
+      statusEscritura: 400,
+      cuerpoEscritura: {
+        error: {
+          code: 400,
+          message:
+            'Invalid data[0]: Estás intentando modificar una celda o un objeto protegido. Si necesitas realizar cambios, comunícate con el propietario de la hoja de cálculo para que quite la protección.',
+          status: 'INVALID_ARGUMENT',
+        },
+      },
+    })
+    const fallo = escribirSeguimiento(
+      { ...DEPS_BASE, fetch: fetchMock },
+      MAPA,
+      7176,
+      { estatusFinal: 'Concluida' },
+      TESTIGO,
+    )
+    await expect(fallo).rejects.toThrow(/rango protegido/)
+    // El texto original de Google sigue viajando: es lo que permite reconocer el
+    // error si la heurística del idioma alguna vez falla.
+    await expect(fallo).rejects.toThrow(/Google explicó/)
+  })
+
   it('explica el límite de cuota al guardar', async () => {
     const { fetchMock } = fetchDeEscritura({ statusEscritura: 429 })
     await expect(
@@ -357,6 +448,65 @@ describe('forma de la escritura', () => {
         TESTIGO,
       ),
     ).rejects.toThrow(/peticiones/)
+  })
+})
+
+/**
+ * La reclasificación vive en una sola columna de la zona de la mesa (KV), como
+ * los demás campos de seguimiento. Estas pruebas cuidan que siga siendo así: que
+ * escriba ahí y que no toque la columna del formulario, que es el registro del
+ * solicitante y además está protegida en el libro.
+ */
+describe('reclasificación', () => {
+  const rangosEscritos = (llamadas: { url: string; init?: RequestInit }[]) =>
+    escrituras(llamadas).flatMap(
+      (l) => (JSON.parse(String(l.init?.body)) as { data: { range: string }[] }).data,
+    )
+
+  it('escribe en la columna de la mesa y no en la del formulario', async () => {
+    const { fetchMock, llamadas } = fetchDeEscritura()
+    await escribirSeguimiento(
+      { ...DEPS_BASE, fetch: fetchMock },
+      MAPA,
+      7176,
+      { reclasificacion: 'Endoso' },
+      TESTIGO,
+    )
+
+    const rangos = rangosEscritos(llamadas).map((d) => d.range)
+    expect(rangos).toEqual(['Respuestas de formulario 1!KV7176'])
+  })
+
+  it('deja vaciarla: quitar una reclasificación es una decisión legítima', async () => {
+    const { fetchMock, llamadas } = fetchDeEscritura()
+    await escribirSeguimiento(
+      { ...DEPS_BASE, fetch: fetchMock },
+      MAPA,
+      7176,
+      { reclasificacion: '' },
+      TESTIGO,
+    )
+
+    const datos = rangosEscritos(llamadas)
+    expect(datos).toHaveLength(1)
+    expect(datos[0].range).toBe('Respuestas de formulario 1!KV7176')
+  })
+
+  it('relee solo el testigo: ya no hay bloques que resolver', async () => {
+    const { fetchMock, llamadas } = fetchDeEscritura()
+    await escribirSeguimiento(
+      { ...DEPS_BASE, fetch: fetchMock },
+      MAPA,
+      7176,
+      { reclasificacion: 'Endoso' },
+      TESTIGO,
+    )
+
+    const lectura = llamadas.find((l) => !l.init?.method || l.init.method === 'GET')
+    expect(new URL(String(lectura?.url)).searchParams.getAll('ranges')).toEqual([
+      'Respuestas de formulario 1!A7176',
+      'Respuestas de formulario 1!JY7176',
+    ])
   })
 })
 

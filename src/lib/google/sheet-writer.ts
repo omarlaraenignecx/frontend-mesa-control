@@ -1,3 +1,4 @@
+import { comoRazon, esCeldaProtegida, mensajeDeGoogle } from './error-google'
 import type { DepsLectura } from './sheet-reader'
 import { letraColumna, type CampoLogico, type MapaEsquema } from './sheet-schema'
 
@@ -14,6 +15,7 @@ export type CampoEscribible =
   | 'teniaPermisos'
   | 'causaSeguimiento'
   | 'observaciones'
+  | 'reclasificacion'
 
 /**
  * Lista blanca: las únicas columnas que esta aplicación puede escribir.
@@ -22,6 +24,17 @@ export type CampoEscribible =
  * (que son registro del solicitante), las columnas de fórmula y los duplicados
  * residuales de estatus. La comprobación ocurre antes de cualquier llamada HTTP,
  * de modo que un error de programación no alcanza a tocar la hoja.
+ *
+ * Ninguna respuesta del formulario está aquí, y `reclasificacion` no es una
+ * excepción: es una columna propia de la mesa (KV, «Reclasificación»), al lado de
+ * las demás de seguimiento. Cuando el solicitante elige mal el trámite —manda un
+ * endoso marcado como emisión— la mesa anota ahí la clasificación buena, y lo que
+ * él eligió sigue intacto en su columna del formulario.
+ *
+ * Se intentó antes escribir el trámite en su propia celda y no se pudo: esas
+ * columnas viven dentro de un rango protegido del libro que no incluye a la
+ * cuenta de la mesa, y Sheets contesta 400. Escribir al lado evita el permiso y
+ * además conserva el original, que es mejor registro.
  */
 export const CAMPOS_ESCRIBIBLES = [
   'estatusInicial',
@@ -34,6 +47,7 @@ export const CAMPOS_ESCRIBIBLES = [
   'teniaPermisos',
   'causaSeguimiento',
   'observaciones',
+  'reclasificacion',
 ] as const satisfies readonly CampoEscribible[]
 
 /**
@@ -119,7 +133,21 @@ async function pedir(deps: DepsLectura, url: string, init?: RequestInit) {
     )
   }
   if (!respuesta.ok) {
-    throw new Error(`Sheets respondió ${respuesta.status} al guardar los cambios.`)
+    const mensaje = await mensajeDeGoogle(respuesta)
+    // La hoja protege columnas por rangos con lista de editores. Si la cuenta de
+    // la mesa no está en la del rango que toca, Sheets contesta 400 y no 403. No
+    // se arregla desde el código —hay que dar el permiso en la hoja—, y decirlo
+    // aquí ahorra el viaje de averiguarlo.
+    if (esCeldaProtegida(mensaje)) {
+      throw new Error(
+        'La hoja tiene esa columna dentro de un rango protegido y la cuenta de Google que autorizó la mesa no está entre sus editores. ' +
+          'Pide al propietario del libro que la agregue como editora de ese rango.' +
+          comoRazon(mensaje),
+      )
+    }
+    throw new Error(
+      `Sheets respondió ${respuesta.status} al guardar los cambios.${comoRazon(mensaje)}`,
+    )
   }
   return respuesta
 }
@@ -127,9 +155,9 @@ async function pedir(deps: DepsLectura, url: string, init?: RequestInit) {
 /**
  * Relee la fila y confirma que sigue siendo el caso que el usuario abrió.
  *
- * Esto cubre el hueco que el bloqueo interno no puede cerrar: alguien editando
- * la hoja directamente. El PRD asume ese riesgo a cambio de conservar la hoja
- * como red de seguridad, y esta comprobación es lo que evita pisar su cambio.
+ * Cubre el hueco que el bloqueo interno no puede cerrar: alguien editando la hoja
+ * directamente. El PRD asume ese riesgo a cambio de conservar la hoja como red de
+ * seguridad, y esta comprobación es lo que evita pisar su cambio.
  */
 async function confirmarFila(
   deps: DepsLectura,

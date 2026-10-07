@@ -26,6 +26,7 @@ export type CampoLogico =
   | 'teniaPermisos'
   | 'causaSeguimiento'
   | 'observaciones'
+  | 'reclasificacion'
   | 'fechaRespuestaCorreo'
   | 'fechaAtencionFinal'
 
@@ -107,6 +108,14 @@ const ALIAS: Record<CampoLogico, string[]> = {
   teniaPermisos: ['el ejecutivo contaba con permisos para realizar la actividad'],
   causaSeguimiento: ['causa por la que no pudo realizar la actividad'],
   observaciones: ['observaciones'],
+
+  /**
+   * La clasificación que la mesa le pone al caso cuando el solicitante eligió mal
+   * el trámite. Es una columna de la mesa (KV), no una respuesta del formulario:
+   * el tipo de trámite que mandó el solicitante sigue intacto en su columna, y
+   * esta se lee al lado. Ver `lib/casos/reclasificacion.ts`.
+   */
+  reclasificacion: ['reclasificacion'],
 }
 
 /**
@@ -154,6 +163,7 @@ const CAMPOS_COLUMNA_UNICA: CampoLogico[] = [
   'teniaPermisos',
   'causaSeguimiento',
   'observaciones',
+  'reclasificacion',
 ]
 
 const PATRONES_ADJUNTO = [

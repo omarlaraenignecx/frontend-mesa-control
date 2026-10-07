@@ -1,3 +1,5 @@
+import { razonDeGoogle } from './error-google'
+
 const BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
 
 /**
@@ -20,7 +22,9 @@ export async function leerTituloHoja(
     throw new Error('La hoja de cálculo no existe o el identificador es incorrecto.')
   }
   if (!respuesta.ok) {
-    throw new Error(`Sheets respondió ${respuesta.status} al leer la hoja.`)
+    throw new Error(
+      `Sheets respondió ${respuesta.status} al leer la hoja.${await razonDeGoogle(respuesta)}`,
+    )
   }
 
   const cuerpo = (await respuesta.json()) as { properties?: { title?: string } }

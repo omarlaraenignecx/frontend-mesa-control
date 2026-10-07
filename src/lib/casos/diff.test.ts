@@ -17,6 +17,25 @@ describe('calcularDiff', () => {
     })
   })
 
+  it('ve la reclasificación como cualquier otro campo', () => {
+    // Se compara contra la reclasificación anterior, no contra el trámite del
+    // formulario: son columnas distintas y el trámite no se toca.
+    expect(calcularDiff(caso(), { reclasificacion: 'Endoso' })).toEqual([
+      {
+        campo: 'reclasificacion',
+        etiqueta: ETIQUETAS_SEGUIMIENTO.reclasificacion,
+        anterior: null,
+        nuevo: 'Endoso',
+      },
+    ])
+  })
+
+  it('no reporta cambio cuando la reclasificación propuesta es la que ya tenía', () => {
+    expect(calcularDiff(caso({ reclasificacion: 'Endoso' }), { reclasificacion: 'Endoso' })).toEqual(
+      [],
+    )
+  })
+
   it('trata el paso de vacío a con dato como un cambio', () => {
     const cambios = calcularDiff(caso({ folioInterno: null }), { folioInterno: '0426014703' })
     expect(cambios).toEqual([
