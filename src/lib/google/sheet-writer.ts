@@ -433,40 +433,65 @@ export async function crearColumnaTiempo(deps: DepsLectura, columna: number): Pr
 }
 
 /**
- * Escribe los tiempos del histórico en un solo lote.
+ * Escribe los tiempos del histórico en un solo lote y devuelve cuántos escribió.
  *
- * Antes relee el encabezado de la columna: si alguien la movió entre la lectura
- * del script y este momento, escribir por posición pondría horas en la columna de
- * otro. En ese caso no se escribe nada.
+ * Entre la lectura del script y este momento la hoja puede cambiar, así que antes
+ * relee, en una sola llamada, la columna A y la del tiempo:
+ * - si el encabezado de la columna ya no es el del tiempo, alguien la movió y
+ *   escribir por posición pondría horas en la columna de otro: no se escribe nada;
+ * - si una fila ya no trae la marca temporal que se leyó, alguien ordenó o movió
+ *   filas: tampoco se escribe nada, igual que con los folios, porque un lote a
+ *   medias no dejaría saber qué quedó bien;
+ * - si una celda del tiempo ya tiene dato —la aplicación la selló en ese lapso—,
+ *   esa fila se salta: nunca se toca una celda con dato.
  */
 export async function escribirTiempos(
   deps: DepsLectura,
   columna: number,
-  asignaciones: { fila: number; horas: number }[],
-): Promise<void> {
-  if (asignaciones.length === 0) return
+  asignaciones: { fila: number; horas: number; marcaTemporalTexto: string }[],
+): Promise<number> {
+  if (asignaciones.length === 0) return 0
   const letra = letraColumna(columna)
   const respuesta = await pedir(
     deps,
-    `${BASE}/${deps.sheetId}/values/${encodeURIComponent(`${deps.pestana}!${letra}1`)}` +
-      '?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE',
+    `${BASE}/${deps.sheetId}/values:batchGet` +
+      `?ranges=${encodeURIComponent(`${deps.pestana}!A1:A`)}` +
+      `&ranges=${encodeURIComponent(`${deps.pestana}!${letra}1:${letra}`)}` +
+      '&majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE',
   )
-  const cuerpo = (await respuesta.json()) as { values?: string[][] }
-  const encabezado = cuerpo.values?.[0]?.[0] ?? ''
+  const cuerpo = (await respuesta.json()) as { valueRanges?: { values?: string[][] }[] }
+  const leer = (rango: number, fila: number) =>
+    (cuerpo.valueRanges?.[rango]?.values?.[fila - 1]?.[0] ?? '').trim()
+
+  const encabezado = leer(1, 1)
   if (normalizarEncabezado(encabezado) !== normalizarEncabezado(ENCABEZADO_TIEMPO_ATENCION)) {
     throw new Error(
       `La columna ${letra} dice "${encabezado}" y no es la del tiempo de atención; no se escribe nada.`,
     )
   }
+  for (const { fila, marcaTemporalTexto } of asignaciones) {
+    const actual = leer(0, fila) || null
+    if (actual !== marcaTemporalTexto.trim()) {
+      throw new FilaCambiadaError({
+        campo: `marca temporal de la fila ${fila}`,
+        esperado: marcaTemporalTexto,
+        encontrado: actual,
+      })
+    }
+  }
+  const pendientes = asignaciones.filter(({ fila }) => !leer(1, fila))
+  if (pendientes.length === 0) return 0
+
   await pedir(deps, `${BASE}/${deps.sheetId}/values:batchUpdate?valueInputOption=RAW`, {
     method: 'POST',
     body: JSON.stringify({
       valueInputOption: 'RAW',
-      data: asignaciones.map(({ fila, horas }) => ({
+      data: pendientes.map(({ fila, horas }) => ({
         range: `${deps.pestana}!${letra}${fila}`,
         majorDimension: 'ROWS',
         values: [[horas]],
       })),
     }),
   })
+  return pendientes.length
 }

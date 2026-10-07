@@ -32,7 +32,7 @@ async function main() {
   const { casos, encabezados } = await leerCasos(deps, 0)
   const { columna, existe } = ubicarColumnaTiempo(encabezados)
 
-  const asignaciones: { fila: number; horas: number }[] = []
+  const asignaciones: { fila: number; horas: number; marcaTemporalTexto: string }[] = []
   let yaTenian = 0
   let sinCierreUsable = 0
   for (const caso of casos) {
@@ -43,7 +43,7 @@ async function main() {
     }
     const horas = tiempoASellar(caso, caso.estatusFinal, caso.fechaAtencionFinal)
     if (horas === null) sinCierreUsable++
-    else asignaciones.push({ fila: caso.fila, horas })
+    else asignaciones.push({ fila: caso.fila, horas, marcaTemporalTexto: caso.marcaTemporalTexto })
   }
 
   const promedio = asignaciones.length
@@ -56,15 +56,18 @@ async function main() {
   console.log(`Ya tenían tiempo: ${yaTenian}`)
   console.log(`Sin fecha de cierre utilizable (se dejan vacíos): ${sinCierreUsable}`)
   console.log(`Promedio de lo que se llenaría: ${promedio.toFixed(2)} h`)
-  console.log('Muestra:', asignaciones.slice(0, 5))
+  console.log(
+    'Muestra:',
+    asignaciones.slice(0, 5).map(({ fila, horas }) => ({ fila, horas })),
+  )
 
   if (!escribir) {
     console.log('\nSimulacro: no se escribió nada. Corre con --escribir para escribir.')
     return
   }
   if (!existe) await crearColumnaTiempo(deps, columna)
-  await escribirTiempos(deps, columna, asignaciones)
-  console.log(`\nEscritas ${asignaciones.length} filas en ${letraColumna(columna)}.`)
+  const escritas = await escribirTiempos(deps, columna, asignaciones)
+  console.log(`\nEscritas ${escritas} filas en ${letraColumna(columna)}.`)
 }
 
 main()

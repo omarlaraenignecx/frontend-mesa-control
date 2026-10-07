@@ -775,17 +775,31 @@ describe('crearColumnaTiempo', () => {
   })
 })
 
+/** Columnas A y KW desde la fila 1, como las devuelve el batchGet de `escribirTiempos`. */
+function columnasAyKW(filas: Record<number, [string, string?]>, encabezado = 'Tiempo de atención (horas)') {
+  const ultima = Math.max(1, ...Object.keys(filas).map(Number))
+  const a: string[][] = [['Marca temporal']]
+  const kw: string[][] = [[encabezado]]
+  for (let f = 2; f <= ultima; f++) {
+    const [marca, tiempo] = filas[f] ?? ['', '']
+    a.push([marca])
+    kw.push(tiempo ? [tiempo] : [])
+  }
+  return { valueRanges: [{ values: a }, { values: kw }] }
+}
+
 describe('escribirTiempos', () => {
-  it('relee el encabezado y escribe todos los tiempos en un lote RAW', async () => {
+  const T10 = { fila: 10, horas: 26.5, marcaTemporalTexto: '5/8/2026 15:14:58' }
+  const T12 = { fila: 12, horas: 1, marcaTemporalTexto: '6/8/2026 9:00:00' }
+
+  it('confirma cada fila y escribe todos los tiempos en un lote, como números', async () => {
     const { fetchMock, llamadas } = fetchDeHoja([
-      () => ({ values: [['Tiempo de atención (horas)']] }),
+      () => columnasAyKW({ 10: [T10.marcaTemporalTexto], 12: [T12.marcaTemporalTexto] }),
       () => ({}),
     ])
-    await escribirTiempos({ ...DEPS_BASE, fetch: fetchMock }, 309, [
-      { fila: 10, horas: 26.5 },
-      { fila: 12, horas: 1 },
-    ])
-    expect(llamadas[1].url).toContain('valueInputOption=RAW')
+    const escritas = await escribirTiempos({ ...DEPS_BASE, fetch: fetchMock }, 309, [T10, T12])
+    expect(escritas).toBe(2)
+    expect(llamadas[0].url).toContain('values:batchGet')
     const cuerpo = JSON.parse(String(llamadas[1].init!.body))
     expect(cuerpo.data).toEqual([
       { range: 'Respuestas de formulario 1!KW10', majorDimension: 'ROWS', values: [[26.5]] },
@@ -794,16 +808,42 @@ describe('escribirTiempos', () => {
   })
 
   it('aborta sin escribir si la columna ya no es la del tiempo', async () => {
-    const { fetchMock, llamadas } = fetchDeHoja([() => ({ values: [['Otra cosa']] })])
-    await expect(
-      escribirTiempos({ ...DEPS_BASE, fetch: fetchMock }, 309, [{ fila: 10, horas: 2 }]),
-    ).rejects.toThrow(/no es la del tiempo de atención/)
+    const { fetchMock, llamadas } = fetchDeHoja([
+      () => columnasAyKW({ 10: [T10.marcaTemporalTexto] }, 'Otra cosa'),
+    ])
+    await expect(escribirTiempos({ ...DEPS_BASE, fetch: fetchMock }, 309, [T10])).rejects.toThrow(
+      /no es la del tiempo de atención/,
+    )
     expect(llamadas).toHaveLength(1)
+  })
+
+  it('aborta sin escribir nada si una fila ya no es el caso que se leyó', async () => {
+    // Alguien ordenó la hoja entre la lectura del script y la escritura.
+    const { fetchMock, llamadas } = fetchDeHoja([
+      () => columnasAyKW({ 10: [T10.marcaTemporalTexto], 12: ['1/1/2024 8:00:00'] }),
+    ])
+    await expect(
+      escribirTiempos({ ...DEPS_BASE, fetch: fetchMock }, 309, [T10, T12]),
+    ).rejects.toThrow(FilaCambiadaError)
+    expect(llamadas).toHaveLength(1)
+  })
+
+  it('se salta la fila que ya tiene tiempo: nunca toca una celda con dato', async () => {
+    const { fetchMock, llamadas } = fetchDeHoja([
+      () => columnasAyKW({ 10: [T10.marcaTemporalTexto, '3'], 12: [T12.marcaTemporalTexto] }),
+      () => ({}),
+    ])
+    const escritas = await escribirTiempos({ ...DEPS_BASE, fetch: fetchMock }, 309, [T10, T12])
+    expect(escritas).toBe(1)
+    const cuerpo = JSON.parse(String(llamadas[1].init!.body))
+    expect(cuerpo.data.map((d: { range: string }) => d.range)).toEqual([
+      'Respuestas de formulario 1!KW12',
+    ])
   })
 
   it('sin asignaciones no llama a Google', async () => {
     const { fetchMock } = fetchDeHoja([])
-    await escribirTiempos({ ...DEPS_BASE, fetch: fetchMock }, 309, [])
+    expect(await escribirTiempos({ ...DEPS_BASE, fetch: fetchMock }, 309, [])).toBe(0)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })
