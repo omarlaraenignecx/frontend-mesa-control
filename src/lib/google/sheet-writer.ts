@@ -2,8 +2,8 @@ import { comoRazon, esCeldaProtegida, mensajeDeGoogle } from './error-google'
 import type { DepsLectura } from './sheet-reader'
 import {
   ENCABEZADO_TIEMPO_ATENCION,
+  esEncabezadoTiempo,
   letraColumna,
-  normalizarEncabezado,
   type CampoLogico,
   type MapaEsquema,
 } from './sheet-schema'
@@ -464,7 +464,7 @@ export async function escribirTiempos(
     (cuerpo.valueRanges?.[rango]?.values?.[fila - 1]?.[0] ?? '').trim()
 
   const encabezado = leer(1, 1)
-  if (normalizarEncabezado(encabezado) !== normalizarEncabezado(ENCABEZADO_TIEMPO_ATENCION)) {
+  if (!esEncabezadoTiempo(encabezado)) {
     throw new Error(
       `La columna ${letra} dice "${encabezado}" y no es la del tiempo de atención; no se escribe nada.`,
     )

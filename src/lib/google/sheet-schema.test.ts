@@ -242,6 +242,12 @@ describe('columna del tiempo de atención', () => {
     expect(ubicarColumnaTiempo(ENCABEZADOS)).toEqual({ columna: 309, existe: true })
   })
 
+  it('reconoce también «Tiempo de Atención», el encabezado que puso el área en producción', () => {
+    const conTituloDelArea = [...ENCABEZADOS.slice(0, 308), 'Tiempo de Atención']
+    expect(construirMapa(conTituloDelArea).columnasPorCampo.tiempoAtencion).toEqual([309])
+    expect(ubicarColumnaTiempo(conTituloDelArea)).toEqual({ columna: 309, existe: true })
+  })
+
   it('cuando falta, propone la primera columna después de la última con encabezado', () => {
     const sinTiempo = ENCABEZADOS.slice(0, 308)
     expect(ubicarColumnaTiempo(sinTiempo)).toEqual({ columna: 309, existe: false })

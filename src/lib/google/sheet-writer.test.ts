@@ -807,6 +807,14 @@ describe('escribirTiempos', () => {
     ])
   })
 
+  it('acepta la columna con el título que le puso el área, «Tiempo de Atención»', async () => {
+    const { fetchMock } = fetchDeHoja([
+      () => columnasAyKW({ 10: [T10.marcaTemporalTexto] }, 'Tiempo de Atención'),
+      () => ({}),
+    ])
+    expect(await escribirTiempos({ ...DEPS_BASE, fetch: fetchMock }, 309, [T10])).toBe(1)
+  })
+
   it('aborta sin escribir si la columna ya no es la del tiempo', async () => {
     const { fetchMock, llamadas } = fetchDeHoja([
       () => columnasAyKW({ 10: [T10.marcaTemporalTexto] }, 'Otra cosa'),
