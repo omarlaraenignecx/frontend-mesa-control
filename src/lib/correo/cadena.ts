@@ -1,4 +1,5 @@
 import type { Hilo } from '@/lib/google/gmail-thread'
+import { partesDeLaMesa } from '@/lib/reloj'
 import {
   envolverCorreo,
   escapar,
@@ -49,7 +50,8 @@ function fechaLegible(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   const dos = (n: number) => String(n).padStart(2, '0')
-  return `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}, ${d.getHours()}:${dos(d.getMinutes())}`
+  const { dia, mes, anio, horas, minutos } = partesDeLaMesa(d)
+  return `${dia} ${MESES[mes - 1]} ${anio}, ${horas}:${dos(minutos)}`
 }
 
 const SIN_TEXTO = '(sin texto)'
