@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import type { Plantilla } from '@/lib/correo/plantillas'
+import { partesDeLaMesa } from '@/lib/reloj'
 import { guardarPlantillaAccion, type ResultadoPlantilla } from './acciones-plantillas'
 
 const VARIABLES = ['solicitante', 'folio', 'agencia', 'tramite', 'atiende'] as const
@@ -22,6 +23,16 @@ const VARIABLES_SINIESTROS = [
   'poliza',
   'tipoSiniestro',
 ] as const
+
+/**
+ * El día en el reloj de la mesa: este componente también se prerenderiza en el
+ * servidor, que está en UTC, y una edición después de las 18:00 saldría con el día
+ * siguiente.
+ */
+function diaDeEdicion(instante: Date): string {
+  const { dia, mes, anio } = partesDeLaMesa(instante)
+  return `${dia}/${mes}/${anio}`
+}
 
 export { VARIABLES_SINIESTROS }
 
@@ -141,7 +152,7 @@ export function AdminPlantillas({
             {plantilla.actualizadaPor && (
               <span className="text-sm text-muted-foreground">
                 Última edición: {plantilla.actualizadaPor.split('@')[0]} ·{' '}
-                {plantilla.actualizadaEn.toLocaleDateString('es-MX')}
+                {diaDeEdicion(plantilla.actualizadaEn)}
               </span>
             )}
           </div>

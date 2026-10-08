@@ -11,7 +11,7 @@ export function formatearFechaHoja(instante: Date): string {
   return `${dia}/${mes}/${anio} ${horas}:${dos(minutos)}:${dos(segundos)}`
 }
 
-const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+export const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
 /**
  * Día de recepción para la tabla de la cola: sin la hora, que en una lista larga
@@ -30,4 +30,15 @@ export function fechaCorta(iso: string | null, textoCrudo: string): string {
     }
   }
   return textoCrudo.trim().split(/\s+/)[0] || '—'
+}
+
+/**
+ * Día, mes y hora de un mensaje de la conversación, en el reloj de la mesa. La
+ * conversación se prerenderiza en el servidor, que en Vercel está en UTC: con
+ * `toLocaleString` la hora no coincidiría con la del navegador ni con la de la hoja.
+ */
+export function horaDeMensaje(iso: string): string {
+  const { dia, mes, horas, minutos } = partesDeLaMesa(new Date(iso))
+  const dos = (n: number) => String(n).padStart(2, '0')
+  return `${dos(dia)} ${MESES[mes - 1]} ${dos(horas)}:${dos(minutos)}`
 }

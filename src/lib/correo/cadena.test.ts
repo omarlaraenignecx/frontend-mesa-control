@@ -54,6 +54,15 @@ describe('resumenDeCadena', () => {
 })
 
 describe('renderCadena', () => {
+  it('fecha cada mensaje con la hora de la mesa, no la del servidor', () => {
+    // 19:20 UTC son las 13:20 en la mesa; el reenvío corre en Vercel, que está en UTC.
+    const hilo = { ...HILO, mensajes: [{ ...HILO.mensajes[0], fechaIso: '2026-10-08T19:20:00.000Z' }] }
+    const { texto, html } = renderCadena(hilo, VARIABLES)
+    expect(texto).toContain('8 oct 2026, 13:20')
+    expect(html).toContain('8 oct 2026, 13:20')
+    expect(texto).not.toContain('19:20')
+  })
+
   it('transcribe los mensajes en orden, del más antiguo al más reciente', () => {
     const { texto } = renderCadena(HILO, VARIABLES)
     expect(texto.indexOf('ya solicitamos la emisión')).toBeLessThan(

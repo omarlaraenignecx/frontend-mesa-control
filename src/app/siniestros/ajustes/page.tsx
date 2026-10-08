@@ -5,6 +5,7 @@ import { normalizarCorreo } from '@/lib/auth/allowlist'
 import { SINIESTROS } from '@/lib/modulos/modulo'
 import { estadoDelBuzon, scopesFaltantesSiniestros } from '@/lib/siniestros/auth'
 import { listarCredencialesSiniestros } from '@/lib/siniestros/credencial'
+import { formatearFechaHoja } from '@/lib/fecha'
 import {
   buzonProvisional,
   cuentaActiva,
@@ -30,7 +31,7 @@ function nombreDelPermiso(scope: string): string {
 }
 
 function fecha(d: Date): string {
-  return d.toLocaleString('es-MX')
+  return formatearFechaHoja(d)
 }
 
 /**

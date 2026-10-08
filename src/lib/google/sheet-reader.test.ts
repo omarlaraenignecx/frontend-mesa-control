@@ -127,6 +127,13 @@ describe('construirCasos', () => {
     expect(casos.map((c) => c.folio)).toEqual(['7000'])
   })
 
+  it('cuenta el año de la mesa, no el de UTC, para el año mínimo', () => {
+    // Las 20:00 del 31 de diciembre en la mesa ya son 1 de enero en UTC.
+    const finDeAnio = fila({ 1: '31/12/2025 20:00:00', 285: '101' })
+    const casos = construirCasos([finDeAnio, FILA_7176], MAPA, ENCABEZADOS, 2026)
+    expect(casos.map((c) => c.folio)).toEqual(['7000'])
+  })
+
   it('acepta el caso sin folio y lo conserva en la lista', () => {
     const f = fila({ 1: '5/8/2026 17:33:44', 28: 'JACQUELINE HURTADO' })
     const [caso] = construirCasos([f], MAPA, ENCABEZADOS, 2026)

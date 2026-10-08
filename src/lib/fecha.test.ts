@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fechaCorta, formatearFechaHoja } from './fecha'
+import { fechaCorta, formatearFechaHoja, horaDeMensaje } from './fecha'
 
 describe('formatearFechaHoja', () => {
   it('usa la hora de la mesa, no la del servidor', () => {
@@ -14,6 +14,12 @@ describe('formatearFechaHoja', () => {
 
   it('no escribe el día siguiente cuando en UTC ya cambió la fecha', () => {
     expect(formatearFechaHoja(new Date('2026-08-12T02:30:00Z'))).toBe('11/8/2026 20:30:00')
+  })
+
+  it('pinta el movimiento de la bitácora a la hora en que la mesa lo hizo', () => {
+    // Fila 7614 en producción: creado_en 18:45:06 UTC, KD 8/10/2026 12:45:06.
+    // Con toLocaleString en Vercel salía «6:45:06 p.m.».
+    expect(formatearFechaHoja(new Date('2026-10-08T18:45:06Z'))).toBe('8/10/2026 12:45:06')
   })
 })
 
@@ -36,5 +42,16 @@ describe('fechaCorta', () => {
 
   it('sin fecha y sin texto no inventa nada', () => {
     expect(fechaCorta(null, '')).toBe('—')
+  })
+})
+
+describe('horaDeMensaje', () => {
+  it('da día, mes y hora de la mesa con dos dígitos', () => {
+    // 19:05 UTC son las 13:05 en la mesa.
+    expect(horaDeMensaje('2026-10-08T19:05:00.000Z')).toBe('08 oct 13:05')
+  })
+
+  it('después de las 18:00 de la mesa no salta al día siguiente', () => {
+    expect(horaDeMensaje('2026-10-09T02:30:00.000Z')).toBe('08 oct 20:30')
   })
 })

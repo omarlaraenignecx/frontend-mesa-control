@@ -1,4 +1,6 @@
 import type { Hilo } from '@/lib/google/gmail-thread'
+import { MESES } from '@/lib/fecha'
+import { partesDeLaMesa } from '@/lib/reloj'
 import {
   envolverCorreo,
   escapar,
@@ -43,13 +45,12 @@ export function resumenDeCadena(hilo: Hilo): ResumenDeCadena {
   return { mensajes: hilo.mensajes.length, adjuntos }
 }
 
-const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
-
 function fechaLegible(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   const dos = (n: number) => String(n).padStart(2, '0')
-  return `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}, ${d.getHours()}:${dos(d.getMinutes())}`
+  const { dia, mes, anio, horas, minutos } = partesDeLaMesa(d)
+  return `${dia} ${MESES[mes - 1]} ${anio}, ${horas}:${dos(minutos)}`
 }
 
 const SIN_TEXTO = '(sin texto)'

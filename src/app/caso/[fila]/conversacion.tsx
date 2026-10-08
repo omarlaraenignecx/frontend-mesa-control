@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import type { EstadoHilo } from '@/lib/casos/hilo'
 import { resumenDeCadena } from '@/lib/correo/cadena'
 import { LIMITE_GMAIL_BYTES } from '@/lib/correo/mime'
+import { horaDeMensaje } from '@/lib/fecha'
 import { enviarMensaje, refrescarConversacion, type ResultadoEnvio } from './acciones-correo'
 import { ReenviarCadena } from './reenviar-cadena'
 
@@ -25,15 +26,6 @@ type Props = {
 }
 
 const enMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(1)
-
-function horaDe(iso: string): string {
-  return new Date(iso).toLocaleString('es-MX', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 export function Conversacion({
   fila,
@@ -159,7 +151,7 @@ export function Conversacion({
                 }`}
               >
                 <p className="text-sm text-muted-foreground">
-                  {m.deLaMesa ? 'Mesa de Control' : m.autor} · {horaDe(m.fechaIso)}
+                  {m.deLaMesa ? 'Mesa de Control' : m.autor} · {horaDeMensaje(m.fechaIso)}
                 </p>
                 <p className="leading-relaxed whitespace-pre-line">
                   {m.texto || <span className="text-muted-foreground">(sin texto)</span>}
