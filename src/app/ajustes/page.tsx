@@ -5,6 +5,7 @@ import { AdminPlantillas } from './plantillas'
 import { accessTokenDeLaMesa, scopesFaltantes } from '@/lib/google/auth-mesa'
 import { leerCredencial } from '@/lib/google/credencial'
 import { leerTituloHoja } from '@/lib/google/sheet-ping'
+import { formatearFechaHoja } from '@/lib/fecha'
 import { SINIESTROS } from '@/lib/modulos/modulo'
 
 /** El scope completo no le dice nada a nadie; esto sí. */
@@ -70,7 +71,7 @@ export default async function Ajustes() {
             <p className="font-medium text-emerald-600">Consentimiento activo</p>
             <p className="text-muted-foreground">
               Autorizado por {acceso.credencial.autorizadoPor} el{' '}
-              {acceso.credencial.autorizadoEn.toLocaleString('es-MX')}
+              {formatearFechaHoja(acceso.credencial.autorizadoEn)}
             </p>
             <p className="text-muted-foreground">
               Hoja alcanzada correctamente: <strong>{acceso.titulo}</strong>

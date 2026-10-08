@@ -32,6 +32,7 @@ import { Conversacion } from '@/app/caso/[fila]/conversacion'
 import { cargarCaso } from '@/lib/casos/consulta'
 import { emitirEvento } from '@/lib/casos/eventos'
 import { diasDeEspera } from '@/lib/casos/semaforo'
+import { formatearFechaHoja } from '@/lib/fecha'
 import { Atender } from '@/app/caso/[fila]/atender'
 import { SeguimientoForm } from '@/app/caso/[fila]/seguimiento-form'
 import { SubirArchivos } from '@/app/caso/[fila]/subir-archivos'
@@ -439,7 +440,7 @@ export async function PantallaDeCaso({
                     {bitacora.map((b) => (
                       <li key={b.id} className="rounded-lg bg-secondary/40 p-3 text-base">
                         <p className="text-sm text-muted-foreground">
-                          {b.creadoEn.toLocaleString('es-MX')} · {b.correoUsuario.split('@')[0]}
+                          {formatearFechaHoja(b.creadoEn)} · {b.correoUsuario.split('@')[0]}
                         </p>
                         <p className="mt-1">
                           <strong>{b.campo}</strong>{' '}

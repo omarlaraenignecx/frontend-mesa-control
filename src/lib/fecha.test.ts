@@ -15,6 +15,12 @@ describe('formatearFechaHoja', () => {
   it('no escribe el día siguiente cuando en UTC ya cambió la fecha', () => {
     expect(formatearFechaHoja(new Date('2026-08-12T02:30:00Z'))).toBe('11/8/2026 20:30:00')
   })
+
+  it('pinta el movimiento de la bitácora a la hora en que la mesa lo hizo', () => {
+    // Fila 7614 en producción: creado_en 18:45:06 UTC, KD 8/10/2026 12:45:06.
+    // Con toLocaleString en Vercel salía «6:45:06 p.m.».
+    expect(formatearFechaHoja(new Date('2026-10-08T18:45:06Z'))).toBe('8/10/2026 12:45:06')
+  })
 })
 
 describe('fechaCorta', () => {
