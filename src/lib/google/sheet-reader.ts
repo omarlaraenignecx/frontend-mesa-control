@@ -1,4 +1,5 @@
 import { parsearFechaHoja, type Caso } from '@/lib/casos/caso'
+import { partesDeLaMesa } from '@/lib/reloj'
 import { extraerAdjuntos, type Adjunto } from './drive-links'
 import { razonDeGoogle } from './error-google'
 import {
@@ -99,7 +100,7 @@ export function construirCasos(
     if (!marcaTemporalTexto) return // fila pre-arrastrada, sin petición real
 
     const marcaTemporal = parsearFechaHoja(marcaTemporalTexto)
-    if (!marcaTemporal || marcaTemporal.getFullYear() < anioMinimo) return
+    if (!marcaTemporal || partesDeLaMesa(marcaTemporal).anio < anioMinimo) return
 
     const adjuntos: Adjunto[] = mapa.columnasAdjuntos.flatMap(({ columna, etiqueta }) =>
       extraerAdjuntos(etiqueta, fila[columna - 1] ?? ''),
