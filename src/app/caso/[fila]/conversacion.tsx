@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import type { EstadoHilo } from '@/lib/casos/hilo'
 import { resumenDeCadena } from '@/lib/correo/cadena'
 import { LIMITE_GMAIL_BYTES } from '@/lib/correo/mime'
-import { partesDeLaMesa } from '@/lib/reloj'
+import { horaDeMensaje } from '@/lib/fecha'
 import { enviarMensaje, refrescarConversacion, type ResultadoEnvio } from './acciones-correo'
 import { ReenviarCadena } from './reenviar-cadena'
 
@@ -26,19 +26,6 @@ type Props = {
 }
 
 const enMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(1)
-
-const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
-
-/**
- * En el reloj de la mesa y no con `toLocaleString`: el componente se prerenderiza en
- * el servidor, que en Vercel está en UTC, y la hora no coincidiría con la del
- * navegador ni con la de la hoja.
- */
-function horaDe(iso: string): string {
-  const { dia, mes, horas, minutos } = partesDeLaMesa(new Date(iso))
-  const dos = (n: number) => String(n).padStart(2, '0')
-  return `${dos(dia)} ${MESES[mes - 1]} ${dos(horas)}:${dos(minutos)}`
-}
 
 export function Conversacion({
   fila,
@@ -164,7 +151,7 @@ export function Conversacion({
                 }`}
               >
                 <p className="text-sm text-muted-foreground">
-                  {m.deLaMesa ? 'Mesa de Control' : m.autor} · {horaDe(m.fechaIso)}
+                  {m.deLaMesa ? 'Mesa de Control' : m.autor} · {horaDeMensaje(m.fechaIso)}
                 </p>
                 <p className="leading-relaxed whitespace-pre-line">
                   {m.texto || <span className="text-muted-foreground">(sin texto)</span>}

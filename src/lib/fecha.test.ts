@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fechaCorta, formatearFechaHoja } from './fecha'
+import { fechaCorta, formatearFechaHoja, horaDeMensaje } from './fecha'
 
 describe('formatearFechaHoja', () => {
   it('usa la hora de la mesa, no la del servidor', () => {
@@ -42,5 +42,16 @@ describe('fechaCorta', () => {
 
   it('sin fecha y sin texto no inventa nada', () => {
     expect(fechaCorta(null, '')).toBe('—')
+  })
+})
+
+describe('horaDeMensaje', () => {
+  it('da día, mes y hora de la mesa con dos dígitos', () => {
+    // 19:05 UTC son las 13:05 en la mesa.
+    expect(horaDeMensaje('2026-10-08T19:05:00.000Z')).toBe('08 oct 13:05')
+  })
+
+  it('después de las 18:00 de la mesa no salta al día siguiente', () => {
+    expect(horaDeMensaje('2026-10-09T02:30:00.000Z')).toBe('08 oct 20:30')
   })
 })
