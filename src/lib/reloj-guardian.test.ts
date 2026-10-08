@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { dirname, join, relative, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /**
@@ -7,14 +8,14 @@ import { describe, expect, it } from 'vitest'
  * del proceso sale seis horas adelantada. Ya pasó con la bitácora (8/10/2026).
  * Toda hora para la mesa pasa por `lib/reloj.ts` o `lib/fecha.ts`.
  */
-const PROHIBIDO = /\.(toLocaleString|toLocaleTimeString|getHours|getMinutes|getDate|getMonth|getFullYear)\(/
+// También atrapa `n.toLocaleString()` sobre números: para montos o cantidades, formatear
+// a mano o con una función de `lib/`, no exentar el archivo entero.
+const PROHIBIDO =
+  /\.(toLocale(Date|Time)?String|toDateString|toTimeString|get(Hours|Minutes|Seconds|Date|Day|Month|FullYear))\(|Intl\.DateTimeFormat|new Date\(\s*\d{4}\s*,/
 
-// Excepciones con su razón. Agregar aquí sólo con una razón igual de concreta.
-const PERMITIDOS = new Set<string>([
-  // Componente cliente que sólo muestra el día de la última edición de una plantilla:
-  // usa `toLocaleDateString`, que el patrón no atrapa, y se deja anotado por si cambia.
-  'src/app/ajustes/plantillas.tsx',
-])
+// Excepciones con su razón. Agregar aquí sólo con una razón concreta: «es componente
+// cliente» no basta, porque también se prerenderiza en el servidor.
+const PERMITIDOS = new Set<string>([])
 
 function archivos(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {
@@ -26,7 +27,7 @@ function archivos(dir: string): string[] {
 
 describe('formateo de horas', () => {
   it('nadie formatea con la zona del servidor', () => {
-    const raiz = process.cwd()
+    const raiz = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
     const culpables = archivos(join(raiz, 'src'))
       .map((p) => relative(raiz, p))
       .filter((p) => !PERMITIDOS.has(p))
